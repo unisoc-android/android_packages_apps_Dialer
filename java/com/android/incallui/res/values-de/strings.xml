@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">Echtzeittext (Real-Time Text, RTT) dient als Unterstützung für Anrufer, die gehörlos, schwerhörig oder sprachgeschädigt sind oder zusätzlich zur gesprochenen Sprache weitere Informationen benötigen.</string>
   <string name="rtt_button_decline_request">Nein danke</string>
   <string name="rtt_button_accept_request">RTT verwenden</string>
+  <string name="notification_action_answer_voice">"Sprache"</string>
+  <string name="notification_action_mute_on">"Ton aus"</string>
+  <string name="notification_action_mute_off">Laut</string>
+  <string name="notification_action_reject_with_message">SMS ablehnen</string>
+  <string name="card_title_in_call">"Anruf"</string>
+  <string name="card_title_conf_call">"Konferenzanruf"</string>
+  <string name="fail_change_video_due_to_bgcall">Es gibt einen Anruf im Hintergrund. Das Ändern des aktuellen Anrufs in einen Videoanruf ist fehlgeschlagen.</string>
 </resources>

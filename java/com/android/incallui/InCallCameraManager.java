@@ -129,6 +129,9 @@ public class InCallCameraManager {
       return;
     }
 
+    // UNISOC: add for bug1091183
+    boolean frontInitialized = false;
+    boolean rearInitialized = false;
     for (int i = 0; i < cameraIds.length; i++) {
       CameraCharacteristics c = null;
       try {
@@ -140,10 +143,12 @@ public class InCallCameraManager {
       }
       if (c != null) {
         int facingCharacteristic = c.get(CameraCharacteristics.LENS_FACING);
-        if (facingCharacteristic == CameraCharacteristics.LENS_FACING_FRONT) {
+        if (!frontInitialized && facingCharacteristic == CameraCharacteristics.LENS_FACING_FRONT) {
           frontFacingCameraId = cameraIds[i];
-        } else if (facingCharacteristic == CameraCharacteristics.LENS_FACING_BACK) {
+          frontInitialized = true;
+        } else if (!rearInitialized && facingCharacteristic == CameraCharacteristics.LENS_FACING_BACK) {
           rearFacingCameraId = cameraIds[i];
+          rearInitialized = true;
         }
       }
     }

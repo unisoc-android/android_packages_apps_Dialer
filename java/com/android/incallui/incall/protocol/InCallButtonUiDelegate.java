@@ -68,4 +68,26 @@ public interface InCallButtonUiDelegate {
   void swapSimClicked();
 
   Context getContext();
+
+  // UNISOC Feature Porting: Add for call recorder feature.
+  void recordClick(boolean isChecked);
+
+  // UNISOC Feature Porting: Enable send sms in incallui feature.
+  void sendSMSClicked();
+
+  // UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case.
+  void hangupAllClicked();
+
+  // UNISOC Feature Porting: Add for Explicit Call Transfer.
+  void transferCall();
+
+  // UNISOC Feature Porting: Add for call invite feature.
+  void inviteClicked();
+
+  //UNISOC: Add video call option menu
+  void changeToVoiceClicked();
+
+  // UNISOC Feature Porting: Add for change video type Feature.
+  void changeVideoTypeClicked();
+
 }

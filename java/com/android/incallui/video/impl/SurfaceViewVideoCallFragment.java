@@ -71,6 +71,7 @@ import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
 import com.android.incallui.video.protocol.VideoCallScreenDelegateFactory;
 import com.android.incallui.videotech.utils.VideoUtils;
+import com.android.incallui.videosurface.impl.VideoSurfaceTextureImpl;//add for bug 1130479
 
 /**
  * Contains UI elements for a video call.
@@ -597,7 +598,13 @@ public class SurfaceViewVideoCallFragment extends Fragment
       videoCallScreenDelegate.resetAutoFullscreenTimer();
     } else if (v == swapCameraButton) {
       if (swapCameraButton.getDrawable() instanceof Animatable) {
-        ((Animatable) swapCameraButton.getDrawable()).start();
+        /* UNISOC: add for bug1177044(1111450) {@*/
+        Animatable swapAnime = (Animatable) swapCameraButton.getDrawable();
+        if (swapAnime.isRunning()) {
+          swapAnime.stop();
+        }
+        swapAnime.start();
+        /* @} */
       }
       inCallButtonUiDelegate.toggleCameraClicked();
       videoCallScreenDelegate.resetAutoFullscreenTimer();
@@ -1062,4 +1069,34 @@ public class SurfaceViewVideoCallFragment extends Fragment
       }
     }
   }
+
+  /* UNISOC Feature Porting: Add for call recorder feature. @{  */
+  @Override
+  public void setRecord(boolean value) {
+    LogUtil.i("SurfaceViewVideoCallFragment.setRecord", "value: " + value);
+  }
+
+  @Override
+  public void setRecordTime(String recordTime) {
+    LogUtil.i("SurfaceViewVideoCallFragment.setRecordTime", "recordTime: " + recordTime);
+  }
+  /* @} */
+  /* UNISOC: Added for video call conference @{ */
+  @Override
+  public void showPreviewVideoViews(boolean showPreview) {}
+  /* @} */
+  public void localSurfaceClickForChange() {}
+
+  public void remoteSurfaceClickForChange() {}
+
+  public void changeSmallSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {}
+
+  public void changeBigSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {}
+
+  /* add for bug1166982(bug904816) @{ */
+  @Override
+  public void onVideoCallIsFront() {}
+  @Override
+  public void onVideoCallIsBack() {}
+  /* @} */
 }

@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Veeg vanaf pictogram om te beantwoorden als audiogesprek</string>
   <string name="call_incoming_default_label_answer_and_release_second">Veeg omhoog om op te nemen en actieve oproep in de wacht te plaatsen</string>
   <string name="call_incoming_default_label_answer_and_release_third">Veeg omhoog om op te nemen en oproep in de wacht te beëindigen</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Omhoog vegen om te antwoorden en actief gesprek te beëindigen"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Veeg vanaf pictogram om op te nemen en actieve oproep te beëindigen</string>
   <string name="call_incoming_message_custom">Eigen bericht opstellen…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Eigen bericht opstellen…</string>

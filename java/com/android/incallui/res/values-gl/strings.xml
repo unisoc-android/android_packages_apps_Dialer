@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">A función RTT constitúe unha axuda para todos aqueles emisores de chamadas que padezan xordeira ou outros problemas auditivos, teñan algún trastorno da fala ou necesiten algo máis que a voz para comunicarse.</string>
   <string name="rtt_button_decline_request">Non, grazas</string>
   <string name="rtt_button_accept_request">Unirse a RTT</string>
+  <string name="notification_action_answer_voice">Voz</string>
+  <string name="notification_action_mute_on">Silenciar</string>
+  <string name="notification_action_mute_off">Sen silenciar</string>
+  <string name="notification_action_reject_with_message">Rexeitar SMS</string>
+  <string name="card_title_in_call">En chamada</string>
+  <string name="card_title_conf_call">Chamadas de conferencia</string>
+  <string name="fail_change_video_due_to_bgcall">Hai unha chamada en segundo plano, non se pode cambiar a chamada actual a chamada de vídeo</string>
 </resources>

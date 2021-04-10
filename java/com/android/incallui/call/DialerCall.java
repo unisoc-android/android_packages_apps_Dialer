@@ -26,6 +26,7 @@ import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.PersistableBundle;
 import android.os.SystemClock;
 import android.os.Trace;
@@ -47,6 +48,9 @@ import android.telecom.PhoneAccountHandle;
 import android.telecom.StatusHints;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
+import android.telephony.PhoneNumberUtils;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.widget.Toast;
 import com.android.contacts.common.compat.CallCompat;
@@ -87,6 +91,7 @@ import com.android.incallui.audiomode.AudioModeProvider;
 import com.android.incallui.call.state.DialerCallState;
 import com.android.incallui.latencyreport.LatencyReport;
 import com.android.incallui.rtt.protocol.RttChatMessage;
+import com.android.incallui.sprd.InCallUiUtils;
 import com.android.incallui.videotech.VideoTech;
 import com.android.incallui.videotech.VideoTech.VideoTechListener;
 import com.android.incallui.videotech.duo.DuoVideoTech;
@@ -109,10 +114,14 @@ import java.util.concurrent.TimeUnit;
 
 /** Describes a single call and its state. */
 public class DialerCall implements VideoTechListener, StateChangedListener, CapabilitiesListener {
+  // UNISOC: add for bug1164778
+  private static final int DISCONNECT_CALL_TIME_OUT_IN_MILLIS = 5000;
 
   public static final int CALL_HISTORY_STATUS_UNKNOWN = 0;
   public static final int CALL_HISTORY_STATUS_PRESENT = 1;
   public static final int CALL_HISTORY_STATUS_NOT_PRESENT = 2;
+  // UNISOC Added for Bug1145755
+  private static final int MSG_CDMA_CALL_ANSWERED = 3;
 
   // Hard coded property for {@code Call}. Upstreamed change from Motorola.
   // TODO(a bug): Move it to Telecom in framework.
@@ -164,6 +173,8 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
 
   private String childNumber;
   private String lastForwardedNumber;
+  // UNISOC: add for bug1149076
+  private String orignalNumber;
   private boolean isCallForwarded;
   private String callSubject;
   @Nullable private PhoneAccountHandle phoneAccountHandle;
@@ -201,6 +212,16 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
   @Nullable private PreferredAccountRecorder preferredAccountRecorder;
   private boolean isCallRemoved;
 
+  // UNISOC: add for feature FL0108020006, use cpu time instead of system time
+  private long connectRealTimeMillis = Long.MAX_VALUE;
+
+  //UNISOC : add for feature FL1000060387
+  private boolean isDialingAudioCall = false;
+
+  private boolean mIsVideoCallCallbackRegistered = false;//UNISOC: add for bug1147201
+
+  private int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;//UNISOC:add for bug1153357
+
   public static String getNumberFromHandle(Uri handle) {
     return handle == null ? "" : handle.getSchemeSpecificPart();
   }
@@ -220,6 +241,23 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
    * subject.
    */
   private boolean isCallSubjectSupported;
+
+  // UNISOC Added for Bug1145755
+  private boolean mIsCdmaCallAnswered = false;
+  private boolean isCdma = false;
+  private long mConnectTimeMillisCdma;
+
+  // UNISOC: add for bug1164778
+  private boolean isDisconnecting = false;
+
+  // UNISOC: add for bug1175025
+  private boolean hasShownDisconnectError = false;
+
+  // UNISOC: add for bug1214394
+  private boolean usedToBeConference = false;
+
+  //UNISOC: add for bug1221260
+  private boolean isSwapSimActionFlag;
 
   public RttTranscript getRttTranscript() {
     return rttTranscript;
@@ -338,9 +376,9 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
               "TelecomCallCallback.onConnectionEvent",
               "Call: " + call + ", Event: " + event + ", Extras: " + extras);
           switch (event) {
-              // The Previous attempt to Merge two calls together has failed in Telecom. We must
-              // now update the UI to possibly re-enable the Merge button based on the number of
-              // currently conferenceable calls available or Connection Capabilities.
+            // The Previous attempt to Merge two calls together has failed in Telecom. We must
+            // now update the UI to possibly re-enable the Merge button based on the number of
+            // currently conferenceable calls available or Connection Capabilities.
             case android.telecom.Connection.EVENT_CALL_MERGE_FAILED:
               update();
               break;
@@ -378,6 +416,13 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
                 isCallForwarded = true;
                 update();
               }
+              break;
+            // UNISOC Added for Bug1145755
+            case TelephonyManagerCompat.EVENT_CDMA_CALL_ANSWERED:
+              LogUtil.i("DialerCall.onConnectionEvent", "cdma answer");
+              mIsCdmaCallAnswered = true;
+              // Unisoc: add for bug1145763
+              updateConnectRealTimeMillis();
               break;
             default:
               break;
@@ -418,6 +463,17 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     parseCallSpecificAppData();
 
     updateEnrichedCallSession();
+
+    if(!isIncoming()){
+      isDialingAudioCall = !VideoProfile.isVideo(getVideoState());// UNISOC : add for feature FL1000060387
+    }
+    // UNISOC: add for bug1149076
+    orignalNumber = getNumber();
+    // UNISOC: add for bug1145755
+    initCdma();
+    mConnectTimeMillisCdma = getConnectTimeMillis();
+
+    subId = getSubId(); //UNISOC:add for bug1153357
   }
 
   private static int translateState(int state) {
@@ -509,7 +565,8 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     }
   }
 
-  /* package-private */ Call getTelecomCall() {
+  // UNISOC: modify for feature: Add for call record feature
+  public Call getTelecomCall() {
     return telecomCall;
   }
 
@@ -546,9 +603,16 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     return countryIso;
   }
 
-  private void updateIsVoiceMailNumber() {
+  public void updateIsVoiceMailNumber() { //UNISOC: modify for bug1149859
     if (getHandle() != null && PhoneAccount.SCHEME_VOICEMAIL.equals(getHandle().getScheme())) {
       isVoicemailNumber = true;
+      /* UNISOC: add for bug1166662 @{*/
+      if (TextUtils.isEmpty(getNumber())
+              && PermissionsUtil.hasPermission(context, permission.READ_PHONE_STATE)
+              && PhoneNumberUtils.isEmergencyNumber(TelecomUtil.getVoicemailNumber(context, getAccountHandle()))) {
+        isEmergencyCall = true;
+      }
+      /*@}*/
       return;
     }
 
@@ -577,11 +641,17 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
       EnrichedCallComponent.get(context)
           .getEnrichedCallManager()
           .unregisterStateChangedListener(this);
-    } else {
+    // UNISOC: add for bug1164778
+    } else if (!isDisconnecting || getState() == DialerCallState.DISCONNECTED
+            || getState() == DialerCallState.DISCONNECTING) {
       for (DialerCallListener listener : listeners) {
         listener.onDialerCallUpdate();
       }
     }
+     // UNISOC: add for bug1167460
+     if(phoneisCdma() && oldState == DialerCallState.INCOMING && getState() == DialerCallState.ACTIVE){
+        mIsCdmaCallAnswered = true;
+     }
     Trace.endSection();
   }
 
@@ -590,6 +660,10 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     Trace.beginSection("DialerCall.updateFromTelecomCall");
     LogUtil.v("DialerCall.updateFromTelecomCall", telecomCall.toString());
 
+    // UNISOC: add for bug1214394
+    if (isConferenceCall()) {
+      usedToBeConference = true;
+    }
     videoTechManager.dispatchCallStateChanged(telecomCall.getState(), getAccountHandle());
 
     final int translatedState = translateState(telecomCall.getState());
@@ -752,7 +826,8 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
    */
   @Nullable
   public String updateNameIfRestricted(@Nullable String name) {
-    if (name != null && isHiddenNumber() && hiddenId != 0 && hiddenCounter > 1) {
+    // UNISOC: add for bug1168453
+    if (name != null && isHiddenNumber() && hiddenId != 0 && hiddenCounter > 1 && !isConferenceCall()) {
       return context.getString(R.string.unknown_counter, name, hiddenId);
     }
     return name;
@@ -762,7 +837,7 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     hiddenCounter = 0;
   }
 
-  private boolean isHiddenNumber() {
+  public boolean isHiddenNumber() {  //UNISOC:modify for bug1121421
     return getNumberPresentation() == TelecomManager.PRESENTATION_RESTRICTED
         || getNumberPresentation() == TelecomManager.PRESENTATION_UNKNOWN;
   }
@@ -866,6 +941,14 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     }
     updateCallTiming(state);
 
+    /* UNISOC: add for feature FL0108020006, use cpu time instead of system time @{ */
+    if (this.state == DialerCallState.ACTIVE || this.state == DialerCallState.ONHOLD || this.state == DialerCallState.CONFERENCED) {
+        updateConnectRealTimeMillis();
+    }
+    /* @} */
+    if (state == DialerCallState.DISCONNECTED && getSwapSimActionFlag()) { //UNISOC: add for bug1221260
+        setSwapSimActionFlag(false);
+    }
     this.state = state;
   }
 
@@ -1027,8 +1110,33 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     return telecomCall.getDetails().getCreationTimeMillis();
   }
 
+  /* UNISOC: add for feature FL0108020006, use cpu time instead of system time @{ */
+  public void updateConnectRealTimeMillis() {
+      if (getConnectRealTimeMillis() == Long.MAX_VALUE ||
+              // UNISOC: add for bug1145763
+              (mIsCdmaCallAnswered && mConnectTimeMillisCdma != getConnectTimeMillis())) {
+        mConnectTimeMillisCdma = getConnectTimeMillis();
+        setConnectRealTimeMillis(getConnectTimeMillis()
+                + (SystemClock.elapsedRealtime() - System.currentTimeMillis()));
+      }
+  }
+
+  public long getConnectRealTimeMillis() {
+      return connectRealTimeMillis;
+  }
+
+  public void setConnectRealTimeMillis(long connectRealTimeMillis) {
+      this.connectRealTimeMillis = connectRealTimeMillis;
+  }
+  /* @} */
+
   public boolean isConferenceCall() {
     return hasProperty(Call.Details.PROPERTY_CONFERENCE);
+  }
+
+  // UNISOC: add for bug1214394
+  public boolean usedToBeConference() {
+    return usedToBeConference;
   }
 
   @Nullable
@@ -1043,7 +1151,8 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
 
   /** @return The {@link VideoCall} instance associated with the {@link Call}. */
   public VideoCall getVideoCall() {
-    return telecomCall == null ? null : telecomCall.getVideoCall();
+    // UNISOC: modify for bug1147201
+    return (telecomCall == null || !mIsVideoCallCallbackRegistered) ? null : telecomCall.getVideoCall();
   }
 
   public List<String> getChildCallIds() {
@@ -1430,16 +1539,56 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
         accountHandle,
         setDefault);
     telecomCall.phoneAccountSelected(accountHandle, setDefault);
+
+    //UNISOC:add for bug1174129
+    TelephonyManager telephonyManager = (TelephonyManager) context
+            .getSystemService(Context.TELEPHONY_SERVICE);
+    if(accountHandle!=null){
+      subId = InCallUiUtils.getSubIdForPhoneAccountHandle(context, accountHandle);
+    }
+    isCdma = (telephonyManager.getCurrentPhoneType(subId) == TelephonyManager.PHONE_TYPE_CDMA);
+    LogUtil.i("DialerCall.phoneAccountSelected  ","isCdma:"+isCdma);
   }
 
   public void disconnect() {
     LogUtil.i("DialerCall.disconnect", "");
     setState(DialerCallState.DISCONNECTING);
+    /*UNISOC:add for bug1179388 { @*/
+    if (isConferenceCall()) {
+      List<String> childIds = getChildCallIds();
+      for (String ids : childIds) {
+        DialerCall call = CallList.getInstance().getCallById(ids);
+        if (call != null) {
+          call.setState(DialerCallState.DISCONNECTING);
+        }
+      }
+    }
+    /* @} */
     for (DialerCallListener listener : listeners) {
       listener.onDialerCallUpdate();
     }
     telecomCall.disconnect();
+    // UNISOC: add for bug1164778
+    addTimeoutCheck();
   }
+
+  /* UNISOC: add for bug1164778 @{*/
+  private void addTimeoutCheck() {
+    isDisconnecting = true;
+    new Handler().postDelayed(new Runnable() {
+      @Override
+      public void run() {
+        isDisconnecting = false;
+        if (getState() != DialerCallState.IDLE && getState() != DialerCallState.DISCONNECTING
+                && getState() != DialerCallState.DISCONNECTED) {
+          for (DialerCallListener listener : listeners) {
+            listener.onDialerCallUpdate();
+          }
+        }
+      }
+    }, DISCONNECT_CALL_TIME_OUT_IN_MILLIS);
+  }
+  /*@}*/
 
   public void hold() {
     LogUtil.i("DialerCall.hold", "");
@@ -1470,6 +1619,19 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     telecomCall.reject(rejectWithMessage, message);
   }
 
+  // UNISOC : add for feature FL1000060387
+  public boolean isRingToneOnAudioCall() {
+
+    if (isDialingAudioCall && VideoProfile.isVideo(getVideoState())) {
+      if (getState() == DialerCallState.ACTIVE) {
+        return false;
+      } else if (getState() == DialerCallState.CONNECTING || getState() == DialerCallState.DIALING) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Return the string label to represent the call provider */
   public String getCallProviderLabel() {
     if (callProviderLabel == null) {
@@ -1495,7 +1657,8 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
   }
 
   public VideoTech getVideoTech() {
-    if (videoTech == null) {
+    // UNISOC: add for bug1147153
+    if (videoTech == null || videoTech instanceof EmptyVideoTech) {
       videoTech = videoTechManager.getVideoTech(getAccountHandle());
 
       // Only store the first video tech type found to be available during the life of the call.
@@ -1974,4 +2137,81 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
   public interface CannedTextResponsesLoadedListener {
     void onCannedTextResponsesLoaded(DialerCall call);
   }
+
+  /**
+   * UNISOC: add for Feature : FL1000060352 display state of conference member
+   */
+  public int getRealState() {
+    return state;
+  }
+
+  /* UNISOC: add for bug 1149076 @{ */
+  public String getOrinalNumber() {
+    LogUtil.d("DialerCall", "phone number: " + orignalNumber);
+    return orignalNumber;
+  }
+  /* @} */
+
+  /* UNISOC: add for bug 1145755 @{ */
+  public boolean isCdmaCallAnswered() {
+    return mIsCdmaCallAnswered;
+  }
+
+  private void initCdma() {
+    int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    TelephonyManager telephonyManager = (TelephonyManager) context
+            .getSystemService(Context.TELEPHONY_SERVICE);
+
+    subId = telephonyManager.getSubIdForPhoneAccount(getPhoneAccount());
+    isCdma = (telephonyManager.getCurrentPhoneType(subId) == TelephonyManager.PHONE_TYPE_CDMA);
+  }
+
+  public boolean phoneisCdma() {
+    return isCdma;
+  }
+  /* @} */
+
+  /*UNISOC: add for bug1147201*/
+  @Override
+  public void onVideoCallCallbackRegistered(boolean isRegistered){
+    mIsVideoCallCallbackRegistered = isRegistered;
+  }
+
+  /*UNISOC:add for bug1153357*/
+  public int getSubId(){
+    if(subId > 0){
+      return subId;
+    }
+    if(getAccountHandle()!=null){
+      subId = InCallUiUtils.getSubIdForPhoneAccountHandle(context, getAccountHandle());
+    }
+    LogUtil.i("DialerCall", "getSubId load the subId: " + subId);
+    return subId;
+  }
+  //UNISOC:add for bug1148184
+  public boolean isMtCall() {
+    if (getTelecomCall() != null) {
+      return getTelecomCall().getDetails().getCallDirection() == Call.Details.DIRECTION_INCOMING;
+    }
+    return false;
+  }
+
+  /* UNISOC: add for bug 1175025 @{ */
+  public boolean hasShownDisconnectError() {
+    return hasShownDisconnectError;
+  }
+
+  public void setHasShownDisconnectError() {
+    hasShownDisconnectError = true;
+  }
+  /* @} */
+
+  /*UNISOC: add for bug1221260 @{ */
+  public void setSwapSimActionFlag(boolean flag){
+    isSwapSimActionFlag = flag;
+  }
+  public boolean getSwapSimActionFlag(){
+    return isSwapSimActionFlag;
+  }
+  /* @} */
 }

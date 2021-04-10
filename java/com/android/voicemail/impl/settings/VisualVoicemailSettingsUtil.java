@@ -44,6 +44,11 @@ public class VisualVoicemailSettingsUtil {
 
   public static void setEnabled(
       Context context, PhoneAccountHandle phoneAccount, boolean isEnabled) {
+    /* UNISOC: modify for bug1213649 @{ */
+    if (context == null) {
+      return;
+    }
+    /* @} */
     VvmLog.i("VisualVoicemailSettingsUtil.setEnable", phoneAccount + " enabled:" + isEnabled);
     new VisualVoicemailPreferences(context, phoneAccount)
         .edit()

@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT-toiminto auttaa kuuroja sekä käyttäjiä, joilla on kuulo‑ tai puhehäiriöitä tai jotka tarvitsevat muuta tukea pelkän puheen lisäksi.</string>
   <string name="rtt_button_decline_request">Ei kiitos</string>
   <string name="rtt_button_accept_request">Liity RTT-puheluun</string>
+  <string name="notification_action_answer_voice">"Ääni"</string>
+  <string name="notification_action_mute_on">"Mykistä"</string>
+  <string name="notification_action_mute_off">"Poista mykistys"</string>
+  <string name="notification_action_reject_with_message">"Hylkää tekstiviesti"</string>
+  <string name="card_title_in_call">"Puhelun aikana"</string>
+  <string name="card_title_conf_call">"Puhelinneuvottelu"</string>
+  <string name="fail_change_video_due_to_bgcall">"Taustapuhelu on meneillään, nykyistä puhelua ei voitu vaihtaa videopuheluun."</string>
 </resources>

@@ -151,6 +151,13 @@ public final class NewSearchFragment extends Fragment
   public View onCreateView(
       LayoutInflater inflater, @Nullable ViewGroup parent, @Nullable Bundle savedInstanceState) {
     View view = inflater.inflate(R.layout.fragment_search, parent, false);
+    /**UNISOC:modify for the bug1110024 @{*/
+    if (savedInstanceState != null) {
+      setQuery(
+              savedInstanceState.getString(KEY_QUERY),
+              CallInitiationType.Type.forNumber(savedInstanceState.getInt(KEY_CALL_INITIATION_TYPE)));
+    }
+    /* @}*/
     adapter = new SearchAdapter(getContext(), new SearchCursorManager(), this);
     adapter.setQuery(query, rawNumber);
     adapter.setSearchActions(getActions());
@@ -159,6 +166,11 @@ public final class NewSearchFragment extends Fragment
     recyclerView = view.findViewById(R.id.recycler_view);
     recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
     recyclerView.setOnTouchListener(this);
+
+    /** UNISOC: Add for bug1104476. @{ */
+    recyclerView.addOnScrollListener(onScrollListener);
+    /** @} */
+
     recyclerView.setAdapter(adapter);
 
     if (!PermissionsUtil.hasContactsReadPermissions(getContext())) {
@@ -171,18 +183,32 @@ public final class NewSearchFragment extends Fragment
       initLoaders();
     }
 
-    if (savedInstanceState != null) {
-      setQuery(
-          savedInstanceState.getString(KEY_QUERY),
-          CallInitiationType.Type.forNumber(savedInstanceState.getInt(KEY_CALL_INITIATION_TYPE)));
-    }
-
     if (updatePositionRunnable != null) {
       ViewUtil.doOnPreDraw(view, false, updatePositionRunnable);
     }
     return view;
   }
+  /** UNISOC: Add for bug1104476. @{ */
+  RecyclerView.OnScrollListener onScrollListener = new RecyclerView.OnScrollListener() {
 
+    @Override
+    public void onScrollStateChanged(RecyclerView recyclerView, int scrollState) {
+      if (scrollState == RecyclerView.SCROLL_STATE_DRAGGING) {
+        FragmentUtils.getParentUnsafe(NewSearchFragment.this, SearchFragmentListener.class)
+                .onSearchListTouch();
+      }
+    }
+
+    @Override
+    public void onScrolled(RecyclerView recyclerView, int dx, int dy){}
+  };
+
+  @Override
+  public void onDestroyView() {
+    super.onDestroyView();
+    recyclerView.removeOnScrollListener(onScrollListener);
+  }
+  /** @} */
   @Override
   public void onSaveInstanceState(Bundle outState) {
     super.onSaveInstanceState(outState);
@@ -495,7 +521,12 @@ public final class NewSearchFragment extends Fragment
    * the list of supported actions, see {@link SearchActionViewHolder.Action}.
    */
   private List<Integer> getActions() {
-    boolean isDialableNumber = PhoneNumberUtils.isGlobalPhoneNumber(query);
+    /**UISOC: modify for the bug 1104601 & 1113540 @{*/
+    boolean isDialableNumber = false;
+    if (query != null) {
+      isDialableNumber = PhoneNumberUtils.isGlobalPhoneNumber(query.replace(" ", ""));
+    }
+    /*@}*/
     boolean nonDialableQueryInRegularSearch = isRegularSearch() && !isDialableNumber;
     if (TextUtils.isEmpty(query) || query.length() == 1 || nonDialableQueryInRegularSearch) {
       return Collections.emptyList();

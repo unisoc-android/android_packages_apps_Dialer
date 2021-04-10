@@ -90,7 +90,9 @@ public final class DialerUiTaskFragment<InputT, OutputT> extends Fragment {
     if (fragment == null) {
       LogUtil.i("DialerUiTaskFragment.create", "creating new DialerUiTaskFragment for " + taskId);
       fragment = new DialerUiTaskFragment<>();
-      fragmentManager.beginTransaction().add(fragment, taskId).commit();
+      /* UNISOC: modify for bug1211083 @{ */
+      fragmentManager.beginTransaction().add(fragment, taskId).commitAllowingStateLoss();
+      /* @} */
     }
     fragment.worker = worker;
     fragment.successListener = successListener;

@@ -35,6 +35,8 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.FragmentUtils;
+import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
 
 /** Fragment used to compose call with message fragment. */
 public class MessageFragment extends Fragment
@@ -102,10 +104,22 @@ public class MessageFragment extends Fragment
     return view;
   }
 
+  /* UNISOC: add for bug 1145037 @{ */
+  public void hideKeyboard() {
+    InputMethodManager imm = (InputMethodManager) customMessage.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+    if (imm.isActive()) {
+      imm.hideSoftInputFromWindow(customMessage.getApplicationWindowToken(), 0);
+    }
+  }
+  /* @} */
+
   @Override
   public void onClick(View view) {
     if (view == sendMessageContainer) {
       if (!TextUtils.isEmpty(customMessage.getText())) {
+        /* UNISOC: add for bug 1145037 @{ */
+        hideKeyboard();
+        /* @} */
         getListener().onMessageFragmentSendMessage(customMessage.getText().toString());
       }
     } else if (view.getId() == R.id.selectable_text_view) {
@@ -135,6 +149,9 @@ public class MessageFragment extends Fragment
   @Override
   public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
     if (!TextUtils.isEmpty(getMessage())) {
+      /* UNISOC: add for bug 1145037 @{ */
+      hideKeyboard();
+      /* @} */
       getListener().onMessageFragmentSendMessage(getMessage());
     }
     return true;
@@ -186,4 +203,17 @@ public class MessageFragment extends Fragment
 
     void onMessageFragmentAfterTextChange(String message);
   }
+
+  /* UNISOC: add for bug 1130082 @{ */
+  public void setCustomMessageText(String message) {
+    if (!TextUtils.isEmpty(message)) {
+      customMessage.setText(message);
+      customMessage.setSelection(customMessage.getText().toString().length());
+    }
+  }
+
+  public String getCustomMessageText() {
+    return customMessage.getText().toString();
+  }
+  /* @} */
 }

@@ -54,7 +54,7 @@
   <string name="voicemail_advanced_settings_key" translatable="false">voicemail_advanced_settings_key</string>
 
   <!-- Title for advanced settings in the voicemail settings -->
-  <string name="voicemail_advanced_settings_title">Advanced Settings</string>
+  <string name="voicemail_advanced_settings_title">Advanced settings</string>
 
   <!-- DO NOT TRANSLATE. Internal key for a visual voicemail preference. -->
   <string name="voicemail_visual_voicemail_key" translatable="false">voicemail_visual_voicemail_key</string>

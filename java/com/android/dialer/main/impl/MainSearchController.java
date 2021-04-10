@@ -26,15 +26,18 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
+import android.view.KeyEvent;
 import android.widget.Toast;
 import com.android.contacts.common.dialog.ClearFrequentsDialog;
 import com.android.dialer.app.calllog.CallLogActivity;
 import com.android.dialer.app.settings.DialerSettingsActivity;
+import com.android.dialer.blocking.FilteredNumberCompat;
 import com.android.dialer.callintent.CallInitiationType;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.constants.ActivityRequestCodes;
@@ -179,7 +182,9 @@ public class MainSearchController implements SearchBarListener {
       dialpadFragment.setStartedFromNewIntent(fromNewIntent);
       transaction.show(dialpadFragment);
     }
-    transaction.commit();
+    /* UNISOC: modify for bug1197426 @{ */
+    transaction.commitAllowingStateLoss();
+    /* @} */
 
     notifyListenersOnSearchOpen();
   }
@@ -217,7 +222,9 @@ public class MainSearchController implements SearchBarListener {
 
     fab.show();
     toolbar.slideDown(animate, fragmentContainer);
-    toolbar.transferQueryFromDialpad(dialpadFragment.getQuery());
+    /**UISOC: modify for the bug 1104601 @{*/
+    toolbar.transferQueryFromDialpad(dialpadFragment.getQuery().replace(" ", ""));
+    /* @}*/
     activity.setTitle(R.string.main_activity_label);
 
     dialpadFragment.setAnimate(animate);
@@ -317,6 +324,44 @@ public class MainSearchController implements SearchBarListener {
     }
   }
 
+  /* UNISOC: Bug1090190 touch assist search and menu useless. @{ */
+  public boolean dispatchKeyEvent(KeyEvent event) {
+    LogUtil.i("MainSearchController.dispatchKeyEvent", "event.getAction():" +event.getAction()+" event.getKeyCode():"+event.getKeyCode());
+    if (event.getAction() == KeyEvent.ACTION_UP) {
+      switch (event.getKeyCode()) {
+        case KeyEvent.KEYCODE_MENU:
+          if (!isDialpadVisible()
+                  && activity != null
+                  && !activity.isFinishing()
+                  && activity.isResumed()) {
+            toolbar.getOverflowMenu().show();
+            return true;
+          } else if (isDialpadVisible()
+                  && dialpadFragment != null
+                  && dialpadFragment.getDigitsWidget() != null
+                  && !dialpadFragment.isDigitsEmpty()
+                  && activity != null
+                  && !activity.isFinishing()
+                  && dialpadFragment.getOverflowPopupMenu() != null
+                  && activity.isResumed()) {
+            dialpadFragment.getOverflowPopupMenu().show();
+            return true;
+          }
+          return false;
+        case KeyEvent.KEYCODE_SEARCH:
+          if (!isInSearch() && activity != null
+                  && !activity.isFinishing() && activity.isResumed()) {
+            onSearchBarClicked();
+            return true;
+          }
+          return false;
+      }
+      return false;
+    }
+    return false;
+  }
+  /* @} */
+
   /** Calls {@link #hideDialpad(boolean)}, removes the search fragment and clears the dialpad. */
   private void closeSearch(boolean animate) {
     LogUtil.enterBlock("MainSearchController.closeSearch");
@@ -346,7 +391,8 @@ public class MainSearchController implements SearchBarListener {
     activity.getFragmentManager().beginTransaction().hide(searchFragment).commit();
 
     // Clear the dialpad so the phone number isn't persisted between search sessions.
-    if (dialpadFragment != null) {
+    /**UNISOC:1186638 dialpadFragment.getDigitsWidget() may be null @{*/
+    if (dialpadFragment != null && dialpadFragment.getDigitsWidget() != null) {
       // Temporarily disable accessibility when we clear the dialpad, since it should be
       // invisible and should not announce anything.
       dialpadFragment
@@ -357,7 +403,7 @@ public class MainSearchController implements SearchBarListener {
           .getDigitsWidget()
           .setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
     }
-
+    /**@} */
     notifyListenersOnSearchClose();
   }
 
@@ -398,7 +444,11 @@ public class MainSearchController implements SearchBarListener {
   public void onSearchBarClicked() {
     LogUtil.enterBlock("MainSearchController.onSearchBarClicked");
     Logger.get(activity).logImpression(DialerImpression.Type.MAIN_CLICK_SEARCH_BAR);
-    openSearch(Optional.absent());
+    /**UNISOC:1180203 if isSearchVisible() is true and description is already in search mode @{*/
+    if (!isSearchVisible()) {
+      openSearch(Optional.absent());
+    }
+    /**@} */
   }
 
   private void openSearch(Optional<String> query) {
@@ -479,6 +529,21 @@ public class MainSearchController implements SearchBarListener {
     } else if (menuItem.getItemId() == R.id.menu_call_history) {
       final Intent intent = new Intent(activity, CallLogActivity.class);
       activity.startActivity(intent);
+        /* UNISOC: Add for bug1072695. @{ */
+    } else if (menuItem.getItemId() == R.id.menu_call_blocked) {
+        TelephonyManager telephonyMgr = TelephonyManager.from(activity);
+        Intent callBlockIntent;
+        if (telephonyMgr != null
+                && telephonyMgr.isCallFireWallInstalled()) {
+            callBlockIntent = telephonyMgr.createManageBlockedNumbersIntent();
+        } else {
+            callBlockIntent = FilteredNumberCompat.createManageBlockedNumbersIntent(activity);
+        }
+        if (callBlockIntent != null) {
+            activity.startActivity(callBlockIntent);
+        }
+    return true;
+        /* @} */
     }
     return false;
   }

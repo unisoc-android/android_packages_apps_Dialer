@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Σύρετε από το εικονίδιο προς τα έξω για απάντηση ως φωνητική κλήση</string>
   <string name="call_incoming_default_label_answer_and_release_second">Σύρετε προς τα επάνω για απάντηση και κράτηση της κλήσης σε εξέλιξη</string>
   <string name="call_incoming_default_label_answer_and_release_third">Σύρετε προς τα επάνω για απάντηση και τερματισμό της κλήσης σε εξέλιξη</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Σύρετε προς τα πάνω για απάντηση και τερματισμό κλήσης σε εξέλιξη"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Σύρετε από το εικονίδιο προς τα έξω για απάντηση και τερματισμό της κλήσης σε εξέλιξη</string>
   <string name="call_incoming_message_custom">Συντάξτε το δικό σας…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Συντάξτε το δικό σας…</string>

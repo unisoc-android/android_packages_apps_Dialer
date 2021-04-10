@@ -18,6 +18,8 @@ package com.android.incallui.video.protocol;
 
 import android.support.v4.app.Fragment;
 
+import com.android.incallui.videosurface.impl.VideoSurfaceTextureImpl;//add for bug 1130479
+
 /** Interface for call video call module. */
 public interface VideoCallScreen {
 
@@ -41,4 +43,20 @@ public interface VideoCallScreen {
   String getCallId();
 
   void onHandoverFromWiFiToLte();
+
+  // UNISOC: Added for video call conference
+  void showPreviewVideoViews(boolean showPreview);
+
+  //add for bug 1130479
+  void localSurfaceClickForChange();
+  void remoteSurfaceClickForChange();
+  void changeSmallSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface);
+  void changeBigSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface);
+  // UNISOC: modify for bug1152075
+  int getAnswerAndDialpadContainerResourceId();
+
+  /* UNISOC:add for bug1166982(bug904816)@{ */
+  void onVideoCallIsFront();
+  void onVideoCallIsBack();
+  /* @} */
 }

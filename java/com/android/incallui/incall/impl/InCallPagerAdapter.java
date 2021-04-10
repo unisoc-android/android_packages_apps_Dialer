@@ -31,13 +31,24 @@ public class InCallPagerAdapter extends FragmentStatePagerAdapter {
   @Nullable private MultimediaData attachments;
   private final boolean showInCallButtonGrid;
 
+  /* UNISOC : InCallUI Layout Refactor @{ */
+  public static final int PAGE_ONE = 0;
+  public static final int PAGE_TWO = 1;
+  public static final int BUTTON_COUNT = 6;
+
+  private int buttonsToPlaceSize;
+  /* @} */
+
+  // UNISOC : InCallUI Layout Refactor
   public InCallPagerAdapter(
       FragmentManager fragmentManager,
       @Nullable MultimediaData attachments,
-      boolean showInCallButtonGrid) {
+      boolean showInCallButtonGrid,
+      int buttonsToPlaceSize) {
     super(fragmentManager);
     this.attachments = attachments;
     this.showInCallButtonGrid = showInCallButtonGrid;
+    this.buttonsToPlaceSize = buttonsToPlaceSize;
   }
 
   @Override
@@ -47,9 +58,10 @@ public class InCallPagerAdapter extends FragmentStatePagerAdapter {
       return MultimediaFragment.newInstance(
           attachments, true /* isInteractive */, false /* showAvatar */, false /* isSpam */);
 
-    } else if (position == getButtonGridPosition()) {
-      return InCallButtonGridFragment.newInstance();
-
+      /* UNISOC : InCallUI Layout Refactor @{ */
+    } else if (position <= 1) {
+      return InCallButtonGridFragment.newInstance(position);
+      /* @} */
     } else {
       return MultimediaFragment.newInstance(
           attachments, true /* isInteractive */, false /* showAvatar */, false /* isSpam */);
@@ -61,6 +73,11 @@ public class InCallPagerAdapter extends FragmentStatePagerAdapter {
     int count = 0;
     if (showInCallButtonGrid) {
       count++;
+      /* UNISOC : InCallUI Layout Refactor @{ */
+      if (buttonsToPlaceSize > BUTTON_COUNT) {
+        count++;
+      }
+      /* @} */
     }
     if (attachments != null && attachments.hasData()) {
       count++;
@@ -77,7 +94,8 @@ public class InCallPagerAdapter extends FragmentStatePagerAdapter {
   }
 
   public int getButtonGridPosition() {
-    return getCount() - 1;
+    // UNISOC : InCallUI Layout Refactor
+    return 0;
   }
 
   //this is called when notifyDataSetChanged() is called
@@ -86,4 +104,10 @@ public class InCallPagerAdapter extends FragmentStatePagerAdapter {
     // refresh all fragments when data set changed
     return PagerAdapter.POSITION_NONE;
   }
+
+  /* UNISOC : InCallUI Layout Refactor @{ */
+  public void setButtonsToPlaceSize(int buttonsToPlaceSize) {
+    this.buttonsToPlaceSize = buttonsToPlaceSize;
+  }
+  /* @} */
 }

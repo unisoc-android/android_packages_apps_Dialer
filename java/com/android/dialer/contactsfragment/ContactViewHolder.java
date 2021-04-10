@@ -17,11 +17,13 @@
 package com.android.dialer.contactsfragment;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.ImageView;
 import android.widget.QuickContactBadge;
 import android.widget.TextView;
 import com.android.dialer.common.Assert;
@@ -42,6 +44,8 @@ final class ContactViewHolder extends RecyclerView.ViewHolder implements OnClick
   private String headerText;
   private Uri contactUri;
   private long contactId;
+  //UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+  private final ImageView thirdPart;
 
   ContactViewHolder(View itemView, OnContactSelectedListener onContactSelectedListener) {
     super(itemView);
@@ -51,6 +55,8 @@ final class ContactViewHolder extends RecyclerView.ViewHolder implements OnClick
     header = itemView.findViewById(R.id.header);
     name = itemView.findViewById(R.id.contact_name);
     photo = itemView.findViewById(R.id.photo);
+    //UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+    thirdPart = (ImageView)itemView.findViewById(R.id.contact_third_part_icon);
   }
 
   /**
@@ -60,9 +66,12 @@ final class ContactViewHolder extends RecyclerView.ViewHolder implements OnClick
    * @param displayName populates the name view.
    * @param contactUri to be shown by the contact card on photo click.
    * @param showHeader if header view should be shown {@code True}, {@code False} otherwise.
+   * @param thirdIcon for show fdn,sim,sdn icon in dialer contactslist icon
    */
+  //UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
   public void bind(
-      String headerText, String displayName, Uri contactUri, long contactId, boolean showHeader) {
+      String headerText, String displayName, Uri contactUri, long contactId, boolean showHeader
+          , Drawable thirdIcon) {
     Assert.checkArgument(!TextUtils.isEmpty(displayName));
     this.contactUri = contactUri;
     this.contactId = contactId;
@@ -71,6 +80,8 @@ final class ContactViewHolder extends RecyclerView.ViewHolder implements OnClick
     name.setText(displayName);
     header.setText(headerText);
     header.setVisibility(showHeader ? View.VISIBLE : View.INVISIBLE);
+    //UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+    thirdPart.setImageDrawable(thirdIcon);
 
     Logger.get(context)
         .logQuickContactOnTouch(

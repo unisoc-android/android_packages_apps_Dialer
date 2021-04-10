@@ -81,6 +81,18 @@ abstract class CallDetailsActivityCommon extends AppCompatActivity {
   public static final String EXTRA_CAN_REPORT_CALLER_ID = "can_report_caller_id";
   public static final String EXTRA_CAN_SUPPORT_ASSISTED_DIALING = "can_support_assisted_dialing";
 
+  /** UNISOC:bug1072689 FEATURE_CALL_DETAIL_ACTIONS @{*/
+  public static final String SUB_ID_EXTRA =
+          "com.android.phone.settings.SubscriptionInfoHelper.SubscriptionId";
+  /**@}*/
+
+  /** UNISOC: add for bug709708 900405
+   * Voicemail call details display option to add to contacts, send messages @{ */
+  public static final String IS_VOIVE_MAIL_NUMBE = "is_voice_mail_number";
+  private boolean mIsVoiceMail = false;
+  private static final String TAG = "CallDetailsActivity";
+  /** @} */
+
   private final CallDetailsEntryViewHolder.CallDetailsEntryListener callDetailsEntryListener =
       new CallDetailsEntryListener(this);
   private final CallDetailsHeaderViewHolder.CallDetailsHeaderListener callDetailsHeaderListener =
@@ -130,8 +142,20 @@ abstract class CallDetailsActivityCommon extends AppCompatActivity {
         DialerExecutorComponent.get(this)
             .createUiListener(getFragmentManager(), "Query RTT transcript availability");
     handleIntent(getIntent());
+    /** UNISOC: add for bug709708、900405
+     * Voicemail call details display option to add to contacts, send messages @{ */
+    mIsVoiceMail = getIntent().getBooleanExtra(IS_VOIVE_MAIL_NUMBE, false);
+    android.util.Log.d(TAG , "mIsVoiceMail=" + mIsVoiceMail);
+    /** @} */
     setupRecyclerViewForEntries();
   }
+
+  /** UNISOC: add for bug709708、900405
+   * Voicemail call details display option to add to contacts, send messages@{ */
+  public boolean isVoiceMailForSelectedItem() {
+    return mIsVoiceMail;
+  }
+  /** @} */
 
   @Override
   @CallSuper

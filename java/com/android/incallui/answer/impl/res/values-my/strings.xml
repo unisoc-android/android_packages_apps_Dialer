@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">အသံခေါ်ဆိုမှုအဖြစ်ဖြေကြားရန် သင်္ကေတမှ ပွတ်ဆွဲပါ</string>
   <string name="call_incoming_default_label_answer_and_release_second">ဖြေကြားရန် အပေါ်သို့ ပွတ်ဆွဲပြီး လက်ရှိခေါ်ဆိုမှုကို ခဏရပ်ထားပါ</string>
   <string name="call_incoming_default_label_answer_and_release_third">ဖြေကြားရန် အပေါ်သို့ ပွတ်ဆွဲပြီး ကိုင်ထားသောခေါ်ဆိုမှုကို အပြီးသတ်ပါ</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"ဖုန်းဖြေဆိုရန်နှင့် အထွက်ဖုန်းကို ချရန် အပေါ်သို့ ပွတ်ဆွဲပါ"</string>
   <string name="call_incoming_swipe_to_answer_and_release">ဖြေကြားရန် သင်္ကေတမှ ပွတ်ဆွဲပြီး လက်ရှိခေါ်ဆိုမှုကို အပြီးသတ်ပါ</string>
   <string name="call_incoming_message_custom">သင့်ကိုယ်ပိုင်ရေးပါ…</string>
   <string name="call_incoming_respond_via_sms_custom_message">သင့်ကိုယ်ပိုင်ရေးပါ…</string>

@@ -280,10 +280,13 @@ public class ContactsFragment extends Fragment
     fastScroller.updateContainerAndScrollBarPosition(recyclerView);
     int firstVisibleItem = manager.findFirstVisibleItemPosition();
     int firstCompletelyVisible = manager.findFirstCompletelyVisibleItemPosition();
-    if (firstCompletelyVisible == RecyclerView.NO_POSITION) {
+    /**UNISOC:1222366 firstVisibleItem may be is invalid value @{*/
+    if (firstCompletelyVisible == RecyclerView.NO_POSITION
+            || firstVisibleItem == RecyclerView.NO_POSITION) {
       // No items are visible, so there are no headers to update.
       return;
     }
+    /** @} */
     String anchoredHeaderString = adapter.getHeaderString(firstCompletelyVisible);
 
     OnContactsListScrolledListener listener =

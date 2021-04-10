@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">Deietan testua bidaltzeko eginbideak (RTT) deitzaile gorrei, entzumen-arazoak dituztenei, hitz egiteko ezintasunen bat dutenei edota, ahotsaz gain, beste makuluren bat behar dutenei laguntzen die.</string>
   <string name="rtt_button_decline_request">Ez, eskerrik asko</string>
   <string name="rtt_button_accept_request">Sartu RTT duen deian</string>
+  <string name="notification_action_answer_voice">Ahotsa</string>
+  <string name="notification_action_mute_on">Mutu</string>
+  <string name="notification_action_mute_off">Ez mututu</string>
+  <string name="notification_action_reject_with_message">Ezetsi SMSa</string>
+  <string name="card_title_in_call">Deian</string>
+  <string name="card_title_conf_call">Konferentzia deia</string>
+  <string name="fail_change_video_due_to_bgcall">Dei bat dago atzeko planoan, ezin izan da oraingo deia bideo-dei bihurtu.</string>
 </resources>

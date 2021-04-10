@@ -48,7 +48,7 @@
   <string name="description_num_calls">通話 %1$s 次。</string>
   <string name="description_video_call">視訊通話。</string>
   <string name="description_start_voice_search">開始進行語音搜尋</string>
-  <string name="voicemail">語音留言</string>
+  <string name="voicemail">語音信箱</string>
   <string name="description_cancel_multi_select">取消批次操作模式</string>
   <string name="voicemailMultiSelectDeleteConfirm">刪除</string>
   <string name="voicemailMultiSelectDeleteCancel">取消</string>
@@ -64,7 +64,7 @@
   <string name="voice_search_not_available">無法使用語音搜尋</string>
   <string name="dialer_hint_find_contact">搜尋聯絡人</string>
   <string name="block_number_search_hint">新增號碼或搜尋聯絡人</string>
-  <string name="call_log_all_empty">沒有任何通話記錄</string>
+  <string name="call_log_all_empty">沒有任何通話記錄。</string>
   <string name="call_log_all_empty_action">撥打電話</string>
   <string name="call_log_missed_empty">您沒有任何未接來電。</string>
   <string name="call_log_voicemail_empty">您沒有任何語音留言。</string>
@@ -78,7 +78,7 @@
   <string name="search_shortcut_call_number">撥打 %s</string>
   <string name="search_shortcut_create_new_contact">建立新聯絡人</string>
   <string name="search_shortcut_add_to_contact">新增至聯絡人</string>
-  <string name="search_shortcut_send_sms_message">傳送簡訊</string>
+  <string name="search_shortcut_send_sms_message">傳送訊息</string>
   <string name="search_shortcut_make_video_call">進行視訊通話</string>
   <string name="search_shortcut_block_number">封鎖號碼</string>
   <string name="speed_dial_empty">您的快速撥號功能尚未設定任何聯絡人</string>
@@ -88,7 +88,7 @@
   <string name="call_log_action_video_call">視訊通話</string>
   <string name="call_log_action_set_up_video">設定視訊通話</string>
   <string name="call_log_action_invite_video">邀請加入視訊通話</string>
-  <string name="call_log_action_send_message">傳送簡訊</string>
+  <string name="call_log_action_send_message">傳送訊息</string>
   <string name="call_log_action_details">通話詳細資料</string>
   <string name="call_log_action_share_voicemail">傳送至…</string>
   <string name="call_log_action_call">撥號給「^1」</string>
@@ -122,10 +122,10 @@
     <item>一般</item>
     <item>長音</item>
   </string-array>
-  <string name="respond_via_sms_setting_title">應答短訊</string>
+  <string name="respond_via_sms_setting_title">快速回覆</string>
   <string name="call_settings_label">通話</string>
   <string name="manage_blocked_numbers_label">已封鎖的號碼</string>
-  <string name="voicemail_settings_label">語音留言</string>
+  <string name="voicemail_settings_label">語音信箱</string>
   <string name="blocked_numbers_disabled_emergency_header_label">來電封鎖功能已暫時關閉</string>
   <string name="blocked_numbers_disabled_emergency_desc">由於您曾在過去 48 小時內使用這支手機撥打緊急服務電話，因此來電封鎖功能已停用。此功能停用達 48 小時後，將由系統自動重新啟用。</string>
   <string name="import_send_to_voicemail_numbers_label">匯入電話號碼</string>
@@ -168,4 +168,116 @@
   <string name="view_conversation">查看</string>
   <string name="ec_data_deleted">已刪除這筆通話記錄。你可以在「訊息」應用程式中查看及刪除通話期間分享的附件。</string>
   <string name="multiple_ec_data_deleted">已刪除這些通話記錄。你可以在「訊息」應用程式中查看及刪除通話期間分享的附件。</string>
+
+  <!-- UNISOC AndroidQ Feature Porting: bug1072991 check location permission before using it -->
+  <string name="location_permission_message">"要允許電話獲取此裝置的位置訊息嗎？"</string>
+
+  <!-- UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE -->
+  <string name="view_setting">"查看"</string>
+  <string name="item_all_calls">所有通話記錄"</string>
+  <string name="item_sim_calls">"SIM%d 通話記錄"</string>
+
+  <!-- UNISOC: Bug 1072694 androidq porting feature for FEATURE_SIM_CARD_IDENTIFICATION_IN_CALLLOG -->
+  <string name="sim">"SIM"</string>
+
+  <!-- UNISOC AndroidQ Feature Porting:bug1072688 CLEAR CALL LOG FEATURE. @{ -->
+  <string name="doneButton">"完成"</string>
+  <string name="cancel">"取消"</string>
+  <string name="delete_selected_calls">"您確定要刪除選中的記錄嗎？"</string>
+  <string name="delete_success">"刪除成功"</string>
+  <string name="clear_all_call_log">"刪除所有通話記錄"</string>
+  <string name="clear_selected_call_log">"刪除選中的通話記錄"</string>
+  <string name="unselect_all">"取消全選"</string>
+  <string name="delete_all_calls_confirm">"您確定要刪除全部選中的記錄嗎？"</string>
+  <string name="do_not_select">"您沒有選擇要刪除的記錄。"</string>
+  <string name="delete_calls">"刪除"</string>
+  <!-- @} -->
+  <!-- UNISOC: Bug 1072692 search call log in google FEATURE. @{-->
+  <string name="search_description">搜尋通話記錄</string>
+  <!-- @} -->
+
+  <!-- UNISOC AndroidQ Feature Porting: bug1072989 add for feature to set video call meeting photo @{ -->
+  <string name="select_horizontal_photo">"選擇橫向圖片"</string>
+  <string name="select_vertical_photo">"選擇縱向圖片"</string>
+  <string name="video_photo_select_title">"視訊會議電話頭像"</string>
+  <string name="select_photo">"選擇圖片"</string>
+  <string name="gallery_error">"相冊已經停止運行"</string>
+  <string name="no_photo">"沒有圖片"</string>
+  <string name="default_photo">"默認圖片"</string>
+  <string name="select_photo_from_gallery">"從相冊選擇圖片"</string>
+  <string name="save_photo_successful">"存儲圖片成功"</string>
+  <string name="save_photo_failed">"存儲圖片失敗"</string>
+  <string name="permission_set_meeting_photo">"要設定視頻電話會議頭像，請打開“存儲”權限"</string>
+
+  <!-- UNISOC:bug1072678 FAST DIAL FEATURE @{ -->
+  <string name="fast_dial_settings">"快速撥號設定"</string>
+  <string name="delete_fastdial">"刪除快速撥號"</string>
+  <string name="update_fastdial">"替換快速撥號"</string>
+  <string name="no_sim_text">"請插入或啟用SIM卡"</string>
+  <string name="sim_list_title">"請選擇 SIM 卡"</string>
+  <string name="fast_dial_number_invalid">請輸入有效的號碼</string>
+  <string name="fast_dial_title">"快速撥號設定"</string>
+  <string name="fast_dial_in_guest_mode">"非機主模式下無法使用快速撥號功能"</string>
+  <string name="no_fast_dial_number">"當前按鍵未設定快速撥號電話號碼。"</string>
+  <string name="dialog_make_call_airplane_mode_message">"如要發起通話，請先關閉飛航模式。"</string>
+  <string name="selectContact">"選取聯絡人"</string>
+  <string name="menu_add">"新增聯絡人"</string>
+  <string name="alert_dialog_yes">"是"</string>
+  <string name="alert_dialog_no">"否"</string>
+  <!-- @} -->
+
+  <!--UNISOC: Bug 1073017 androidq porting feature for delete all call of number from this call history@{-->
+  <string name="delete_unsuccess">"刪除失敗"</string>
+  <string name="delete_all_calls_specific_number_confirm">這將會刪除該號碼的所有通話記錄</string>
+  <string name="action_delete_all_call_of_this_number">刪除該號碼的所有通話記錄</string>
+  <!--@}-->
+
+  <!--UNISOC: Bug 1072686 androidq porting feature for filter call log by type feature @{-->
+  <string name="call_log_outgoing_title">"已撥電話"</string>
+  <string name="call_log_incoming_title">"已接來電"</string>
+  <string name="call_log_outgoing_empty">"您沒有任何已撥電話。"</string>
+  <string name="call_log_incoming_empty">"您沒有任何已接來電。"</string>
+  <!-- @} -->
+  <!-- UNISOC: modify for Bug1080090, porting for bug936563  -->
+  <string name="modem_abnormal">Modem發生异常，不能通過暗碼進入到其它應用！</string>
+
+  <!-- Feature porting IP Dial Setting for bug1072676-->
+  <string name="ip_dial_menu">"IP 撥號"</string>
+  <string name="ip_dialing_title">"IP 撥號"</string>
+  <string name="ip_dialing_list_title">"IP 撥號清單"</string>
+  <string name="ip_no_number">"缺少IP前綴"</string>
+  <string name="ip_no_number_msg">"請設定IP號碼"</string>
+  <string name="ip_add_number_str">"新增號碼"</string>
+  <string name="ip_number_empty_loading">"IP 撥號清單爲空。"</string>
+  <string name="remove">"刪除"</string>
+  <string name="ip_number_is_too_long">"IP撥號號碼不能大於20位。"</string>
+  <string name="add_ip_number_str">"新增"</string>
+  <string name="ip_dialing_num_error">"最多只能儲存10個IP號碼。"</string>
+  <string name="ip_dialing_num_repeat">"號碼重複，新增失敗。"</string>
+  <string name="menu_selected_all">"全選"</string>
+  <string name="menu_select_none">"取消全選"</string>
+  <!-- @} -->
+
+  <!-- UNISOC: add for bug764072  -->
+  <string name="vowifi_conf_do_not_support">不支援一鍵發起會議</string>
+  <!-- UNISOC: Add for video volte  @{ -->
+  <string name="make_video_call_menu">"進行視訊通話"</string>
+  <string name="dialpad_multi_call_menu">"電話會議"</string>
+  <string name="cound_not_make_mutil_call">無法發起多方通話</string>
+  <!-- @} -->
+
+  <!-- UNISOC: add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK -->
+  <string name="no_available_number">無可用號碼</string>
+
+  <!-- UNISOC: modify for bug1086119 -->
+  <string name="number_anr_isnull">"聯絡人號碼爲空"</string>
+
+  <!-- UNISOC:modify for bug1086904 porting for bug891384 -->
+  <string name="no_available_sim">"請確認是否禁用或者插入了sim卡"</string>
+
+  <!-- UNISOC: modify for bug1103272 -->
+  <string name="menu_call_blocked_label">來電封鎖</string>
+
+  <!-- UNISOC: add for Bug1198881   -->
+  <string name="ip_dial_in_guest_mode">"非機主模式下無法使用IP撥號功能"</string>
 </resources>

@@ -36,9 +36,13 @@ public class DisconnectMessage {
 
   public final Dialog dialog;
   public final CharSequence toastMessage;
+  // UNISOC: add for bug 1175025
+  public final DialerCall call;
   private final DisconnectCause cause;
 
   public DisconnectMessage(Context context, DialerCall call) {
+    // UNISOC: add for bug 1175025
+    this.call = call;
     cause = call.getDisconnectCause();
 
     for (DisconnectDialog disconnectDialog : DISCONNECT_DIALOGS) {

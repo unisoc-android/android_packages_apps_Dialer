@@ -21,15 +21,18 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.provider.ContactsContract.RawContacts;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.database.Database;
 import com.android.dialer.database.DialerDatabaseHelper;
 import com.android.dialer.database.DialerDatabaseHelper.ContactNumber;
+import com.android.dialer.database.DialerDatabaseHelper.DialMatchInfo;
 import com.android.dialer.smartdial.util.SmartDialNameMatcher;
 import com.android.dialer.util.PermissionsUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import android.provider.CallLog.Calls;
 
 /** Implements a Loader<Cursor> class to asynchronously load SmartDial search results. */
 public class SmartDialCursorLoader extends AsyncTaskLoader<Cursor> {
@@ -79,20 +82,27 @@ public class SmartDialCursorLoader extends AsyncTaskLoader<Cursor> {
     }
 
     if (!PermissionsUtil.hasContactsReadPermissions(context)) {
-      return new MatrixCursor(PhoneQuery.PROJECTION_PRIMARY);
+      //UNISOC: Matching callLog when search in dialpad bug478742
+      return new MatrixCursor(PhoneQuery.PROJECTION_DIALMATCH);
     }
 
     /** Loads results from the database helper. */
     final DialerDatabaseHelper dialerDatabaseHelper =
         Database.get(context).getDatabaseHelper(context);
+    /* UNISOC: Matching callLog when search in dialpad bug478742@{
+     * @orig
     final ArrayList<ContactNumber> allMatches =
-        dialerDatabaseHelper.getLooseMatches(query, nameMatcher);
+        dialerDatabaseHelper.getLooseMatches(query, nameMatcher);*/
+   final ArrayList<DialMatchInfo> allMatches =
+        dialerDatabaseHelper.getLooseMatchesForDialMatchInfo(query, nameMatcher);
 
     if (DEBUG) {
       LogUtil.v(TAG, "Loaded matches " + allMatches.size());
     }
 
     /** Constructs a cursor for the returned array of results. */
+    /* UNISOC: Matching callLog when search in dialpad bug478742 @{
+    /* @orig
     final MatrixCursor cursor = new MatrixCursor(PhoneQuery.PROJECTION_PRIMARY);
     Object[] row = new Object[PhoneQuery.PROJECTION_PRIMARY.length];
     for (ContactNumber contact : allMatches) {
@@ -104,7 +114,28 @@ public class SmartDialCursorLoader extends AsyncTaskLoader<Cursor> {
       row[PhoneQuery.DISPLAY_NAME] = contact.displayName;
       row[PhoneQuery.CARRIER_PRESENCE] = contact.carrierPresence;
       cursor.addRow(row);
+    }*/
+    final MatrixCursor cursor = new MatrixCursor(PhoneQuery.PROJECTION_DIALMATCH);
+    Object[] row = new Object[PhoneQuery.PROJECTION_DIALMATCH.length];
+    for (DialMatchInfo info : allMatches) {
+      row[PhoneQuery.PHONE_ID] = info.dataId;
+      row[PhoneQuery.PHONE_NUMBER] = info.phoneNumber;
+      row[PhoneQuery.CONTACT_ID] = info.id;
+      row[PhoneQuery.LOOKUP_KEY] = info.lookupKey;
+      row[PhoneQuery.PHOTO_ID] = info.photoId;
+      row[PhoneQuery.DISPLAY_NAME] = info.displayName;
+      /** UNISOC: DIALER SEARCH FEATURE BEGIN @{ */
+      row[PhoneQuery.CARRIER_PRESENCE] = info.carrierPresence;
+      row[PhoneQuery.CONTACT_DISPLAY_ACCOUNT_TYPE] = info.accountType;
+      row[PhoneQuery.CONTACT_DISPLAY_ACCOUNT_NAME] = info.accountName;
+      /** END @} */
+      row[PhoneQuery.ITEM_TYPE] = info.itemType;
+      row[PhoneQuery.CALLS_DATE] = info.callsDate;
+      row[PhoneQuery.CALLS_TYPE] = info.callsType;
+      row[PhoneQuery.CACHED_LOOKUP_URI] = info.callsCachedLookupUri;
+      cursor.addRow(row);
     }
+
     return cursor;
   }
 
@@ -184,7 +215,6 @@ public class SmartDialCursorLoader extends AsyncTaskLoader<Cursor> {
 
   /** Moved from contacts/common, contains all of the projections needed for Smart Dial queries. */
   public static class PhoneQuery {
-
     public static final String[] PROJECTION_PRIMARY_INTERNAL =
         new String[] {
           Phone._ID, // 0
@@ -198,6 +228,47 @@ public class SmartDialCursorLoader extends AsyncTaskLoader<Cursor> {
           Phone.PHOTO_THUMBNAIL_URI, // 8
         };
 
+    /* UNISOC: Matching callLog when search in dialpad feature bug478742@{ */
+    public static final String[] PROJECTION_DIALMATCH = new String[] {
+            Phone._ID, // 0
+            Phone.TYPE, // 1
+            Phone.LABEL, // 2
+            Phone.NUMBER, // 3
+            Phone.CONTACT_ID, // 4
+            Phone.LOOKUP_KEY, // 5
+            Phone.PHOTO_ID, // 6
+            Phone.DISPLAY_NAME_PRIMARY, // 7
+            Phone.PHOTO_THUMBNAIL_URI, // 8
+            Phone.CARRIER_PRESENCE, //9
+            DialerDatabaseHelper.DISPLAY_ACCOUNT_TYPE, // 10
+            DialerDatabaseHelper.DISPLAY_ACCOUNT_NAME, // 11
+            "item_type", //12
+            Calls.DATE, //13
+            Calls.TYPE, //14
+            Calls.CACHED_LOOKUP_URI, //15
+            RawContacts.SYNC1 //16
+
+    };
+
+    public static final String[] PROJECTION_DIALMATCH_ALTERNATIVE = new String[] {
+            Phone._ID, // 0
+            Phone.TYPE, // 1
+            Phone.LABEL, // 2
+            Phone.NUMBER, // 3
+            Phone.CONTACT_ID, // 4
+            Phone.LOOKUP_KEY, // 5
+            Phone.PHOTO_ID, // 6
+            Phone.DISPLAY_NAME_ALTERNATIVE, // 7
+            Phone.PHOTO_THUMBNAIL_URI, // 8
+            DialerDatabaseHelper.DISPLAY_ACCOUNT_TYPE,
+            DialerDatabaseHelper.DISPLAY_ACCOUNT_NAME,
+            "item_type",
+            Calls.DATE,
+            Calls.TYPE,
+            Calls.CACHED_LOOKUP_URI,
+            RawContacts.SYNC1
+    };
+    /* @} */
     public static final String[] PROJECTION_PRIMARY;
     public static final String[] PROJECTION_ALTERNATIVE_INTERNAL =
         new String[] {
@@ -222,7 +293,15 @@ public class SmartDialCursorLoader extends AsyncTaskLoader<Cursor> {
     public static final int DISPLAY_NAME = 7;
     public static final int PHOTO_URI = 8;
     public static final int CARRIER_PRESENCE = 9;
-
+    /* UNISOC: Matching callLog when search in dialpad feature bug478742@{ */
+    public static final int CONTACT_DISPLAY_ACCOUNT_TYPE = 10;
+    public static final int CONTACT_DISPLAY_ACCOUNT_NAME = 11;
+    public static final int ITEM_TYPE = 12;
+    public static final int CALLS_DATE = 13;
+    public static final int CALLS_TYPE = 14;
+    public static final int CACHED_LOOKUP_URI = 15;
+    public static final int SYNC1 = 16;
+    /* @} */
     static {
       final List<String> projectionList =
           new ArrayList<>(Arrays.asList(PROJECTION_PRIMARY_INTERNAL));

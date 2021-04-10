@@ -104,4 +104,6 @@
   <!-- Dialog message which is shown when the user tries to make a phone call
        to prohibited phone numbers [CHAR LIMIT=NONE] -->
   <string name="dialog_phone_call_prohibited_message" msgid="4313552620858880999">Can\'t call this number</string>
+  <!-- UNISOC:add for the bug1028880 & 1145023-->
+  <string name="meid_imei" translatable="false">MEID_IMEI</string>
 </resources>

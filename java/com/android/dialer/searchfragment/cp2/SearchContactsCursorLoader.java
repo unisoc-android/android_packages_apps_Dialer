@@ -35,52 +35,80 @@ import com.android.dialer.searchfragment.common.Projections;
 import com.android.dialer.searchfragment.common.SearchCursor;
 import com.android.dialer.smartdial.SmartDialCursorLoader;
 import com.android.dialer.util.PermissionsUtil;
+import android.provider.CallLog.Calls;
+import android.provider.CallLog;
+import android.net.Uri.Builder;
 
 /** Cursor Loader for CP2 contacts. */
 public final class SearchContactsCursorLoader extends CursorLoader {
 
   private final String query;
   private final boolean isRegularSearch;
+  private static final String LIMIT_PARAM_KEY = "limit";
+  private static final String LIMIT_PRARAM_VALUE = "500";
 
   /** @param query Contacts cursor will be filtered based on this query. */
+  /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
   public SearchContactsCursorLoader(
       Context context, @Nullable String query, boolean isRegularSearch) {
     super(
         context,
         buildUri(query),
-        getProjection(context),
-        getWhere(context),
+        getProjection(context, query),
+        getWhere(context, query),
         null,
-        getSortKey(context) + " ASC");
+        getSortKey(context, query) + " ASC");
     this.query = TextUtils.isEmpty(query) ? "" : query;
     this.isRegularSearch = isRegularSearch;
   }
 
-  private static String[] getProjection(Context context) {
-    boolean displayOrderPrimary =
-        (ContactsComponent.get(context).contactDisplayPreferences().getDisplayOrder()
-            == DisplayOrder.PRIMARY);
-    return displayOrderPrimary
-        ? Projections.CP2_PROJECTION
-        : Projections.CP2_PROJECTION_ALTERNATIVE;
+  private static String[] getProjection(Context context, String query) {
+    if (!TextUtils.isEmpty(query)) {
+      return Projections.PROJECTION_DIALMATCH;
+    } else {
+      boolean displayOrderPrimary =
+              (ContactsComponent.get(context).contactDisplayPreferences().getDisplayOrder()
+                      == DisplayOrder.PRIMARY);
+      return displayOrderPrimary
+              ? Projections.CP2_PROJECTION
+              : Projections.CP2_PROJECTION_ALTERNATIVE;
+    }
   }
 
-  private static String getWhere(Context context) {
-    String where = getProjection(context)[Projections.DISPLAY_NAME] + " IS NOT NULL";
-    where += " AND " + Phone.NUMBER + " IS NOT NULL";
-    return where;
+  private static String getWhere(Context context, String query) {
+    if (TextUtils.isEmpty(query)) {
+      String where = getProjection(context, query)[Projections.DISPLAY_NAME] + " IS NOT NULL";
+      where += " AND " + Phone.NUMBER + " IS NOT NULL";
+      return where;
+    }
+    return null;
   }
 
-  private static String getSortKey(Context context) {
-    boolean sortOrderPrimary =
-        (ContactsComponent.get(context).contactDisplayPreferences().getSortOrder()
-            == SortOrder.BY_PRIMARY);
-    return sortOrderPrimary ? Phone.SORT_KEY_PRIMARY : Phone.SORT_KEY_ALTERNATIVE;
+  private static String getSortKey(Context context, String query) {
+    if (TextUtils.isEmpty(query)) {
+      boolean sortOrderPrimary =
+              (ContactsComponent.get(context).contactDisplayPreferences().getSortOrder()
+                      == SortOrder.BY_PRIMARY);
+      return sortOrderPrimary ? Phone.SORT_KEY_PRIMARY : Phone.SORT_KEY_ALTERNATIVE;
+    }
+    return null;
+
   }
 
   private static Uri buildUri(String query) {
-    return Phone.CONTENT_FILTER_URI.buildUpon().appendPath(query).build();
+   // return Phone.CONTENT_FILTER_URI.buildUpon().appendPath(query).build();
+    if (!TextUtils.isEmpty(query)) {
+      Builder builder = Uri.parse(CallLog.Calls.CONTENT_URI + "/regularmatch")
+              .buildUpon()
+              .appendQueryParameter(LIMIT_PARAM_KEY, LIMIT_PRARAM_VALUE);
+
+      Uri uri = builder.appendPath(query).build();
+      return uri;
+    } else {
+      return Phone.CONTENT_FILTER_URI.buildUpon().appendPath(query).build();
+    }
   }
+  /*@}*/
 
   @Override
   public Cursor loadInBackground() {
@@ -107,13 +135,18 @@ public final class SearchContactsCursorLoader extends CursorLoader {
     static SmartDialCursor newInstance(Context context, Cursor smartDialCursor) {
       if (smartDialCursor == null || smartDialCursor.getCount() == 0) {
         LogUtil.i("SmartDialCursor.newInstance", "Cursor was null or empty");
-        return new SmartDialCursor(new Cursor[] {new MatrixCursor(Projections.CP2_PROJECTION)});
+        //UNISOC: Matching callLog when search in dialpad bug478742
+        return new SmartDialCursor(new Cursor[] {new MatrixCursor(Projections.PROJECTION_DIALMATCH)});
       }
 
       MatrixCursor headerCursor = new MatrixCursor(HEADER_PROJECTION);
       headerCursor.addRow(new String[] {context.getString(R.string.all_contacts)});
       return new SmartDialCursor(
-          new Cursor[] {headerCursor, convertSmartDialCursorToSearchCursor(smartDialCursor)});
+              /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
+              /* @orig*
+              /* new Cursor[] {headerCursor, convertSmartDialCursorToSearchCursor(smartDialCursor)});*/
+              new Cursor[] {headerCursor, smartDialCursor});
+              /*@}*/
     }
 
     private SmartDialCursor(Cursor[] cursors) {
@@ -144,7 +177,7 @@ public final class SearchContactsCursorLoader extends CursorLoader {
       do {
         Object[] newRow = new Object[Projections.CP2_PROJECTION.length];
         for (int i = 0; i < Projections.CP2_PROJECTION.length; i++) {
-          String column = Projections.CP2_PROJECTION[i];
+          String column = Projections.PROJECTION_DIALMATCH[i];
           int index = smartDialCursor.getColumnIndex(column);
           if (index != -1) {
             switch (smartDialCursor.getType(index)) {
@@ -178,7 +211,8 @@ public final class SearchContactsCursorLoader extends CursorLoader {
     static RegularSearchCursor newInstance(Context context, Cursor regularSearchCursor) {
       if (regularSearchCursor == null || regularSearchCursor.getCount() == 0) {
         LogUtil.i("RegularSearchCursor.newInstance", "Cursor was null or empty");
-        return new RegularSearchCursor(new Cursor[] {new MatrixCursor(Projections.CP2_PROJECTION)});
+        //UNISOC: Matching callLog when search in dialpad bug478742
+        return new RegularSearchCursor(new Cursor[] {new MatrixCursor(Projections.PROJECTION_DIALMATCH)});
       }
 
       MatrixCursor headerCursor = new MatrixCursor(HEADER_PROJECTION);

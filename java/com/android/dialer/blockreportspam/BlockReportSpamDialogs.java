@@ -53,7 +53,11 @@ public final class BlockReportSpamDialogs {
       final DialogFragment fragment, final OnConfirmListener listener) {
     return (dialog, which) -> {
       fragment.dismiss();
-      listener.onClick();
+      /* UNISOC: modify for bug1209184 @{ */
+      if (listener != null) {
+        listener.onClick();
+      }
+      /* @} */
     };
   }
 

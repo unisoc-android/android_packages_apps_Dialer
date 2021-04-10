@@ -16,12 +16,29 @@
 
 package com.android.incallui;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
 import android.graphics.Point;
+import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
+import android.os.PowerHALManager;
+import android.os.PowerHintVendorSprd;
+import android.os.PowerManager;
+import android.os.RemoteException;
 import android.os.Trace;
+import android.preference.PreferenceManager;
+import android.provider.ContactsContract;
+import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.provider.ContactsContract.PhoneLookup;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -35,7 +52,10 @@ import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.PhoneStateListener;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.ArraySet;
 import android.view.Window;
 import android.view.WindowManager;
@@ -43,6 +63,7 @@ import android.widget.Toast;
 import com.android.contacts.common.compat.CallCompat;
 import com.android.dialer.CallConfiguration;
 import com.android.dialer.Mode;
+import com.android.dialer.binary.common.DialerApplication;
 import com.android.dialer.blocking.FilteredNumberAsyncQueryHandler;
 import com.android.dialer.blocking.FilteredNumberAsyncQueryHandler.OnCheckBlockedListener;
 import com.android.dialer.blocking.FilteredNumberCompat;
@@ -58,6 +79,9 @@ import com.android.dialer.logging.Logger;
 import com.android.dialer.postcall.PostCall;
 import com.android.dialer.telecom.TelecomCallUtil;
 import com.android.dialer.telecom.TelecomUtil;
+import com.android.dialer.util.DialerUtils;
+import com.android.dialer.util.CallUtil;
+import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.util.TouchPointManager;
 import com.android.incallui.InCallOrientationEventListener.ScreenOrientation;
 import com.android.incallui.answerproximitysensor.PseudoScreenState;
@@ -75,10 +99,29 @@ import com.android.incallui.spam.SpamCallListListener;
 import com.android.incallui.speakeasy.SpeakEasyCallManager;
 import com.android.incallui.telecomeventui.InternationalCallOnWifiDialogActivity;
 import com.android.incallui.telecomeventui.InternationalCallOnWifiDialogFragment;
+import com.android.incallui.sprd.PhoneRecorderHelper;
+import com.android.incallui.sprd.plugin.hdaudio.InCallUIHdAudioHelper;
+import com.android.incallui.sprd.plugin.voiceclearcode.VoiceClearCodeHelper;
+import com.android.incallui.sprd.settings.callrecording.CallRecordingContactsHelper;
+import com.android.incallui.sprd.settings.callrecording.RecordListFrom;
 import com.android.incallui.videosurface.bindings.VideoSurfaceBindings;
 import com.android.incallui.videosurface.protocol.VideoSurfaceTexture;
 import com.android.incallui.videotech.utils.VideoUtils;
+import com.android.incallui.sprd.InCallUiUtils;
+import com.android.incallui.sprd.plugin.shakePhoneToStartRecording.ShakePhoneToStartRecordingHelper;
+import com.android.incallui.sprd.NeededForReflection;
+import com.android.incallui.sprd.RequestPermissionsActivity;
+
+//UNISOC:add for bug1156570
+import com.android.ims.ImsManager;
+import com.android.ims.internal.ImsManagerEx;
+import com.android.ims.internal.IImsRegisterListener;
+import com.android.ims.internal.IImsServiceEx;
+
+import com.android.sprd.telephony.RadioInteractor;
+import com.android.sprd.telephony.RadioInteractorCallbackListener;
 import com.google.protobuf.InvalidProtocolBufferException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -86,6 +129,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;  //write external-storage
+import static android.Manifest.permission.READ_EXTERNAL_STORAGE;   //eard external-storage
+import static android.Manifest.permission.RECORD_AUDIO;
+import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.Manifest.permission.READ_CONTACTS;
 
 /**
  * Takes updates from the CallList and notifies the InCallActivity (UI) of the changes. Responsible
@@ -125,6 +174,9 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
   private final Set<InCallEventListener> inCallEventListeners =
       Collections.newSetFromMap(new ConcurrentHashMap<InCallEventListener, Boolean>(8, 0.9f, 1));
 
+  private SubscriptionManager.OnSubscriptionsChangedListener mSubChangedListener;
+  private int mSimColor;
+
   private StatusBarNotifier statusBarNotifier;
   private ExternalCallNotifier externalCallNotifier;
   private ContactInfoCache contactInfoCache;
@@ -149,6 +201,10 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
         @Override
         public void onPostDialWait(
             android.telecom.Call telecomCall, String remainingPostDialSequence) {
+          // UNISOC: add for bug1146779
+          if (callList == null) {
+            return;
+          }
           final DialerCall call = callList.getDialerCallFromTelecomCall(telecomCall);
           if (call == null) {
             LogUtil.w(
@@ -162,6 +218,10 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
         @Override
         public void onDetailsChanged(
             android.telecom.Call telecomCall, android.telecom.Call.Details details) {
+          // UNISOC: add for bug1146779
+          if (callList == null) {
+            return;
+          }
           final DialerCall call = callList.getDialerCallFromTelecomCall(telecomCall);
           if (call == null) {
             LogUtil.w(
@@ -209,6 +269,12 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
 
   private boolean screenTimeoutEnabled = true;
 
+  //UNISOC:add for bug1157000
+  private TelephonyManager mTelephonyManager;
+  private int mPhoneCount;
+  // UNISOC Feature Porting: Add for call recorder feature.
+  private PhoneRecorderHelper mRecorderHelper;
+
   private PhoneStateListener phoneStateListener =
       new PhoneStateListener() {
         @Override
@@ -227,6 +293,8 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
 
   /** Whether or not InCallService is bound to Telecom. */
   private boolean serviceBound = false;
+  /**UNISOC:add for bug1157000. Telcel volte csfb clear code. Whether or not bound to RadioInteractor. */
+  private boolean mRadioInteractorConnection = false;
 
   /**
    * When configuration changes Android kills the current activity and starts a new one. The flag is
@@ -272,6 +340,21 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
   private VideoSurfaceTexture remoteVideoSurfaceTexture;
 
   private SpeakEasyCallManager speakEasyCallManager;
+  //UNISOC:add for bug1151089
+  private boolean mIsUiShowing = false;
+
+  // UNISOC: add for bug1110240
+  private boolean previousMuteState = false;
+  // UNISOC: add for bug1138291
+  private boolean automaticallyMutedByAddCall = false;
+
+  /* UNISOC Feature Porting: Automatic record. 1190461 @{ */
+  private String[] mPermissions = {WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE,
+          RECORD_AUDIO, READ_PHONE_STATE, READ_CONTACTS}; //UNISOC:add for bug1201349
+  private static final String AUTOMATIC_RECORDING_PREFERENCES_NAME = "automatic_recording_key";
+  private boolean mAutomaticRecording;
+  private boolean mIsAutomaticRecordingStart;
+  /* @} */
 
   /** Inaccessible constructor. Must use getRunningInstance() to get this singleton. */
   @VisibleForTesting
@@ -405,6 +488,20 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     addInCallUiListener(motorolaInCallUiNotifier);
     addListener(motorolaInCallUiNotifier);
 
+    initSubScriptionListener();
+    registerForSubscriptionsChanged();
+
+    //UNISOC：add for bug1156570
+    tryRegisterImsListener(context);
+    mIsVideoEnable = CallUtil.isVideoEnabled(context);
+    LogUtil.i("InCallPresenter.setUp","mIsVideoEnable = "+mIsVideoEnable);
+
+    //UNISOC：add for bug1188087
+    mRecorderHelper = PhoneRecorderHelper.getInstance(context);
+    if (mRecorderHelper != null) {
+      mRecorderHelper.registerExternalStorageStateListener(context);
+    }
+
     LogUtil.d("InCallPresenter.setUp", "Finished InCallPresenter.setUp");
     Trace.endSection();
   }
@@ -482,13 +579,21 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
 
     serviceConnected = false;
 
+    unregisterForSubscriptionsChanged();
+
     context
         .getSystemService(TelephonyManager.class)
         .listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
 
+    unRegisterImsListener(context);//UNISOC:add for bug1156570
     attemptCleanup();
     VideoPauseController.getInstance().tearDown();
     AudioModeProvider.getInstance().removeListener(this);
+
+    //UNISOC:add for bug1188087
+    if (mRecorderHelper != null) {
+      mRecorderHelper.unRegisterExternalStorageStateListener(context);
+    }
   }
 
   private void attemptFinishActivity() {
@@ -617,6 +722,11 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
 
   public void onCallAdded(final android.telecom.Call call) {
     Trace.beginSection("InCallPresenter.onCallAdded");
+    // UNISOC: add for bug1111434
+    if (call != null && !callList.hasLiveCall()
+            && (call.getState() == android.telecom.Call.STATE_CONNECTING || call.getState() == android.telecom.Call.STATE_RINGING)) {
+      ShakePhoneToStartRecordingHelper.getInstance(context).init(context);//SPRD:fix for bug 868304,bug876231
+    }
     LatencyReport latencyReport = new LatencyReport(call);
     if (shouldAttemptBlocking(call)) {
       maybeBlockCall(call, latencyReport);
@@ -634,6 +744,9 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     call.registerCallback(callCallback);
     // TODO(maxwelb): Return the future in recordPhoneLookupInfo and propagate.
     PhoneLookupHistoryRecorder.recordPhoneLookupInfo(context.getApplicationContext(), call);
+    /* UNISOC: add for bug1173199 @{*/
+    InCallUIHdAudioHelper.getInstance(context).registerHdStatusChangedEvent(context);
+    /*@}*/
     Trace.endSection();
   }
 
@@ -876,6 +989,10 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     }
     if (primary != null) {
       onForegroundCallChanged(primary);
+      //UNISOC:add for bug1120435
+      if (isActivityStarted() && newState == InCallState.INCOMING && !primary.isVideoCall()) {
+        inCallActivity.updateWindowBackgroundColor(0);
+      }
     }
 
     // notify listeners of new state
@@ -886,12 +1003,34 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
       listener.onStateChange(oldState, inCallState, callList);
     }
 
+    // UNISOC: add for bug1180945
+    if (primary != null) {
+      checkAutoRecorder(primary);
+    }
+
+
     if (isActivityStarted()) {
       final boolean hasCall =
           callList.getActiveOrBackgroundCall() != null || callList.getOutgoingCall() != null;
       inCallActivity.dismissKeyguard(hasCall);
     }
 
+    //UNISOC: Add incallui Hd Voice
+    if (newState == InCallState.NO_CALLS) {
+      setAutomaticallyMutedByAddCall(false); // UNISOC: add for bug1142704
+      setPreviousMuteState(false);//add for bug1151816
+      /*UNISOC:add for bug1180945 1173199 { @*/
+      if (context != null) {
+        DialerApplication dialerApplication = (DialerApplication) context;
+        dialerApplication.setIsAutomaticRecordingStart(false);
+        InCallUIHdAudioHelper.getInstance(context).unRegisterHdStatusChangedEvent(context);
+      }
+      /* @} */
+    // UNISOC: add for bug1180945 1175335
+    } else if (context != null && (waitingForAccountCall = callList.getWaitingForAccountCall()) != null) {
+      DialerApplication dialerApplication = (DialerApplication) context;
+      dialerApplication.setIsAutomaticRecordingStart(false);
+    }
     Trace.endSection();
   }
 
@@ -959,7 +1098,10 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
       listener.onIncomingCall(oldState, inCallState, call);
     }
     Trace.endSection();
-
+    if(previousMuteState == true && AudioModeProvider.getInstance().getAudioState().isMuted() == true){ //add for bug1151816
+      automaticallyMutedByAddCall = true;
+      LogUtil.i("InCallPresenter.onIncomingCall-test","set auto is true");
+    }
     Trace.beginSection("onPrimaryCallStateChanged");
     if (inCallActivity != null) {
       // Re-evaluate which fragment is being shown.
@@ -1003,6 +1145,11 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
   public void onSessionModificationStateChange(DialerCall call) {
     int newState = call.getVideoTech().getSessionModificationState();
     LogUtil.i("InCallPresenter.onSessionModificationStateChange", "state: %d", newState);
+    /* UNISOC: Add for bug1174485 @{ */
+    for (InCallDetailsListener listener : detailsListeners) {
+      listener.onDetailsChanged(call, call.getTelecomCall().getDetails());
+    }
+    /*@}*/
     if (proximitySensor == null) {
       LogUtil.i("InCallPresenter.onSessionModificationStateChange", "proximitySensor is null");
       return;
@@ -1040,6 +1187,12 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
         && !call.isVoiceMailNumber()) {
       PostCall.onCallDisconnected(context, call.getNumber(), call.getConnectTimeMillis());
     }
+
+    // UNISOC Feature Porting: Add for call recorder feature.
+    stopRecorderForDisconnect();
+    // UNISOC Feature Porting:FL0108020021 Vibrate when call connected or disconnected feature.
+    InCallUiUtils.vibrateForCallStateChange(context.getApplicationContext(),
+            call, InCallUiUtils.VIBRATION_FEEDBACK_FOR_DISCONNECT_PREFERENCES_NAME);
   }
 
   private boolean isSecretCode(@Nullable String number) {
@@ -1220,8 +1373,19 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
         "updateIsChangingConfigurations = " + isChangingConfigurations);
   }
 
+  //add for bug1151348
+  void updateNotification() {
+      // We need to update the notification bar when we leave the UI because that
+      // could trigger it to show again.
+      if (statusBarNotifier != null) {
+          statusBarNotifier.updateNotification();
+      }
+    }
+
   /** Called when the activity goes in/out of the foreground. */
   public void onUiShowing(boolean showing) {
+    //UNISOC:add for bug1151089
+    mIsUiShowing = showing;
     if (proximitySensor != null) {
       proximitySensor.onInCallShowing(showing);
     }
@@ -1449,12 +1613,24 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
       setDisconnectCauseForMissingAccounts(call);
     }
 
+    /* UNISOC Feature Porting: Voice Clear Code Feature. @{ */
+    VoiceClearCodeHelper callFailCauseHelper = VoiceClearCodeHelper.getInstance(context);
+    callFailCauseHelper.showToastMessage(context, call.getDisconnectCause().getReason());
+    LogUtil.i("InCallPresenter.showDialogOrToastForDisconnectedCall",
+            "call.getDisconnectCause().getReason()=" + call.getDisconnectCause().getReason());
+    if (callFailCauseHelper.isSpecialVoiceClearCode(call.getNumber())) {
+      return;
+    }
+    /* @} */
+
     if (isActivityStarted()) {
       inCallActivity.showDialogOrToastForDisconnectedCall(
           new DisconnectMessage(inCallActivity, call));
     } else {
       CharSequence message = new DisconnectMessage(context, call).toastMessage;
-      if (message != null) {
+      // UNISOC: modify for bug1175025
+      if (message != null && !call.hasShownDisconnectError()) {
+        call.setHasShownDisconnectError();
         Toast.makeText(context, message, Toast.LENGTH_LONG).show();
       }
     }
@@ -1565,13 +1741,45 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     if ((showCallUi || showAccountPicker) && !shouldStartInBubbleMode()) {
       LogUtil.i("InCallPresenter.startOrFinishUi", "Start in call UI");
       showInCall(false /* showDialpad */, !showAccountPicker /* newOutgoingCall */);
+    } else if (newState == InCallState.INCOMING) {
+      LogUtil.i("InCallPresenter.startOrFinishUi", "Start Full Screen in call UI");
+
+      try {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        PowerHALManager powerHALManager = new PowerHALManager(context, new Handler());
+        PowerHALManager.PowerHintScene sceneIncall = powerHALManager.createPowerHintScene(
+                "InCall: InCallPresenter", PowerHintVendorSprd.POWER_HINT_VENDOR_RADIO_CALL, null);
+        if (sceneIncall != null && !pm.isScreenOn()) {
+          Log.i(this, "power Hint POWER_HINT_VENDOR_RADIO_CALL");
+          sceneIncall.acquire(1000);
+        }
+      } catch (java.lang.NoClassDefFoundError e) {
+        LogUtil.e("InCallPresenter.startOrFinishUi", "Exception:" + e.getMessage());
+      } catch (java.util.NoSuchElementException e) {
+        LogUtil.e("InCallPresenter.startOrFinishUi", "Exception:" + e.getMessage());
+      } catch (Exception e) {
+        LogUtil.e("InCallPresenter.startOrFinishUi", "Exception:" + e.getMessage());
+      }
+      // UNISOC: add for bug1112364
+      statusBarNotifier.updateNotification();
     } else if (newState == InCallState.NO_CALLS) {
       // The new state is the no calls state.  Tear everything down.
       inCallState = newState;
       attemptFinishActivity();
       attemptCleanup();
     }
-
+    /** UNISOC: FL0108020005. Porting Auto Answer Feature. @{
+     * If it is INCALL and InCallActivity is not started yet, we should
+     * show the InCallActivity. Specially when in auto-answer mode,
+     * call state is changed from NO_CALL to INCALL very quickly, and InCallActivity
+     * can only be started when user click answer button or receive the answer broadcaster.
+     * It may be not the best way to fix the issue.
+     */
+    else if (newState == InCallState.INCALL &&
+            (CallList.getInstance().getActiveCall() != null && CallList.getInstance().getActiveCall().isMtCall())
+            && !isShowingInCallUi()) {//UNISOC:add for bug1177612
+      showInCall(false, false);
+    }
     Trace.endSection();
     return newState;
   }
@@ -1681,11 +1889,83 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
 
   public void onServiceBind() {
     serviceBound = true;
+    // UNISOC Feature Porting: Add for shaking phone to start recording.
+    // ShakePhoneToStartRecordingHelper.getInstance(context).init(context);//UNISOC:fix for bug 868304,bug876231
+    //UNISOC:add for bug1157000.Telcel volte csfb clear code
+    if(context.getResources().getBoolean(com.android.dialer.app.R.bool.config_is_support_csfb_volteclearcode_feature)) {
+      LogUtil.i("InCallPresenter.onServiceBind", "bindRadioInteracter");
+      bindRadioInteracter();
+    }
+  }
+  private void bindRadioInteracter() {
+    if (context == null) {
+      LogUtil.e("InCallPresenter:bindRadioInteracter", "context is null");
+      return;
+    }
+    if (!mRadioInteractorConnection) {
+      context.bindService(new Intent(
+              "com.android.sprd.telephony.server.RADIOINTERACTOR_SERVICE")
+              .setPackage("com.android.sprd.telephony.server"), mServiceConnection, 0);
+    }
+  }
+
+  private final ServiceConnection mServiceConnection = new ServiceConnection() {
+    private RadioInteractor mRadioInteractor;
+    private RadioInteractorCallbackListener[] mRadioInteractorCallbackListener;
+    public void onServiceConnected(ComponentName name, IBinder service) {
+      LogUtil.i("InCallPresenter:bindRadioInteracter", "on radioInteractor service connected");
+      if (mRadioInteractor == null) {
+        mRadioInteractor = new RadioInteractor(context);
+      }
+      mRadioInteractorConnection = true;
+      mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+      if (mTelephonyManager != null) {
+        mPhoneCount = mTelephonyManager.getPhoneCount();
+      }
+      if (mRadioInteractorCallbackListener == null) {
+        mRadioInteractorCallbackListener = new RadioInteractorCallbackListener[mPhoneCount];
+      }
+
+      for (int i = 0; i < mPhoneCount; i++) {
+        mRadioInteractorCallbackListener[i] = getRadioInteractorCallbackListener(i);
+        LogUtil.i("InCallPresenter:bindRadioInteracter", "RadioInteractorCallbackListener.LISTEN_IMS_CSFB_VENDOR_CAUSE_EVENT");
+        mRadioInteractor.listen(mRadioInteractorCallbackListener[i],
+                RadioInteractorCallbackListener.LISTEN_IMS_CSFB_VENDOR_CAUSE_EVENT, false);
+      }
+    }
+    public void onServiceDisconnected(ComponentName name) {
+      LogUtil.i("InCallPresenter:bindRadioInteracter", "on radioInteractor service disconnect");
+      for (int i = 0; i < mPhoneCount; i++) {
+        mRadioInteractorCallbackListener[i] = getRadioInteractorCallbackListener(i);
+        mRadioInteractor.listen(mRadioInteractorCallbackListener[i],
+                RadioInteractorCallbackListener.LISTEN_NONE, false);
+      }
+    }
+  };
+
+  private RadioInteractorCallbackListener getRadioInteractorCallbackListener(int phoneId) {
+    return new RadioInteractorCallbackListener(phoneId) {
+      public void onImsCsfbVendorCauseEvent(Object object) {
+        if (object != null) {
+          String causCode = (String) ((AsyncResult) object).result;
+          LogUtil.i("InCallPresenter:onImsCsfbVendorCauseEvent","cuseCode="+causCode);
+          VoiceClearCodeHelper csfbcallFailCauseHelper = VoiceClearCodeHelper.getInstance(context);
+          csfbcallFailCauseHelper.showToastMessage(context, causCode);
+        }
+      }
+    };
   }
 
   public void onServiceUnbind() {
+    if(context.getResources().getBoolean(com.android.dialer.app.R.bool.config_is_support_csfb_volteclearcode_feature)) //UNISOC: add for bug1164483
+      {
+          context.unbindService(mServiceConnection);
+          mRadioInteractorConnection = false;
+      }
     InCallPresenter.getInstance().setBoundAndWaitingForOutgoingCall(false, null);
     serviceBound = false;
+    // UNISOC Feature Porting: Add for shaking phone to start recording.
+    ShakePhoneToStartRecordingHelper.getInstance(context).unRegisterTriggerRecorderListener();//UNISOC:fix for bug 868304,bug876231
   }
 
   public boolean isServiceBound() {
@@ -1844,6 +2124,7 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     themeColorManager.onForegroundCallChanged(context, newForegroundCall);
     if (inCallActivity != null) {
       inCallActivity.onForegroundCallChanged(newForegroundCall);
+      mSimColor = themeColorManager.getPrimaryColor();
     }
   }
 
@@ -1861,6 +2142,9 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
           "InCallPresenter.setActivity", "Setting a second activity before destroying the first.");
     }
     updateActivity(inCallActivity);
+
+    // UNISOC Feature Porting: Add for call recorder feature.
+    mRecorderHelper = PhoneRecorderHelper.getInstance(inCallActivity);  //mInCallActivity
   }
 
   ExternalCallNotifier getExternalCallNotifier() {
@@ -2034,4 +2318,343 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
   }
 
   private final Set<InCallUiLock> inCallUiLocks = new ArraySet<>();
+
+  /* UNISOC Feature Porting: Add for call record feature @{ */
+  public void stopRecorderForDisconnect() {
+    if (mRecorderHelper != null) {
+      // Stop recorder only when no active call or background call exists.
+      DialerCall call = CallList.getInstance().getActiveOrBackgroundCall();
+      if (call == null) {
+        mRecorderHelper.stop();
+      }
+    }
+  }
+
+  public void toggleRecorder() {
+    if (mRecorderHelper == null) {
+      mRecorderHelper = PhoneRecorderHelper.getInstance(context); //mContext
+    }
+    mRecorderHelper.toggleRecorder();
+  }
+
+  public boolean isRecording() {
+      if (mRecorderHelper != null) {
+        PhoneRecorderHelper.State state = mRecorderHelper.getState();
+        if (state != null && state.isActive()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+  public long getRecordTime() {
+    if (mRecorderHelper != null) {
+      return mRecorderHelper.getRecordTime();
+    }
+    return 0;
+  }
+  /* @} */
+
+  /* UNISOC: add rejectmessage action in the notification. @{ */
+  public void rejectCallWithStartSms(boolean showRejectMessage) {
+    context.startActivity(
+            InCallActivity.getShowRejectSMStIntent(context, showRejectMessage));
+  }
+  /* @} */
+      /**
+     * UNISOC: Modify for bug 876231 @{
+     */
+    @NeededForReflection
+    public void recordClick() {
+        LogUtil.d("InCallPresenter.recordClick", "inCallActivity = "+inCallActivity);
+        if (inCallActivity != null) {
+            inCallActivity.recordClick();
+        }
+    }
+  /*UNISOC: add for bug1110240{@*/
+  public boolean isPreviousMuteState() {
+    return previousMuteState;
+  }
+
+  public void setPreviousMuteState(boolean previousMuteState) {
+    this.previousMuteState = previousMuteState;
+  }
+  /* @} */
+
+  /*UNISOC: add for bug1138291{@*/
+  public boolean isAutomaticallyMutedByAddCall() {
+    return automaticallyMutedByAddCall;
+  }
+
+  public void setAutomaticallyMutedByAddCall(boolean automaticallyMutedByAddCall) {
+    this.automaticallyMutedByAddCall = automaticallyMutedByAddCall;
+  }
+    /* @} */
+
+  /*UNISOC add for bug1156570 @{*/
+  private IImsServiceEx mIImsServiceEx;
+  private boolean mIsImsListenerRegistered = false;
+  private boolean mIsVideoEnable = false;
+
+  public void tryRegisterImsListener(Context context) {
+    if (!ImsManager.isVolteEnabledByPlatform(context)) {
+      return;
+    }
+    mIImsServiceEx = ImsManagerEx.getIImsServiceEx();
+    if (mIImsServiceEx != null) {
+      try {
+        if (!mIsImsListenerRegistered) {
+          mIImsServiceEx.registerforImsRegisterStateChanged(mImsUtListenerExBinder);
+          mIsImsListenerRegistered = true;
+        }
+      } catch (RemoteException e) {
+        LogUtil.e("InCallPresenter.tryRegisterImsListener", "tryRegisterImsListener error: " + e);
+      }
+    }
+  }
+
+  public void unRegisterImsListener(Context context) {
+    if (ImsManager.isVolteEnabledByPlatform(context)) {
+      try {
+        if (mIsImsListenerRegistered) {
+          mIImsServiceEx.unregisterforImsRegisterStateChanged(mImsUtListenerExBinder);
+          mIsImsListenerRegistered = false;
+        }
+      } catch (RemoteException e) {
+        LogUtil.e("InCallPresenter.unRegisterImsListener", "unRegisterImsListener: " + e);
+      }
+    }
+  }
+
+  private IImsRegisterListener.Stub
+          mImsUtListenerExBinder = new IImsRegisterListener.Stub() {
+    @Override
+    public void imsRegisterStateChange(boolean isRegistered) {
+      mIsVideoEnable = CallUtil.isVideoEnabled(context);
+      LogUtil.i("InCallPresenter.imsRegisterStateChange", "mIsVideoEnable = " + mIsVideoEnable + ",isRegistered=" + isRegistered);
+    }
+  };
+
+  public boolean isVideoEnabled() {
+    return mIsVideoEnable;
+  }
+  /*@}*/
+
+  /**UNISOC: add for bug1123955**/
+  private void initSubScriptionListener(){
+    mSubChangedListener = new SubscriptionManager.OnSubscriptionsChangedListener() {
+        @Override
+        public void onSubscriptionsChanged() {
+          if(context == null){
+          LogUtil.e("InCallPresenter", "onSubscriptionsChanged: context is null");
+          return;
+          }
+          SubscriptionManager manager = context.getSystemService(SubscriptionManager.class);
+          if (manager == null || callList == null) {
+            LogUtil.e("InCallPresenter", "onSubscriptionsChanged: could not find SubscriptionManager or calllist ="+callList);
+            return;
+          }
+
+          DialerCall call = callList.getFirstCall();
+          if(call == null){
+            LogUtil.e("InCallPresenter", "onSubscriptionsChanged: call is null");
+            return;
+          }
+          int slotId = InCallUiUtils.getSlotIdForPhoneAccountHandle(context, call.getAccountHandle());
+
+          // UNISOC: modify for bug1158381
+          SubscriptionInfo subscriptionInfo =  DialerUtils.getActiveSubscriptionInfo(context, slotId, true); //UNISOC:modify for bug1172530
+          if(subscriptionInfo != null){
+            int simTint = subscriptionInfo.getIconTint();
+            LogUtil.i("InCallPresenter", "onSubscriptionsChanged: mSimColor="+mSimColor+",simTint="+simTint);
+            if(mSimColor != simTint && statusBarNotifier != null){
+              mSimColor = simTint;
+              new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                  onForegroundCallChanged(call);
+                  statusBarNotifier.updateNotification();
+                }
+              }, 500);
+            }
+          } else {
+            LogUtil.e("InCallPresenter", "onSubscriptionsChanged: subscriptionInfo null.");
+          }
+        }
+    };
+  }
+  private void registerForSubscriptionsChanged() {
+    if(context == null){
+      LogUtil.e("InCallPresenter", "registerForSubscriptionsChanged: context is null");
+      return;
+    }
+    SubscriptionManager manager = context.getSystemService(SubscriptionManager.class);
+    if(manager != null){
+      manager.addOnSubscriptionsChangedListener(mSubChangedListener);
+    } else {
+      LogUtil.e("InCallPresenter", "registerForSubscriptionsChanged: could not find SubscriptionManager.");
+    }
+  }
+
+  private void unregisterForSubscriptionsChanged() {
+    if(context == null){
+      LogUtil.e("InCallPresenter", "unregisterForSubscriptionsChanged: context is null");
+      return;
+    }
+    SubscriptionManager manager = context.getSystemService(SubscriptionManager.class);
+    if(manager != null){
+      manager.removeOnSubscriptionsChangedListener(mSubChangedListener);
+      mSimColor = 0;
+    } else {
+      LogUtil.e("InCallPresenter", "unregisterForSubscriptionsChanged: could not find SubscriptionManager.");
+    }
+  }
+  /* @} */
+  /*UNISOC:add for bug1151089 { @*/
+  public boolean isUiShowing() {
+    return mIsUiShowing;
+  }
+  /* @} */
+
+  /*UNISOC:add for bug1180945 { @*/
+  public void updateRecordTime() {
+    mRecorderHelper.updateRecordTimeUi();
+  }
+
+  private void checkAutoRecorder(DialerCall call) {
+    if (context == null) {
+      return;
+    }
+    /* UNISOC Feature Porting: Automatic record. @{ */
+    DialerApplication dialerApplication = (DialerApplication) context;  //mContext
+    mIsAutomaticRecordingStart = dialerApplication.getIsAutomaticRecordingStart();
+    //UNISOC: modify for bug1104347,1105515
+    if (UserManagerCompat.isUserUnlocked(context)) {
+      final SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);  //mContext
+      mAutomaticRecording = sp.getBoolean(
+              AUTOMATIC_RECORDING_PREFERENCES_NAME, false);
+    }
+    /* @} */
+    /* UNISOC Feature Porting: Automatic record. @{
+     * Using function toggleRecorder for triggering the automatic recording only once on the following conditions:
+     * 1) mAutomaticRecording is true :Automatic recording switch to open In the general setting before dialing.
+     * 2) Call State is ACTIVE.
+     * mIsAutomaticRecordingStart is used for identifying automatic recording started or not
+     * TODO: When we cancel recording in first call and add a new call ,the new call will not trigger automatic recording currently.
+     * */
+    if (mAutomaticRecording && !mIsAutomaticRecordingStart
+            && call != null && call.getState() == DialerCallState.ACTIVE
+            && (call.isCdmaCallAnswered() || !call.phoneisCdma())  //UNISOC:add for bug1153756
+            // UNISOC: modify for bug1142584
+            && checkAutoRecordForCall(call)) {  //mCall,mCall
+      dialerApplication.setIsAutomaticRecordingStart(true);
+      if (!PhoneRecorderHelper.getInstance(context).getState().isActive()){//UNISOC: modify for bug1145618
+        if (inCallActivity != null) {
+          recordClick();
+        } else {
+          // UNISOC: add for bug1190461
+          List<String> requestPermissionsList = new ArrayList<>();
+          for (int i = 0; i < mPermissions.length; i++) {
+            if (!PermissionsUtil.hasPermission(context, mPermissions[i])) {
+              requestPermissionsList.add(mPermissions[i]);
+            }
+          }
+          if (requestPermissionsList.size() == 0) {
+            toggleRecorder();
+          } else {
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < mPermissions.length; i++) {
+              sb.append(mPermissions[i]).append(",");
+            }
+            Intent intent = new Intent(context, RequestPermissionsActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+            intent.putExtra(RequestPermissionsActivity.ARGS_REQUEST_PERMISSIONS, sb.toString());
+            intent.putExtra(RequestPermissionsActivity.ARGS_CALL_ID, call.getId());
+            context.startActivity(intent);
+          }
+        }
+      }
+    }
+    /* @} */
+  }
+  /**
+   * UNISOC: To check  auto call recording settings
+   */
+  private boolean checkForAutoCallSettings(String phoneNumber) {
+    CallRecordingContactsHelper.CallRecordSettingEntity recordSettings = CallRecordingContactsHelper.getInstance(context).getCallRecordingSettings();
+    if (recordSettings.getRecordFrom() == RecordListFrom.RECORD_ALL_NUMBERS) {
+      return true;
+    } else if (recordSettings.getRecordFrom() == RecordListFrom.RECORD_LISTED_NUMBERS) {
+      if (recordSettings.getUnknownNumberSetting() && isNumberUnknown(phoneNumber)) {
+        return true;
+      } else {
+        /* UNISOC: modified for bug 1142555 @{*/
+        String number = InCallUiUtils.removeNonNumericForNumber(phoneNumber);
+        LogUtil.d("InCallPresenter", "checkForAutoCallSettings phoneNumber " +
+                "after remove non-numric: " + number);
+        final String pn = InCallUiUtils.getPhoneNumberWithoutCountryCode(number, context);
+        /* @} */
+        ArrayList<String> recordList = CallRecordingContactsHelper.getInstance(context).getCallRecordingNumber();
+        // UNISOC: add for bug1149076 1153287
+        return pn != null && recordList.stream().anyMatch(savedNumber ->
+                pn.equals(InCallUiUtils.getPhoneNumberWithoutCountryCode(savedNumber, context)));
+      }
+    } else {
+      return false;
+    }
+  }
+  /**
+   * UNISOC: add for bug1142584
+   */
+  private boolean checkAutoRecordForCall(DialerCall primary) {
+    boolean autoCallRecording = false;
+    if (primary.isConferenceCall()) {
+      List<String> childIds = primary.getChildCallIds();
+      for (String ids : childIds) {
+        DialerCall call = callList.getCallById(ids);
+        if (call != null) {
+          // UNISOC: modify for bug1179379 1191722
+          autoCallRecording = checkForAutoCallSettings(
+                  !TextUtils.isEmpty(call.getOrinalNumber()) ? call.getOrinalNumber() : call.getNumber());
+        }
+        if (autoCallRecording) {
+          break;
+        }
+      }
+    } else {
+      // UNISOC: modify for bug1179379 1191722
+      autoCallRecording = checkForAutoCallSettings(
+              !TextUtils.isEmpty(primary.getOrinalNumber()) ? primary.getOrinalNumber() : primary.getNumber());
+    }
+    return autoCallRecording;
+  }
+  /* @} */
+
+  /**
+   * UNISOC: To check  weather given number is exist in contacts or not
+   */
+  private boolean isNumberUnknown(String phoneNumber) {
+    ContentResolver cr = context.getContentResolver();
+    if (cr == null || phoneNumber == null || TextUtils.isEmpty(phoneNumber)) {
+      return true;
+    }
+    Uri uri = Uri.withAppendedPath(PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+    Cursor cursor = cr.query(uri, new String[]{PhoneLookup.DISPLAY_NAME}, null, null, null);
+    try {
+      if (cursor != null && cursor.moveToFirst()) {
+        int index = cursor.getColumnIndex(PhoneLookup.DISPLAY_NAME);
+        if (index != -1 && (cursor.getString(index) != null)) {
+          return false;
+        }
+      }
+    } catch (Exception e) {
+      LogUtil.e("CallButtonPresenter isNumberUnknown", " e = " + e);
+    } finally {
+      if (cursor != null) {
+        cursor.close();
+      }
+    }
+    return true;
+  }
+  /* @} */
 }

@@ -16,10 +16,12 @@
 
 package com.android.incallui.incall.impl;
 
+import android.content.Context;
 import android.support.v4.util.ArrayMap;
 import android.telephony.TelephonyManager;
 import com.android.incallui.incall.impl.MappedButtonConfig.MappingInfo;
 import com.android.incallui.incall.protocol.InCallButtonIds;
+import com.android.incallui.sprd.InCallUiUtils;
 import java.util.Map;
 
 /**
@@ -36,67 +38,88 @@ class ButtonChooserFactory {
    * @return the ButtonChooser.
    */
   public static ButtonChooser newButtonChooser(
-      int voiceNetworkType, boolean isWiFi, int phoneType) {
+      int voiceNetworkType, boolean isWiFi, int phoneType, Context context) {
     if (voiceNetworkType == TelephonyManager.NETWORK_TYPE_LTE || isWiFi) {
-      return newImsAndWiFiButtonChooser();
+      return newImsAndWiFiButtonChooser(context);
     }
 
     if (phoneType == TelephonyManager.PHONE_TYPE_CDMA) {
-      return newCdmaButtonChooser();
+      return newCdmaButtonChooser(context);
     }
 
     if (phoneType == TelephonyManager.PHONE_TYPE_GSM) {
-      return newGsmButtonChooser();
+      return newGsmButtonChooser(context);
     }
 
-    return newImsAndWiFiButtonChooser();
+    return newImsAndWiFiButtonChooser(context);
   }
 
-  private static ButtonChooser newImsAndWiFiButtonChooser() {
-    Map<Integer, MappingInfo> mapping = createCommonMapping();
-    mapping.put(
-        InCallButtonIds.BUTTON_MANAGE_VOICE_CONFERENCE,
-        MappingInfo.builder(4).setSlotOrder(0).build());
+  private static ButtonChooser newImsAndWiFiButtonChooser(Context context) {
+    Map<Integer, MappingInfo> mapping = createCommonMapping(context);
     // RTT call is only supported on IMS and WiFi.
     mapping.put(
-        InCallButtonIds.BUTTON_UPGRADE_TO_RTT, MappingInfo.builder(3).setSlotOrder(0).build());
+        InCallButtonIds.BUTTON_UPGRADE_TO_RTT, MappingInfo.builder(4).setSlotOrder(0).build());
+    /* UNISOC Feature Porting: Add for call recorder feature. @{ */
     mapping.put(
-        InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, MappingInfo.builder(4).setSlotOrder(10).build());
+        InCallButtonIds.BUTTON_MANAGE_VOICE_CONFERENCE,
+            MappingInfo.builder(5).setSlotOrder(0).build());
     mapping.put(
-        InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY, MappingInfo.builder(5).setSlotOrder(0).build());
-    mapping.put(InCallButtonIds.BUTTON_HOLD, MappingInfo.builder(5).setSlotOrder(10).build());
-
+        InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, MappingInfo.builder(5).setSlotOrder(10).build());
+    mapping.put(
+        InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY, MappingInfo.builder(6).setSlotOrder(0).build());
+    mapping.put(InCallButtonIds.BUTTON_HOLD, MappingInfo.builder(6).setSlotOrder(10).build());
+    /* @} */
+    // UNISOC Feature Porting: Enable send sms in incallui feature.
+    mapping.put(InCallButtonIds.BUTTON_SEND_MESSAGE, MappingInfo.builder(7).build());
+    // UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case.
+    mapping.put(InCallButtonIds.BUTTON_HANGUP_ALL, MappingInfo.builder(8).build());
+    /* @} */
+    // UNISOC Feature Porting: Explicit Call Transfer.
+    mapping.put(InCallButtonIds.BUTTON_ECT, MappingInfo.builder(9).build());
+    /* UNISOC Feature Porting: Add for call invite feature. @{ */
+    mapping.put(InCallButtonIds.BUTTON_INVITE, MappingInfo.builder(10).build());
+    /* @} */
     return new ButtonChooser(new MappedButtonConfig(mapping));
   }
 
-  private static ButtonChooser newCdmaButtonChooser() {
-    Map<Integer, MappingInfo> mapping = createCommonMapping();
+  private static ButtonChooser newCdmaButtonChooser(Context context) {
+    Map<Integer, MappingInfo> mapping = createCommonMapping(context);
+     /* UNISOC Feature Porting: Add for call recorder feature. @{ */
     mapping.put(
         InCallButtonIds.BUTTON_MANAGE_VOICE_CONFERENCE,
-        MappingInfo.builder(4).setSlotOrder(0).build());
+        MappingInfo.builder(5).setSlotOrder(0).build());
     mapping.put(
-        InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, MappingInfo.builder(4).setSlotOrder(10).build());
-    mapping.put(InCallButtonIds.BUTTON_SWAP, MappingInfo.builder(5).setSlotOrder(0).build());
+        InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, MappingInfo.builder(5).setSlotOrder(10).build());
+    mapping.put(InCallButtonIds.BUTTON_SWAP, MappingInfo.builder(6).setSlotOrder(0).build());
     // For multi-sim devices, the first sim's phoneType is used so hold button might be not
     // available for CDMA + GSM devices calling with GSM sim. Adding hold button as low priority
     // here to let telecom control whether it should be shown.
-    mapping.put(InCallButtonIds.BUTTON_HOLD, MappingInfo.builder(5).setSlotOrder(5).build());
+    mapping.put(InCallButtonIds.BUTTON_HOLD, MappingInfo.builder(6).setSlotOrder(5).build());
     mapping.put(
         InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY,
-        MappingInfo.builder(5)
+        MappingInfo.builder(6)
             .setSlotOrder(Integer.MAX_VALUE)
             .setMutuallyExclusiveButton(InCallButtonIds.BUTTON_SWAP)
             .build());
+    // UNISOC Feature Porting: Enable send sms in incallui feature.
+    mapping.put(InCallButtonIds.BUTTON_SEND_MESSAGE, MappingInfo.builder(7).build());
+    // UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case.
+    mapping.put(InCallButtonIds.BUTTON_HANGUP_ALL, MappingInfo.builder(8).build());
+    /* @} */
+    // UNISOC Feature Porting: Explicit Call Transfer
+    mapping.put(InCallButtonIds.BUTTON_ECT, MappingInfo.builder(9).build());
 
     return new ButtonChooser(new MappedButtonConfig(mapping));
   }
 
-  private static ButtonChooser newGsmButtonChooser() {
-    Map<Integer, MappingInfo> mapping = createCommonMapping();
+  private static ButtonChooser newGsmButtonChooser(Context context) {
+    Map<Integer, MappingInfo> mapping = createCommonMapping(context);
+     /* UNISOC Feature Porting: Add for call recorder feature. @{ */
+    // UNISOC: add for bug 1152190
     mapping.put(
-        InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY, MappingInfo.builder(4).setSlotOrder(0).build());
+        InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY, MappingInfo.builder(6).setSlotOrder(0).build());
     mapping.put(
-        InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, MappingInfo.builder(4).setSlotOrder(10).build());
+        InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, MappingInfo.builder(5).setSlotOrder(10).build());
 
     /*
      * Unlike the other configurations, MANAGE_VOICE_CONFERENCE shares a spot with HOLD for GSM.
@@ -104,22 +127,40 @@ class ButtonChooserFactory {
      * doesn't make sense to show both SWITCH_TO_SECONDARY and HOLD when they do the same thing, so
      * we show MANAGE_VOICE_CONFERENCE instead. Previously MANAGE_VOICE_CONFERENCE would not show.
      */
+    // UNISOC: add for bug 1152190
     mapping.put(
         InCallButtonIds.BUTTON_MANAGE_VOICE_CONFERENCE,
         MappingInfo.builder(5).setSlotOrder(0).build());
-    mapping.put(InCallButtonIds.BUTTON_HOLD, MappingInfo.builder(5).setSlotOrder(5).build());
+    mapping.put(InCallButtonIds.BUTTON_HOLD, MappingInfo.builder(6).setSlotOrder(5).build());
+    // UNISOC Feature Porting: Enable send sms in incallui feature.
+    mapping.put(InCallButtonIds.BUTTON_SEND_MESSAGE, MappingInfo.builder(7).build());
+    // UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case.
+    mapping.put(InCallButtonIds.BUTTON_HANGUP_ALL, MappingInfo.builder(8).build());
+    /* @} */
+    // UNISOC Feature Porting: Explicit Call Transfer.
+    mapping.put(InCallButtonIds.BUTTON_ECT, MappingInfo.builder(9).build());
 
     return new ButtonChooser(new MappedButtonConfig(mapping));
   }
 
-  private static Map<Integer, MappingInfo> createCommonMapping() {
+  private static Map<Integer, MappingInfo> createCommonMapping(Context context) {
     Map<Integer, MappingInfo> mapping = new ArrayMap<>();
-    mapping.put(InCallButtonIds.BUTTON_MUTE, MappingInfo.builder(0).build());
-    mapping.put(InCallButtonIds.BUTTON_DIALPAD, MappingInfo.builder(1).build());
-    mapping.put(InCallButtonIds.BUTTON_AUDIO, MappingInfo.builder(2).build());
-    mapping.put(InCallButtonIds.BUTTON_MERGE, MappingInfo.builder(3).setSlotOrder(5).build());
-    mapping.put(InCallButtonIds.BUTTON_ADD_CALL, MappingInfo.builder(3).build());
-    mapping.put(InCallButtonIds.BUTTON_SWAP_SIM, MappingInfo.builder(4).build());
+     /* UNISOC Feature Porting: Add for call recorder feature. @{ */
+    mapping.put(InCallButtonIds.BUTTON_RECORD, MappingInfo.builder(0).build());
+    // UNISOC: InCallUI Layout Refactor
+    // UNISOC Feature Porting: Hide recorder feature for telstra case.
+    if (InCallUiUtils.isRecorderEnabled(context)) {
+      mapping.put(InCallButtonIds.BUTTON_DIALPAD, MappingInfo.builder(1).build());
+      mapping.put(InCallButtonIds.BUTTON_MUTE, MappingInfo.builder(2).build());
+    } else {
+      mapping.put(InCallButtonIds.BUTTON_MUTE, MappingInfo.builder(1).build());
+      mapping.put(InCallButtonIds.BUTTON_DIALPAD, MappingInfo.builder(2).build());
+    }
+    mapping.put(InCallButtonIds.BUTTON_AUDIO, MappingInfo.builder(3).build());
+    mapping.put(InCallButtonIds.BUTTON_MERGE, MappingInfo.builder(4).setSlotOrder(5).build());
+    mapping.put(InCallButtonIds.BUTTON_ADD_CALL, MappingInfo.builder(4).build());
+    mapping.put(InCallButtonIds.BUTTON_SWAP_SIM, MappingInfo.builder(5).build());
+    /* @} */
     return mapping;
   }
 }

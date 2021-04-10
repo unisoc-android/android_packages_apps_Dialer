@@ -58,6 +58,16 @@ public class InCallButtonIdsExtension {
       return "SWAP_SIM";
     } else if (id == InCallButtonIds.BUTTON_UPGRADE_TO_RTT) {
       return "UPGRADE_TO_RTT";
+    } else if (id == InCallButtonIds.BUTTON_RECORD) {
+      return "RECORD"; // UNISOC Feature Porting: Add for call recorder feature.
+    } else if (id == InCallButtonIds.BUTTON_SEND_MESSAGE) {
+      return "SEND_MESSAGE"; // UNISOC Feature Porting:: Add for send message feature.
+    } else if (id == InCallButtonIds.BUTTON_HANGUP_ALL) {
+      return "HANGUP_ALL"; // UNISOC Feature Porting: Add for hangup all feature.
+    } else if (id == InCallButtonIds.BUTTON_ECT) {
+      return "ECT"; // UNISOC Feature Porting: Add for Explicit Call Transfer.
+    } else if (id == InCallButtonIds.BUTTON_INVITE) {
+      return "INVITE"; // UNISOC Feature Porting: Add for call invite feature.
     } else {
       return "INVALID_BUTTON: " + id;
     }

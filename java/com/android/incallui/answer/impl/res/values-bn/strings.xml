@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">একটি অডিও কল হিসেবে উত্তর দিতে আইকন থেকে সোয়াইপ করুন</string>
   <string name="call_incoming_default_label_answer_and_release_second">উত্তর দিতে এবং চালু থাকা কল হোল্ড করতে উপরের দিকে সোয়াইপ করুন</string>
   <string name="call_incoming_default_label_answer_and_release_third">উত্তর দিতে এবং হোল্ডে থাকা কল কেটে দিতে উপরের দিকে সোয়াইপ করুন</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"চালু থাকা কল ধরা এবং শেষ করার জন্য উপরের দিকে সোয়াইপ করুন |"</string>
   <string name="call_incoming_swipe_to_answer_and_release">উত্তর দিতে এবং চলছে এমন কল কেটে দিতে আইকন থেকে সোয়াইপ করুন</string>
   <string name="call_incoming_message_custom">আপনার নিজের পছন্দ মত লিখুন…</string>
   <string name="call_incoming_respond_via_sms_custom_message">আপনার নিজের পছন্দ মত লিখুন…</string>

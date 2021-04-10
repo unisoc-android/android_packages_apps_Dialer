@@ -22,7 +22,9 @@ import android.text.TextUtils;
 import com.android.incallui.call.state.DialerCallState;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
-
+import com.android.incallui.sprd.plugin.voiceclearcode.VoiceClearCodeHelper;
+import android.telephony.PhoneNumberUtils;
+import com.android.incallui.sprd.plugin.CallerAddress.CallerAddressHelper;
 /**
  * Gets the content of the bottom row. For example:
  *
@@ -71,13 +73,20 @@ public class BottomRow {
 
   public static Info getInfo(Context context, PrimaryCallState state, PrimaryInfo primaryInfo) {
     CharSequence label;
-    boolean isTimerVisible = state.state() == DialerCallState.ACTIVE;
     boolean isForwardIconVisible = state.isForwardedNumber();
     boolean isWorkIconVisible = state.isWorkCall();
     boolean isHdIconVisible = state.isHdAudioCall() && !isForwardIconVisible;
     boolean isHdAttemptingIconVisible = state.isHdAttempting();
     boolean isSpamIconVisible = false;
     boolean shouldPopulateAccessibilityEvent = true;
+    /* UNISOC FEATURE: FL1000060550 Continue call timer when primary call on hold. */
+    boolean isTimerVisible;
+    if (context.getResources().getBoolean(R.bool.config_is_show_calltimer_when_call_onhold)) {
+      isTimerVisible = state.state() == DialerCallState.ACTIVE || state.state() == DialerCallState.ONHOLD;
+    } else {
+      isTimerVisible = state.state() == DialerCallState.ACTIVE;
+    }
+
 
     if (isIncoming(state) && primaryInfo.isSpam()) {
       label = context.getString(R.string.contact_grid_incoming_suspected_spam);
@@ -93,10 +102,22 @@ public class BottomRow {
       label = state.disconnectCause().getLabel();
       if (TextUtils.isEmpty(label)) {
         label = context.getString(R.string.incall_call_ended);
+      } else {
+        /* UNISOC Feature Porting: Voice Clear Code Feature. @{ */
+        VoiceClearCodeHelper callFailCauseHelper = VoiceClearCodeHelper.getInstance(context);
+        if (callFailCauseHelper.isVoiceClearCodeLabel(label.toString())) {
+          label = context.getString(R.string.incall_call_ended);
+        }
       }
     } else {
-      label = getLabelForPhoneNumber(primaryInfo);
-      shouldPopulateAccessibilityEvent = primaryInfo.nameIsNumber();
+      /* UNISOC Feature Porting: Display caller address for phone number feature. @{ */
+      if ((CallerAddressHelper.getsInstance(context).isSupportCallerAddress() && !PhoneNumberUtils.isEmergencyNumber(primaryInfo.number()))
+              || (PhoneNumberUtils.isEmergencyNumber(primaryInfo.number()) && !context.getResources().getBoolean(R.bool.config_is_show_emergency_number_feature))) {//UNISOC:add for bug1182867
+        label = "";
+      } else {
+        label = getLabelForPhoneNumber(primaryInfo, state);
+        shouldPopulateAccessibilityEvent = primaryInfo.nameIsNumber();
+      }
     }
 
     return new Info(
@@ -110,18 +131,20 @@ public class BottomRow {
         shouldPopulateAccessibilityEvent);
   }
 
-  private static CharSequence getLabelForPhoneNumber(PrimaryInfo primaryInfo) {
+  private static CharSequence getLabelForPhoneNumber(PrimaryInfo primaryInfo, PrimaryCallState state) {
     if (primaryInfo.location() != null) {
       return primaryInfo.location();
     }
-    if (!primaryInfo.nameIsNumber() && !TextUtils.isEmpty(primaryInfo.number())) {
+    //UNISOC:add for bug1120065
+    if (!primaryInfo.nameIsNumber() && !TextUtils.isEmpty(primaryInfo.number())
+            && (!state.isConference() || state.state() == DialerCallState.INCOMING) && state.state() != DialerCallState.IDLE) {
       if (primaryInfo.label() == null) {
         return primaryInfo.number();
       } else {
         return TextUtils.concat(primaryInfo.label(), " ", primaryInfo.number());
       }
     }
-    return null;
+    return ""; // UNISOC: modify for bug1239817
   }
 
   private static boolean isIncoming(PrimaryCallState state) {

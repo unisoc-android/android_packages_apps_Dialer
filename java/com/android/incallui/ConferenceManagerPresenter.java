@@ -16,6 +16,8 @@
 
 package com.android.incallui;
 
+import android.content.Context;
+
 import com.android.incallui.ConferenceManagerPresenter.ConferenceManagerUi;
 import com.android.incallui.InCallPresenter.InCallDetailsListener;
 import com.android.incallui.InCallPresenter.InCallState;
@@ -25,12 +27,19 @@ import com.android.incallui.baseui.Presenter;
 import com.android.incallui.baseui.Ui;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
+import com.android.incallui.call.state.DialerCallState;
+import com.android.incallui.sprd.InCallUiUtils;
+import com.android.incallui.sprd.plugin.conferenceState.ConferenceStateHelper;
+import com.google.common.base.Preconditions;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /** Logic for call buttons. */
 public class ConferenceManagerPresenter extends Presenter<ConferenceManagerUi>
     implements InCallStateListener, InCallDetailsListener, IncomingCallListener {
+
+  private Context context;
 
   @Override
   public void onUiReady(ConferenceManagerUi ui) {
@@ -56,6 +65,14 @@ public class ConferenceManagerPresenter extends Presenter<ConferenceManagerUi>
       if (newState == InCallState.INCALL) {
         final DialerCall call = callList.getActiveOrBackgroundCall();
         if (call != null && call.isConferenceCall()) {
+          /*UNISOC: add for feature FL1000060357 {@*/
+          if (!InCallUiUtils.shouldShowConferenceWithOneParticipant(context)
+                  && call.getChildCallIds() != null
+                  && call.getChildCallIds().size() < 2) {
+            InCallPresenter.getInstance().showConferenceCallManager(false);
+            return;
+          }
+          /*@}*/
           Log.v(
               this, "Number of existing calls is " + String.valueOf(call.getChildCallIds().size()));
           update(callList);
@@ -96,7 +113,9 @@ public class ConferenceManagerPresenter extends Presenter<ConferenceManagerUi>
     }
   }
 
-  public void init(CallList callList) {
+  public void init(Context context, CallList callList) {
+    this.context = Preconditions.checkNotNull(context);
+    this.context = context;
     update(callList);
   }
 
@@ -114,7 +133,18 @@ public class ConferenceManagerPresenter extends Presenter<ConferenceManagerUi>
 
     ArrayList<DialerCall> calls = new ArrayList<>(currentCall.getChildCallIds().size());
     for (String callerId : currentCall.getChildCallIds()) {
-      calls.add(callList.getCallById(callerId));
+          /**
+         * UNISOC: Modify for Feature: FL1000060352 conference member state @{
+         * calls.add(callList.getCallById(callerId));
+         */
+        if (ConferenceStateHelper.getInstance(context).isOnlyDislpayActiveOrHoldCall()) {
+            if (callList.getCallById(callerId).getRealState() == DialerCallState.ACTIVE
+                    || callList.getCallById(callerId).getRealState() == DialerCallState.ONHOLD) {
+                calls.add(callList.getCallById(callerId));
+            }
+        } else {
+            calls.add(callList.getCallById(callerId));
+        }
     }
 
     Log.d(this, "Number of calls is " + String.valueOf(calls.size()));

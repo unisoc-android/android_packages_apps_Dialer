@@ -15,7 +15,7 @@
   ~ limitations under the License
   -->
 <resources>
-  <dimen name="answer_avatar_size">100dp</dimen>
+  <dimen name="answer_avatar_size">88dp</dimen>
   <dimen name="answer_importance_margin_bottom">8dp</dimen>
   <bool name="answer_important_call_allowed">true</bool>
 </resources>

@@ -102,6 +102,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import android.content.Context;
+import android.telephony.SubscriptionInfo;
+import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManagerEx;
+import com.android.dialer.app.sprd.telcel.DialerTelcelHelper;
+import com.android.dialer.util.DialerUtils;
 
 /** Adapter class to fill in data for the Call Log. */
 public class CallLogAdapter extends GroupingListAdapter
@@ -167,6 +173,12 @@ public class CallLogAdapter extends GroupingListAdapter
   private final ConcurrentMap<String, ContactsProviderMatchInfo> contactsProviderMatchInfos =
       new ConcurrentHashMap<>();
 
+
+  /** UNISOC:bug1072699 new feature-display FDN contact name in calllog @{ */
+  private static final int INVALID_SUBSCRIPTION_ID = -1;
+  private TelephonyManager mTelephonyManager;
+  private boolean isSupportFDN;
+  /** @} */
   private final ActionMode.Callback actionModeCallback =
       new ActionMode.Callback() {
 
@@ -554,6 +566,27 @@ public class CallLogAdapter extends GroupingListAdapter
         new CallLogListItemHelper(phoneCallDetailsHelper, resources, this.callLogCache);
     callLogGroupBuilder = new CallLogGroupBuilder(activity.getApplicationContext(), this);
     this.filteredNumberAsyncQueryHandler = Assert.isNotNull(filteredNumberAsyncQueryHandler);
+
+    /** UNISOC:bug1072699 new feature-display FDN contact name in calllog @{ */
+    isSupportFDN = activity.getResources().getBoolean(R.bool.is_support_fdn);
+    if (isSupportFDN) {
+      mTelephonyManager = (TelephonyManager) activity.getSystemService(
+              Context.TELEPHONY_SERVICE);
+      int phoneCount = mTelephonyManager.getPhoneCount();
+      for (int i = 0; i < phoneCount; i++) {
+        SubscriptionInfo subscriptionInfo =
+                DialerUtils.getActiveSubscriptionInfo(activity, i, false);
+        if (subscriptionInfo != null) {
+          int subId = subscriptionInfo.getSubscriptionId();
+          if (TelephonyManagerEx.from(activity).getIccFdnEnabled(subId)) {
+            DialerTelcelHelper.getInstance().queryFdnList(
+                    subId, activity);
+          }
+        }
+      }
+    }
+    /** @} */
+
 
     blockReportSpamListener =
         new BlockReportSpamListener(
@@ -1088,6 +1121,31 @@ public class CallLogAdapter extends GroupingListAdapter
       details.objectId = info.objectId;
       details.contactUserType = info.userType;
     }
+    /** UNISOC:bug1072699 new feature-display FDN contact name in calllog @{ */
+    if (isSupportFDN) {
+      if (mTelephonyManager == null) {
+        mTelephonyManager = (TelephonyManager) activity.getSystemService(
+                Context.TELEPHONY_SERVICE);
+      }
+      int phoneCount = mTelephonyManager.getPhoneCount();
+      int subId = INVALID_SUBSCRIPTION_ID;
+      if (accountHandle != null && accountHandle.getId() != null) {
+        for (int i = 0; i < phoneCount; i++) {
+          SubscriptionInfo subscriptionInfo =
+                  DialerUtils.getActiveSubscriptionInfo(activity, i, false);
+          if (subscriptionInfo != null) {
+            subId = subscriptionInfo.getSubscriptionId();
+            if (TelephonyManagerEx.from(activity).getIccFdnEnabled(subId)) {
+              /**UNISOC:modify the bug for 962160 & 1153184 @{*/
+              details.namePrimary = DialerTelcelHelper.getInstance().queryFdnCache(
+                      activity, details.number, subId, details.namePrimary);
+              /**@}*/
+            }
+          }
+        }
+      }
+    }
+    /** @} */
     LogUtil.d(
         "CallLogAdapter.loadData",
         "position:%d, update geo info: %s, cequint caller id geo: %s, photo uri: %s <- %s",

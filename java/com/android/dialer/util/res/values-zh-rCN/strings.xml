@@ -7,4 +7,13 @@
   <string name="outgoing_wps_warning">拨打 WPS 电话会中断现有通话。</string>
   <string name="dialog_continue">继续</string>
   <string name="camera_privacy_text">已启用相机使用权限</string>
+  <!-- UNISOC AndroidQ Feature Porting: bug1072659 Add feature of low battery for Reliance -->
+  <string name="low_battery_warning_title">"低电量提醒"</string>
+  <string name="low_battery_warning_message">"您的电量低于15%，继续视频通话或是切换到语音通话?"</string>
+  <string name="low_battery_continue_video_call">"继续"</string>
+  <string name="low_battery_convert_to_voice_call">"降为语音"</string>
+  <!-- UNISOC: bug1110945 DUT shows abnormal behaviour with calllog items in mentioned scenario. -->
+  <string name="call_cannot_be_sent">"号码未送出"</string>
+  <!-- UNISOC: Modify for bug1131060 -->
+  <string name="activity_not_security">"无此应用的访问权限。"</string>
 </resources>

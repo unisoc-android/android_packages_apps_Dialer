@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ශ්‍රව්‍ය ඇමතුමක් ලෙස පිළිතුරු දීමට නිරූපකයේ සිට ස්වයිප් කරන්න</string>
   <string name="call_incoming_default_label_answer_and_release_second">කෙරෙමින් පවතින ඇමතුමට පිළිතුරු දීමට සහ රඳවා තබා ගැනීමට ඉහළට ස්වයිප් කරන්න</string>
   <string name="call_incoming_default_label_answer_and_release_third">රඳවා තබා ගෙන සිටින ඇමතුමට පිළිතුරු දීමට සහ අවසන් කිරීමට ඉහළට ස්වයිප් කරන්න</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"පිළිතුරු දීමට සහ සිදු කෙරෙන ඇමතුමක් අවසන් කිරීමට ඉහළට ස්වයිප් කරන්න"</string>
   <string name="call_incoming_swipe_to_answer_and_release">යන ඇමතුමට පිළිතුරු දී අවසන් කිරීමට නිරූපකයෙන් ස්වයිප් කරන්න</string>
   <string name="call_incoming_message_custom">ඔබෙම එක ලියන්න…</string>
   <string name="call_incoming_respond_via_sms_custom_message">ඔබෙම එක ලියන්න…</string>

@@ -31,6 +31,11 @@
       style="@style/BottomRowIcon"
       android:visibility="gone"/>
   <ImageView
+      android:id="@+id/contactgrid_vowifiIcon"
+      style="@style/BottomRowIcon"
+      android:visibility="gone"
+      android:src="@drawable/ic_vo"/>
+  <ImageView
       android:id="@id/contactgrid_forwardIcon"
       style="@style/BottomRowIcon"
       android:src="@drawable/quantum_ic_forward_vd_theme_24"/>
@@ -69,6 +74,17 @@
         android:layout_gravity="center_horizontal"
         android:singleLine="true"
         android:textAppearance="@style/Dialer.Incall.TextAppearance"
+        android:textSize="15sp"
         tools:gravity="center"/>
   </ViewAnimator>
+  <TextView
+      android:id="@+id/conference_call"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginLeft="10dp"
+      android:visibility="gone"
+      android:singleLine="true"
+      android:textAppearance="@style/Dialer.Incall.TextAppearance"
+      android:text="@string/conference_call_name"
+      tools:gravity="center"/>
 </LinearLayout>

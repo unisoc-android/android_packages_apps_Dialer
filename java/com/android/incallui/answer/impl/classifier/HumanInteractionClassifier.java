@@ -129,7 +129,7 @@ class HumanInteractionClassifier extends Classifier {
 
   boolean isFalseTouch() {
     float evaluation = historyEvaluator.getEvaluation();
-    return evaluation >= 5.0f;
+    return evaluation >= 20.0f;
   }
 
   public boolean isEnabled() {

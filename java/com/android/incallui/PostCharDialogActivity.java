@@ -46,7 +46,7 @@ public class PostCharDialogActivity extends AppCompatActivity implements CallLis
       return;
     }
 
-    PostCharDialogFragment fragment = new PostCharDialogFragment(callId, postDialString);
+    PostCharDialogFragment fragment = new PostCharDialogFragment(callId, postDialString, true);
     fragment.show(getSupportFragmentManager(), TAG_INTERNATIONAL_CALL_ON_WIFI);
 
     CallList.getInstance().addListener(this);

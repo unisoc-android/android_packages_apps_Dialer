@@ -16,18 +16,24 @@
 
 package com.android.incallui;
 
+import android.app.LowmemoryUtils;
 import android.app.ActivityManager;
 import android.app.ActivityManager.AppTask;
 import android.app.ActivityManager.TaskDescription;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.KeyguardManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.GradientDrawable.Orientation;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.os.Environment;
 import android.os.Trace;
 import android.support.annotation.ColorInt;
 import android.support.annotation.FloatRange;
@@ -45,6 +51,8 @@ import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -71,8 +79,10 @@ import com.android.dialer.preferredsim.PreferredAccountRecorder;
 import com.android.dialer.preferredsim.PreferredAccountWorker;
 import com.android.dialer.preferredsim.PreferredAccountWorker.Result;
 import com.android.dialer.preferredsim.PreferredSimComponent;
+import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.util.ViewUtil;
 import com.android.incallui.answer.bindings.AnswerBindings;
+import com.android.incallui.answer.impl.AnswerFragment;
 import com.android.incallui.answer.protocol.AnswerScreen;
 import com.android.incallui.answer.protocol.AnswerScreenDelegate;
 import com.android.incallui.answer.protocol.AnswerScreenDelegateFactory;
@@ -96,6 +106,7 @@ import com.android.incallui.rtt.protocol.RttCallScreen;
 import com.android.incallui.rtt.protocol.RttCallScreenDelegate;
 import com.android.incallui.rtt.protocol.RttCallScreenDelegateFactory;
 import com.android.incallui.speakeasy.SpeakEasyCallManager;
+import com.android.incallui.sprd.PhoneRecorderHelper;
 import com.android.incallui.telecomeventui.InternationalCallOnWifiDialogFragment;
 import com.android.incallui.video.bindings.VideoBindings;
 import com.android.incallui.video.protocol.VideoCallScreen;
@@ -107,6 +118,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;  //write external-storage
+import static android.Manifest.permission.READ_EXTERNAL_STORAGE;   //eard external-storage
+import static android.Manifest.permission.RECORD_AUDIO;           
+import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.Manifest.permission.READ_CONTACTS;
+import static android.Manifest.permission.UPDATE_DEVICE_STATS;
 
 /** Version of {@link InCallActivity} that shows the new UI */
 public class InCallActivity extends TransactionSafeFragmentActivity
@@ -129,6 +147,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   private static final int DIALPAD_REQUEST_SHOW = 2;
   private static final int DIALPAD_REQUEST_HIDE = 3;
 
+  // UNISOC: add rejectmessage action in the notification.
+  private static final String SHOW_REJECT_MESSAGE_DIALOG = "InCallActivity.reject_message_dialog";
   private static Optional<Integer> audioRouteForTesting = Optional.empty();
 
   private SelectPhoneAccountListener selectPhoneAccountListener;
@@ -156,11 +176,23 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   private boolean isVisible;
   private boolean needDismissPendingDialogs;
   private boolean touchDownWhenPseudoScreenOff;
+  // UNISOC: Bug787856 add rejectmessage action in the notification.
+  private boolean showRejectMessageDialog;
   private int[] backgroundDrawableColors;
   @DialpadRequestType private int showDialpadRequest = DIALPAD_REQUEST_NONE;
   private SpeakEasyCallManager speakEasyCallManager;
   private DialogFragment rttRequestDialogFragment;
 
+  /* UNISOC Feature Porting: Add for call recorder feature. @{ */
+  private PhoneRecorderHelper mRecorderHelper;
+  private static final int MICROPHONE_AND_STORAGE_PERMISSION_REQUEST_CODE = 1;
+  private PhoneRecorderHelper.State mRecorderState;
+  private String[] mPermissions = {WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE,
+          RECORD_AUDIO, READ_PHONE_STATE, READ_CONTACTS};//UNISOC:add for bug1201349
+  /* @} */
+  private PowerManager mPowerManager;
+  private PowerManager.WakeLock mCpuWakeLock;
+  private Toast mToast;//add for Bug 1186301
   public static Intent getIntent(
       Context context, boolean showDialpad, boolean newOutgoingCall, boolean isForFullScreen) {
     Intent intent = new Intent(Intent.ACTION_MAIN, null);
@@ -173,6 +205,17 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     intent.putExtra(IntentExtraNames.FOR_FULL_SCREEN, isForFullScreen);
     return intent;
   }
+  /* UNISOC: add rejectmessage action in the notification. @{ */
+  public static Intent getShowRejectSMStIntent(
+          Context context, boolean showRejectMessage) {
+    Intent intent = new Intent(Intent.ACTION_MAIN, null);
+    intent.setFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+    intent.setClass(context, InCallActivity.class);
+    intent.putExtra(SHOW_REJECT_MESSAGE_DIALOG, showRejectMessage);
+    return intent;
+  }
+  /* @} */
 
   @Override
   protected void onResumeFragments() {
@@ -199,6 +242,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
       didShowVideoCallScreen = bundle.getBoolean(KeysForSavedInstance.DID_SHOW_VIDEO_CALL_SCREEN);
       didShowRttCallScreen = bundle.getBoolean(KeysForSavedInstance.DID_SHOW_RTT_CALL_SCREEN);
       didShowSpeakEasyScreen = bundle.getBoolean(KeysForSavedInstance.DID_SHOW_SPEAK_EASY_SCREEN);
+      // UNISOC: add for bug1141334
+      allowOrientationChange = bundle.getBoolean(KeysForSavedInstance.ALLOW_ORIENTATION_CHANGE);
     }
 
     setWindowFlags();
@@ -264,14 +309,19 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     MetricsComponent.get(this)
         .metrics()
         .stopTimer(Metrics.ON_CALL_ADDED_TO_ON_INCALL_UI_SHOWN_OUTGOING);
+
+     /* UNISOC Feature Porting: Add for call recorder feature. @{ */
+    mRecorderHelper = PhoneRecorderHelper.getInstance(getApplicationContext());
+    mRecorderHelper.setOnStateChangedListener(mRecorderStateChangedListener);
+    /* @} */
+    // UNISOC: add for bug1147630
+    mPowerManager = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
   }
 
   private void setWindowFlags() {
     // Allow the activity to be shown when the screen is locked and filter out touch events that are
     // "too fat".
-    int flags =
-        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-            | WindowManager.LayoutParams.FLAG_IGNORE_CHEEK_PRESSES;
+    int flags = WindowManager.LayoutParams.FLAG_IGNORE_CHEEK_PRESSES;
 
     // When the audio stream is not via Bluetooth, turn on the screen once the activity is shown.
     // When the audio stream is via Bluetooth, turn on the screen only for an incoming call.
@@ -308,6 +358,11 @@ public class InCallActivity extends TransactionSafeFragmentActivity
       boolean showDialpad = intent.getBooleanExtra(IntentExtraNames.SHOW_DIALPAD, false);
       relaunchedFromDialer(showDialpad);
     }
+    /* UNISOC: add rejectmessage action in the notification. @{ */
+    if (intent.hasExtra(SHOW_REJECT_MESSAGE_DIALOG)) {
+      showRejectMessageDialog = intent.getBooleanExtra(SHOW_REJECT_MESSAGE_DIALOG, false);
+    }
+    /* @} */
 
     DialerCall outgoingCall = CallList.getInstance().getOutgoingCall();
     if (outgoingCall == null) {
@@ -428,6 +483,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     out.putBoolean(KeysForSavedInstance.DID_SHOW_VIDEO_CALL_SCREEN, didShowVideoCallScreen);
     out.putBoolean(KeysForSavedInstance.DID_SHOW_RTT_CALL_SCREEN, didShowRttCallScreen);
     out.putBoolean(KeysForSavedInstance.DID_SHOW_SPEAK_EASY_SCREEN, didShowSpeakEasyScreen);
+    // UNISOC: add for bug1141334
+    out.putBoolean(KeysForSavedInstance.ALLOW_ORIENTATION_CHANGE, allowOrientationChange);
 
     super.onSaveInstanceState(out);
     isVisible = false;
@@ -449,12 +506,21 @@ public class InCallActivity extends TransactionSafeFragmentActivity
 
     if (!isRecreating) {
       InCallPresenter.getInstance().onUiShowing(true);
+      // UNISOC: add for bug1169147 1164803
+      InCallPresenter.getInstance().updateNotification();
     }
 
     if (isInMultiWindowMode() && !getResources().getBoolean(R.bool.incall_dialpad_allowed)) {
       // Hide the dialpad because there may not be enough room
       showDialpadFragment(false, false);
     }
+
+    /* add for bug1166982(bug904816) @{ */
+    AnswerScreen answerScreen = getAnswerScreen();
+    if(answerScreen != null && (answerScreen.isVideoCall() || answerScreen.isVideoUpgradeRequest())){
+      answerScreen.onVideoCallIsFront();
+    }
+    /* @} */
 
     Trace.endSection();
   }
@@ -463,6 +529,12 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   protected void onResume() {
     Trace.beginSection("InCallActivity.onResume");
     super.onResume();
+
+    // UNISOC: add for bug1175335
+    if (!getCallCardFragmentVisible() && CallList.getInstance().getWaitingForAccountCall() == null) {
+        LogUtil.i("InCallActivity.onResume", "showMainInCallFragment");
+        showMainInCallFragment();
+    }
 
     if (!InCallPresenter.getInstance().isReadyForTearDown()) {
       updateTaskDescription();
@@ -491,6 +563,17 @@ public class InCallActivity extends TransactionSafeFragmentActivity
       }
       showDialpadRequest = DIALPAD_REQUEST_NONE;
     }
+    /* UNISOC: add rejectmessage action in the notification. @{ */
+    if (showRejectMessageDialog) {
+      if (getAnswerScreen() != null && getAnswerScreen().getAnswerScreenFragment() != null) {
+        AnswerFragment answerFragment = (AnswerFragment)getAnswerScreen().getAnswerScreenFragment();
+        answerFragment.showMessageMenu();
+      } else {
+        Log.v(this, "onResume : has not click on the statusbar reject message action");
+      }
+      showRejectMessageDialog = false;
+    }
+    /* @} */
 
     CallList.getInstance()
         .onInCallUiShown(getIntent().getBooleanExtra(IntentExtraNames.FOR_FULL_SCREEN, false));
@@ -506,6 +589,10 @@ public class InCallActivity extends TransactionSafeFragmentActivity
                 .metrics()
                 .recordMemory(Metrics.INCALL_ACTIVITY_ON_RESUME_MEMORY_EVENT_NAME),
         1000);
+
+    /* UNISOC Feature Porting: Add for call recorder feature. @{ */
+    mRecorderHelper.notifyCurrentState();
+    /* @} */
   }
 
   @Override
@@ -526,6 +613,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   protected void onStop() {
     Trace.beginSection("InCallActivity.onStop");
     isVisible = false;
+    InCallPresenter.getInstance().updateIsChangingConfigurations();//add for bug1202631
     super.onStop();
 
     // Disconnects the call waiting for a phone account when the activity is hidden (e.g., after the
@@ -542,10 +630,12 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     }
 
     enableInCallOrientationEventListener(false);
-    InCallPresenter.getInstance().updateIsChangingConfigurations();
+
     InCallPresenter.getInstance().onActivityStopped();
     if (!isRecreating) {
       InCallPresenter.getInstance().onUiShowing(false);
+      // UNISOC: add for bug1169147 1164803
+      InCallPresenter.getInstance().updateNotification();
     }
     if (errorDialog != null) {
       errorDialog.dismiss();
@@ -554,6 +644,13 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     if (isFinishing()) {
       InCallPresenter.getInstance().unsetActivity(this);
     }
+
+    /* SPRD: bug1166982(bug904816) @{ */
+    AnswerScreen answerScreen = getAnswerScreen();
+    if(answerScreen != null && (answerScreen.isVideoCall() || answerScreen.isVideoUpgradeRequest())){
+      answerScreen.onVideoCallIsBack();
+    }
+    /* @} */
 
     Trace.endSection();
   }
@@ -565,6 +662,10 @@ public class InCallActivity extends TransactionSafeFragmentActivity
 
     InCallPresenter.getInstance().unsetActivity(this);
     InCallPresenter.getInstance().updateIsChangingConfigurations();
+
+    /* UNISOC Feature Porting: Add for call record feature. @{ */
+    InCallPresenter.getInstance().stopRecorderForDisconnect();
+    /* @} */
     Trace.endSection();
   }
 
@@ -620,10 +721,22 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     // when the activity is first created. Therefore, to ensure the screen is turned on
     // for the call waiting case, we recreate() the current activity. There should be no jank from
     // this since the screen is already off and will remain so until our new activity is up.
-    if (!isVisible) {
+    if (!isVisible && !mPowerManager.isScreenOn()) {
       onNewIntent(intent, true /* isRecreating */);
       LogUtil.i("InCallActivity.onNewIntent", "Restarting InCallActivity to force screen on.");
-      recreate();
+   //   recreate();
+      //UNISOC:modify for bug1125881
+      mCpuWakeLock = mPowerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK
+                | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE, "InCallActivity");
+      if (mCpuWakeLock != null && !mCpuWakeLock.isHeld()) {
+          LogUtil.i("InCallActivity.onNewIntent", "Acquiring full wake lock to force screen on.");
+          mCpuWakeLock.acquire();
+      }
+      //  Releasing full wake lock after
+      if (mCpuWakeLock != null && mCpuWakeLock.isHeld()) {
+        mCpuWakeLock.release();
+        LogUtil.i("InCallActivity.onNewIntent", "Releasing full wake lock.");
+      }
     } else {
       onNewIntent(intent, false /* isRecreating */);
     }
@@ -828,7 +941,9 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     }
     // RTT call screen doesn't show end call button inside dialpad, thus the space reserved for end
     // call button should be removed.
-    dialpadFragment.setShouldShowEndCallSpace(didShowInCallScreen);
+    // UNISOC: add for bug1213885, the space reserved for end call button should be shown within
+    // video call
+    dialpadFragment.setShouldShowEndCallSpace(didShowInCallScreen || didShowVideoCallScreen);
     transaction.commitAllowingStateLoss();
     dialpadFragmentManager.executePendingTransactions();
 
@@ -876,7 +991,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     updateTaskDescription();
 
     if (newForegroundCall == null || !didShowAnswerScreen) {
-      LogUtil.v("InCallActivity.onForegroundCallChanged", "resetting background color");
+      LogUtil.i("InCallActivity.onForegroundCallChanged", "resetting background color");
       updateWindowBackgroundColor(0 /* progress */);
     }
   }
@@ -969,7 +1084,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   }
 
   public void showDialogForPostCharWait(String callId, String chars) {
-    PostCharDialogFragment fragment = new PostCharDialogFragment(callId, chars);
+    PostCharDialogFragment fragment = new PostCharDialogFragment(callId, chars, false);
     fragment.show(getSupportFragmentManager(), Tags.POST_CHAR_DIALOG_FRAGMENT);
   }
 
@@ -979,7 +1094,9 @@ public class InCallActivity extends TransactionSafeFragmentActivity
         "disconnect cause: %s",
         disconnectMessage);
 
-    if (disconnectMessage.dialog == null || isFinishing()) {
+    if (disconnectMessage.dialog == null || isFinishing()
+            // UNISOC: add for bug 1175025
+            || disconnectMessage.call.hasShownDisconnectError()) {
       return;
     }
 
@@ -989,6 +1106,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     if (!isVisible()) {
       Toast.makeText(getApplicationContext(), disconnectMessage.toastMessage, Toast.LENGTH_LONG)
           .show();
+      // UNISOC: add for bug 1175025
+      disconnectMessage.call.setHasShownDisconnectError();
       return;
     }
 
@@ -1002,6 +1121,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
         });
     disconnectMessage.dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
     disconnectMessage.dialog.show();
+    // UNISOC: add for bug 1175025
+    disconnectMessage.call.setHasShownDisconnectError();
   }
 
   private void onDialogDismissed() {
@@ -1189,7 +1310,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     if (!allowOrientationChange) {
       setRequestedOrientation(InCallOrientationEventListener.ACTIVITY_PREFERENCE_DISALLOW_ROTATION);
     } else {
-      setRequestedOrientation(InCallOrientationEventListener.ACTIVITY_PREFERENCE_ALLOW_ROTATION);
+      //UNISOC:modify for bug900297
+      setRequestedOrientation(InCallOrientationEventListener.ACTIVITY_PREFERENCE_ALLOW_ROTATION_FULL);
     }
     enableInCallOrientationEventListener(allowOrientationChange);
   }
@@ -1210,6 +1332,10 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     // If the activity's onStart method hasn't been called yet then defer doing any work.
     if (!isVisible) {
       LogUtil.i("InCallActivity.showMainInCallFragment", "not visible yet/anymore");
+      DialerCall call = CallList.getInstance().getFirstCall();//add for bug1151348
+      if(call != null && call.isVideoCall() && call.getVideoTech() != null && call.getVideoTech().isPaused()) {
+        InCallPresenter.getInstance().updateNotification();
+      }
       Trace.endSection();
       return;
     }
@@ -1386,6 +1512,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     DialerCall call = CallList.getInstance().getIncomingCall();
     if (call != null && !call.isSpeakEasyCall()) {
       LogUtil.i("InCallActivity.getShouldShowAnswerUi", "found incoming call");
+      TelecomAdapter.getInstance().stopForegroundNotification();//UNISOC:add for bug1151089
       return new ShouldShowUiResult(true, call);
     }
 
@@ -1514,7 +1641,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
       LogUtil.i("InCallActivity.shouldAllowAnswerAndRelease", "PHONE_TYPE_CDMA not supported");
       return false;
     }
-    if (call.isVideoCall() || call.hasReceivedVideoUpgradeRequest()) {
+    if (/*call.isVideoCall() || */call.hasReceivedVideoUpgradeRequest()) { // UNISOC: modify for bug1168841
       LogUtil.i("InCallActivity.shouldAllowAnswerAndRelease", "video call");
       return false;
     }
@@ -1647,6 +1774,16 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     return (VideoCallScreen) getSupportFragmentManager().findFragmentByTag(Tags.VIDEO_CALL_SCREEN);
   }
 
+  //UNISOC:add for bug1143842,call record for video
+
+  private InCallScreen getCurrentInCallScreen(){
+    if(didShowVideoCallScreen){
+      return (InCallScreen) getSupportFragmentManager().findFragmentByTag(Tags.VIDEO_CALL_SCREEN);
+    }else {
+      return (InCallScreen) getSupportFragmentManager().findFragmentByTag(Tags.IN_CALL_SCREEN);
+    }
+  }
+
   private RttCallScreen getRttCallScreen() {
     return (RttCallScreen) getSupportFragmentManager().findFragmentByTag(Tags.RTT_CALL_SCREEN);
   }
@@ -1659,6 +1796,11 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     if (didShowRttCallScreen) {
       inCallScreen = getRttCallScreen();
     }
+    /* UNISOC: modify for bug1152075 @{ */
+    if (didShowVideoCallScreen) {
+      inCallScreen = (InCallScreen) getSupportFragmentManager().findFragmentByTag(Tags.VIDEO_CALL_SCREEN);
+    }
+    /* @} */
     return inCallScreen;
   }
 
@@ -1722,6 +1864,8 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     static final String DID_SHOW_VIDEO_CALL_SCREEN = "did_show_video_call_screen";
     static final String DID_SHOW_RTT_CALL_SCREEN = "did_show_rtt_call_screen";
     static final String DID_SHOW_SPEAK_EASY_SCREEN = "did_show_speak_easy_screen";
+    // UNISOC: add for bug1141334
+    static final String ALLOW_ORIENTATION_CHANGE = "allow_orientation_change";
   }
 
   /** Request codes for pending intents. */
@@ -1781,5 +1925,163 @@ public class InCallActivity extends TransactionSafeFragmentActivity
         call.disconnect();
       }
     }
+  }
+
+
+  /** UNISOC Feature Porting: Add for call recorder feature. @{ */
+  private PhoneRecorderHelper.OnStateChangedListener mRecorderStateChangedListener =
+          new PhoneRecorderHelper.OnStateChangedListener() {
+            public void onTimeChanged(long time) {
+              PhoneRecorderHelper.State state = getRecorderState();
+              InCallScreen inCallScreen = getCurrentInCallScreen();
+              if (inCallScreen != null) {
+                if (time == 0 || (state != null && !state.isActive())) {
+                  inCallScreen.setRecordTime(getString(R.string.call_recording_setting_title));
+                } else {
+                  inCallScreen.setRecord(true);
+                  inCallScreen.setRecordTime(DateUtils.formatElapsedTime(time / 1000));
+                }
+              }
+            }
+
+            public void onStateChanged(PhoneRecorderHelper.State state) {
+              setRecorderState(state);
+              if (!state.isActive()) {
+                InCallScreen inCallScreen = getCurrentInCallScreen();
+                if (inCallScreen != null) {
+                  inCallScreen.setRecordTime(getString(R.string.call_recording_setting_title));
+                }
+              }
+            }
+
+            @Override
+            public void onShowMessage(int type, String msg) {
+              String res = null;
+              boolean resetIcon = false;
+              switch (type) {
+                case PhoneRecorderHelper.TYPE_ERROR_SD_NOT_EXIST:
+                  res = getString(R.string.no_sd_card);
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_ERROR_SD_FULL:
+                  res = getString(R.string.storage_is_full);
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_ERROR_SD_ACCESS:
+                  res = getString(R.string.sdcard_access_error);
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_ERROR_IN_RECORD:
+                  res = getString(R.string.used_by_other_applications);
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_ERROR_INTERNAL:
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_MSG_PATH:
+                case PhoneRecorderHelper.TYPE_SAVE_FAIL:
+                  res = msg;
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_NO_AVAILABLE_STORAGE:
+                  res = getString(R.string.no_available_storage);
+                  resetIcon = true;
+                  break;
+                case PhoneRecorderHelper.TYPE_ERROR_FILE_INIT://add for bug1150923
+                  res = getString(R.string.record_failed_error);
+                  resetIcon = true;
+                  break;
+              }
+              if (resetIcon) {
+                InCallScreen inCallScreen = getCurrentInCallScreen();
+                if (inCallScreen != null) {
+                  inCallScreen.setRecord(false);
+                }
+              }
+
+              LogUtil.d("InCallActivity onShowMessage", " toast message: " + res);
+              if (!TextUtils.isEmpty(res)) {//add for bug1186301
+                if(mToast != null){
+                  mToast.cancel();
+                }
+                mToast = Toast.makeText(InCallActivity.this, res, Toast.LENGTH_LONG);
+                mToast.show();
+              }
+            }
+          };
+
+  // Modify permissions judgements for call recording
+  // There are many permissions needed for recording, we need make sure dialer have all of these
+  // permissions, if we grant part of these permissions,just request for the rest permissions.
+  public void recordClick() {
+    List<String> requestPermissionsList = new ArrayList<>();
+    for (int i = 0; i < mPermissions.length; i++) {
+      if (!PermissionsUtil.hasPermission(this, mPermissions[i])) {
+        requestPermissionsList.add(mPermissions[i]);
+      }
+    }
+    String[] requestPermissions = requestPermissionsList.toArray(
+            new String[requestPermissionsList.size()]);
+
+    if (requestPermissions.length == 0) {
+      InCallPresenter.getInstance().toggleRecorder();
+    } else {
+      requestPermissions(requestPermissions, MICROPHONE_AND_STORAGE_PERMISSION_REQUEST_CODE);
+    }
+  }
+
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    if (requestCode == MICROPHONE_AND_STORAGE_PERMISSION_REQUEST_CODE) {
+      // toggleRecorder since we were missing the permission before this.
+      boolean isPermissionGranted = false;
+      // Only if all requested permissions granted, can we toggleRecorder.
+      if (grantResults.length > 0) {
+        // grantResults's length greater than 0 means user has make a decision
+        isPermissionGranted = true;
+      }
+      for (int i = 0; i < grantResults.length; i++) {
+        isPermissionGranted = isPermissionGranted && grantResults[i] == PackageManager.PERMISSION_GRANTED;
+      }
+      if (isPermissionGranted) {
+        InCallPresenter.getInstance().toggleRecorder();
+      } else {
+        InCallScreen inCallScreen = getCurrentInCallScreen();
+        if (inCallScreen != null) {
+          inCallScreen.setRecord(false);
+        }
+        // UNISOC: add for bug1173436
+        if (grantResults.length > 0) {
+          Toast.makeText(this, R.string.permission_no_record, Toast.LENGTH_LONG).show();
+        }
+      }
+    }
+  }
+
+  public void setRecorderState(PhoneRecorderHelper.State state) {
+    mRecorderState = state;
+  }
+
+  public PhoneRecorderHelper.State getRecorderState() {
+    return mRecorderState;
+  }
+  /* @} */
+  /** kill-stop mechanism BEGIN */
+  @Override
+  protected void onPostResume() {
+    super.onPostResume();
+    LowmemoryUtils.killStopFrontApp(LowmemoryUtils.CANCEL_KILL_STOP_TIMEOUT);
+    LogUtil.i("InCallActivity.onPostResume","killStopFrontApp : CANCEL_KILL_STOP_TIMEOUT");
+  }
+  /** @} */
+  @Override
+  public void onConfigurationChanged(Configuration newConfig) {
+    int currentNightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
+    LogUtil.i("InCallActivity.onConfigurationChanged","currentNightMode:" + currentNightMode);
+    DialerCall call = CallList.getInstance().getFirstCall();
+    InCallPresenter.getInstance().getThemeColorManager().onForegroundCallChanged(this, call);
+    updateWindowBackgroundColor(0);
+    InCallPresenter.getInstance().updateNotification();
+    super.onConfigurationChanged(newConfig);
   }
 }

@@ -44,6 +44,13 @@ import com.android.dialer.preferredsim.suggestion.SuggestionProvider;
 import com.android.dialer.preferredsim.suggestion.SuggestionProvider.Suggestion;
 import java.util.List;
 import javax.inject.Inject;
+import android.provider.Settings;
+import android.widget.Toast;
+import android.telephony.PhoneNumberUtils;
+import com.android.dialer.util.DialerUtils;
+import com.android.dialer.telecom.TelecomUtil;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 
 /** PreCallAction to select which phone account to call with. Ignored if there's only one account */
 @SuppressWarnings("MissingPermission")
@@ -70,10 +77,24 @@ public class CallingAccountSelector implements PreCallAction {
       return false;
     }
 
-    if (builder.getPhoneAccountHandle() != null) {
+    /* UNISOC: add for 1091048 & 1110234 @{ */
+    String phoneNumber = builder.getUri().getSchemeSpecificPart();
+    final boolean isAirplaneModeOn = Settings.System.getInt(context.getContentResolver(),
+            Settings.System.AIRPLANE_MODE_ON, 0) != 0;
+    if (PhoneNumberUtils.isEmergencyNumber(phoneNumber)) {
       return false;
     }
-    if (PhoneNumberUtils.isEmergencyNumber(builder.getUri().getSchemeSpecificPart())) {
+    if (isAirplaneModeOn) {
+      return false;
+    }
+    if (builder.isVideoCall() && DialerUtils.getRegisteredImsSlotForDualLteModem() != DialerUtils.SLOT_ID_ONE_TWO) {
+      return false;
+    }
+    if (TelecomUtil.isInManagedCall(context)){
+      return false;
+    }
+    /* @} */
+    if (builder.getPhoneAccountHandle() != null) {
       return false;
     }
 
@@ -98,14 +119,17 @@ public class CallingAccountSelector implements PreCallAction {
     }
     switch (builder.getUri().getScheme()) {
       case PhoneAccount.SCHEME_VOICEMAIL:
-        showDialog(
-            coordinator,
-            coordinator.startPendingAction(),
-            preferredAccountWorker.getVoicemailDialogOptions(),
-            null,
-            null,
-            null);
-        Logger.get(coordinator.getActivity()).logImpression(Type.DUAL_SIM_SELECTION_VOICEMAIL);
+        /**UNISOC:modify for the bug 1131872 @{*/
+        Activity activity = coordinator.getActivity();
+        PhoneAccountHandle defaultPhoneAccount = activity.getSystemService(TelecomManager.class)
+                        .getDefaultOutgoingPhoneAccount(builder.getUri().getScheme());
+        if (defaultPhoneAccount != null) {
+          builder.setPhoneAccountHandle(defaultPhoneAccount);
+        } else {
+          showDialog(coordinator,coordinator.startPendingAction(),preferredAccountWorker.getVoicemailDialogOptions(),null,null,null);
+          Logger.get(coordinator.getActivity()).logImpression(Type.DUAL_SIM_SELECTION_VOICEMAIL);
+        }
+        /**@}*/
         break;
       case PhoneAccount.SCHEME_TEL:
         processPreferredAccount(coordinator);
@@ -122,6 +146,7 @@ public class CallingAccountSelector implements PreCallAction {
   /** Initiates a background worker to find if there's any preferred account. */
   @MainThread
   private void processPreferredAccount(PreCallCoordinator coordinator) {
+    LogUtil.d("CallingAccountSelector", "processPreferredAccount");
     Assert.isMainThread();
     CallIntentBuilder builder = coordinator.getBuilder();
     Activity activity = coordinator.getActivity();
@@ -133,6 +158,8 @@ public class CallingAccountSelector implements PreCallAction {
             phoneNumber,
             activity.getSystemService(TelecomManager.class).getCallCapablePhoneAccounts()),
         result -> {
+          LogUtil.d("CallingAccountSelector", "isDiscarding = " + isDiscarding);
+          LogUtil.d("CallingAccountSelector", "isPresent = " + result.getSelectedPhoneAccountHandle().isPresent());
           if (isDiscarding) {
             // pendingAction is dropped by the coordinator before onDiscard is triggered.
             return;

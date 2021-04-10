@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">مرّر بشكل سريع من الرمز للرد بمكالمة صوتية</string>
   <string name="call_incoming_default_label_answer_and_release_second">التمرير السريع لأعلى للرد وتعليق المكالمة الجارية</string>
   <string name="call_incoming_default_label_answer_and_release_third">التمرير السريع لأعلى للرد وإنهاء المكالمة قيد التعليق</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"اسحب إلى الأعلى للرد على مكالمة جارية وإنهائها"</string>
   <string name="call_incoming_swipe_to_answer_and_release">التمرير السريع على الرمز للرد وإنهاء مكالمة جارية</string>
   <string name="call_incoming_message_custom">اكتب ردك…</string>
   <string name="call_incoming_respond_via_sms_custom_message">اكتب ردك…</string>

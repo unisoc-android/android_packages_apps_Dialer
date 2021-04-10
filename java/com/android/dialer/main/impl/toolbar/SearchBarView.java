@@ -26,6 +26,7 @@ import android.support.annotation.StringRes;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.InputFilter;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.EditText;
@@ -41,7 +42,12 @@ import com.google.common.base.Optional;
 final class SearchBarView extends FrameLayout {
 
   private static final int ANIMATION_DURATION = 200;
-  private static final float EXPAND_MARGIN_FRACTION_START = 0.8f;
+  /**UNISOC: Bug1166488 Search box does not need to be enlarged @{*/
+  private static final float EXPAND_MARGIN_FRACTION_START = 1.0f;
+  /** @} */
+  /**UNISOC: Bug1084836 Add character limits in the search box @{*/
+  private static final int INPUT_MAX_LENGTH = 50;
+  /** @} */
 
   private final float margin;
   private final float animationEndHeight;
@@ -82,6 +88,10 @@ final class SearchBarView extends FrameLayout {
     findViewById(R.id.search_back_button).setOnClickListener(v -> onSearchBackButtonClicked());
     clearButton.setOnClickListener(v -> onSearchClearButtonClicked());
     searchBox.addTextChangedListener(new SearchBoxTextWatcher());
+    /**UNISOC: Bug1084836 Add character limits in the search box @{*/
+    searchBox.setFilters(new InputFilter[] { new InputFilter.LengthFilter(
+            INPUT_MAX_LENGTH) });
+    /** @} */
   }
 
   private void onSearchClearButtonClicked() {
@@ -127,7 +137,12 @@ final class SearchBarView extends FrameLayout {
           @Override
           public void onAnimationStart(Animator animation) {
             super.onAnimationStart(animation);
-            DialerUtils.showInputMethod(searchBox);
+            /** UNISOC: Bug1104610 do not show inputmethod keyboard when the focus is false
+             *  UNISOC: Bug1137550 Inputmethod keyboard disappear when clicking the search view not the first time.@{ */
+//            if (requestFocus) {
+//                DialerUtils.showInputMethod(searchBox);
+//            }
+            /** @} */
             isExpanded = true;
           }
 
@@ -243,7 +258,11 @@ final class SearchBarView extends FrameLayout {
         skipLatestTextChange = false;
         return;
       }
-
+      /**UNISOC: modify for the bug1110024 @{*/
+      if(!searchBox.isFocused()) {
+        return;
+      }
+      /* @}*/
       // afterTextChanged is called each time the device is rotated (or the activity is recreated).
       // That means that this method could potentially be called before the listener is set and
       // we should check if it's null. In the case that it is null, assert that the query is empty

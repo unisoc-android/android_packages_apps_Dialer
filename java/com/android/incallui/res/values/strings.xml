@@ -117,6 +117,8 @@
   <!-- Label for "Video Call" notification action. This is a displayed on the notification for an
        incoming video call, and answers the call as a video call. [CHAR LIMIT=12] -->
   <string name="notification_action_answer_video">Video</string>
+  <!--add for bug1131107-->
+  <string name="notification_action_answer_voice">Voice</string>
   <!-- Label for "Accept" notification action. This is somewhat generic, and may refer to
        scenarios such as accepting an incoming call or accepting a video call request.
        [CHAR LIMIT=12] -->
@@ -125,8 +127,12 @@
        scenarios such as declining an incoming call or declining a video call request.
        [CHAR LIMIT=12] -->
   <string name="notification_action_dismiss">Decline</string>
-  <string name="notification_action_speaker_on">Turn speaker on</string>
-  <string name="notification_action_speaker_off">Turn speaker off</string>
+  <!--  UNISOC add for 1143784 -->
+  <string name="notification_action_speaker_on">SPEAKER ON</string>
+  <string name="notification_action_speaker_off">SPEAKER OFF</string>
+  <!--  UNISOC: Add Mute action for feature FL1000060393 -->
+  <string name="notification_action_mute_on">Mute</string>
+  <string name="notification_action_mute_off">Unmute</string>
 
   <!-- The "label" of the in-call Notification for an ongoing external call.
        External calls are a representation of a call which is in progress on the user's other
@@ -189,9 +195,7 @@
 
   <!-- Displayed when WiFi handover from LTE fails during a video call. -->
   <string name="video_call_lte_to_wifi_failed_title">Couldn\'t switch to Wi\u2011Fi network</string>
-  <string name="video_call_lte_to_wifi_failed_message">Video call will remain on the mobile network. Standard
-    data charges may apply.
-  </string>
+  <string name="video_call_lte_to_wifi_failed_message">Video call will remain on the mobile network. Standard data charges may apply.</string>
   <string name="video_call_lte_to_wifi_failed_do_not_show">Do not show this again</string>
 
   <!-- Text for bubble return-to-call button -->
@@ -212,4 +216,12 @@
   <!-- Text for button to accept RTT request. [CHAR LIMIT=20] -->
   <string name="rtt_button_accept_request">Join RTT</string>
 
+  <!-- UNISOC: feature FL1000062139 add rejectmessage action in the notification @{ -->
+  <string name="notification_action_reject_with_message">Reject SMS</string>
+
+  <!-- UNISOC:modify for feature FL1000062299 @{ -->
+  <string name="card_title_in_call" msgid="5029165346952099302">"In call"</string>
+  <string name="card_title_conf_call" msgid="1747835072739982104">"Conference call"</string>
+  <!-- @} -->
+ <string name="fail_change_video_due_to_bgcall">There is background call, fail to change current call to video call.</string>
 </resources>

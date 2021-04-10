@@ -111,6 +111,9 @@ public class SimulatorUtils {
             (String log) -> {
               Intent intent = new Intent(Intent.ACTION_SEND);
               intent.setType("text/plain");
+              /* UNISOC: modify for bug1194922 @{ */
+              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+              /* @} */
               intent.putExtra(Intent.EXTRA_TEXT, log);
               if (intent.resolveActivity(context.getPackageManager()) != null) {
                 context.startActivity(intent);

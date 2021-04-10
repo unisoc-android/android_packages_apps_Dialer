@@ -45,6 +45,7 @@ public final class MissedCallCountObserver extends ContentObserver {
     this.uiListener = uiListener;
   }
 
+  /**UNISOC:bug 1177369 : guest mode can not read system calllog @{*/
   @RequiresPermission(Manifest.permission.READ_CALL_LOG)
   @Override
   public void onChange(boolean selfChange) {
@@ -65,8 +66,10 @@ public final class MissedCallCountObserver extends ContentObserver {
                                   + Calls.IS_READ
                                   + " IS NULL) AND "
                                   + Calls.TYPE
+                                  + " = ? AND "
+                                  + Calls.USERS_ID
                                   + " = ?",
-                              new String[] {"0", Integer.toString(Calls.MISSED_TYPE)},
+                              new String[] {"0", Integer.toString(Calls.MISSED_TYPE), Integer.toString(android.os.Process.myUserHandle().hashCode())},
                               /* sortOrder= */ null)) {
                     return cursor == null ? 0 : cursor.getCount();
                   }
@@ -79,4 +82,6 @@ public final class MissedCallCountObserver extends ContentObserver {
           throw new RuntimeException(throwable);
         });
   }
+  /**@} */
+
 }

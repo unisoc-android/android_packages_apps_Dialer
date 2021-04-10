@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">જેઓ બહેરા, ઓછું સાંભળતા, બોલવામાં તકલીફવાળા અથવા જેમને માત્ર વૉઇસ કરતાં પણ કંઈક વધુની જરૂર હોય એવા કૉલરોને RTT સહાય કરે છે.</string>
   <string name="rtt_button_decline_request">ના, આભાર</string>
   <string name="rtt_button_accept_request">RTTમાં જોડાઓ</string>
+  <string name="notification_action_answer_voice">અવાજ</string>
+  <string name="notification_action_mute_on">મૌન</string>
+  <string name="notification_action_mute_off">મૌન બંધ</string>
+  <string name="notification_action_reject_with_message">"નકારાયેલ SMS"</string>
+  <string name="card_title_in_call">કોલમાં</string>
+  <string name="card_title_conf_call">કોન્ફરન્સ કોલ</string>
+  <string name="fail_change_video_due_to_bgcall">"આ કોલની પૃષ્ઠભૂમિ વર્તમાન કોલને વિડિયો કોલમાં બદલવામાં નિષ્ફળ ગયેલ છે."</string>
 </resources>

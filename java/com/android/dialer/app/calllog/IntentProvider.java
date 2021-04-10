@@ -205,6 +205,37 @@ public abstract class IntentProvider {
     };
   }
 
+  /**
+   * UNISOC :add for bug709708、900405
+   * Voicemail call details display option to add to contacts, send messages.
+   * Retrieves the call details intent provider for an entry in the call log.
+   *
+   * @param callDetailsEntries The call details of the other calls grouped together with the call.
+   * @param contact The contact with which this call details intent pertains to.
+   * @param isVoiceMailNumber the phone number whether is voice mail number
+   * @return The call details intent provider.
+   */
+  public static IntentProvider getCallDetailIntentProvider(
+          CallDetailsEntries callDetailsEntries,
+          DialerContact contact,
+          boolean canReportCallerId,
+          boolean canSupportAssistedDialing,
+          boolean isVoiceMailNumber) {
+    return new IntentProvider() {
+      @Override
+      public Intent getIntent(Context context) {
+        if (isVoiceMailNumber) {
+          return OldCallDetailsActivity.newInstance(context, callDetailsEntries, contact, canReportCallerId, canSupportAssistedDialing)
+                  .putExtra(OldCallDetailsActivity.IS_VOIVE_MAIL_NUMBE, isVoiceMailNumber);
+
+        } else {
+          return OldCallDetailsActivity.newInstance(context, callDetailsEntries, contact, canReportCallerId, canSupportAssistedDialing);
+        }
+      }
+    };
+  }
+  /** @} */
+
   /** Retrieves an add contact intent for the given contact and phone call details. */
   public static IntentProvider getAddContactIntentProvider(
       final Uri lookupUri,

@@ -91,10 +91,7 @@
   <!-- Title of the notification of new voicemails. [CHAR LIMIT=30] -->
   <plurals name="notification_voicemail_title">
     <item quantity="one">Voicemail</item>
-    <item quantity="other">
-            <xliff:g id="count">%1$d</xliff:g>
-            Voicemails
-        </item>
+    <item quantity="other"><xliff:g id="count">%1$d</xliff:g>Voicemails</item>
   </plurals>
 
   <!-- Used to build a list of names or phone numbers, to indicate the callers who left
@@ -271,7 +268,7 @@
   <string name="block_number_search_hint">Add number or search contacts</string>
 
   <!-- Text displayed when the call log is empty. -->
-  <string name="call_log_all_empty">Your call history is empty</string>
+  <string name="call_log_all_empty">Your call history is empty.</string>
 
   <!-- Label of the button displayed when the call history is empty. Allows the user to make a call. -->
   <string name="call_log_all_empty_action">Make a call</string>
@@ -320,7 +317,7 @@
   <string name="search_shortcut_add_to_contact">Add to a contact</string>
 
   <!-- Shortcut item used to send a text message directly from search. [CHAR LIMIT=25] -->
-  <string name="search_shortcut_send_sms_message">Send SMS</string>
+  <string name="search_shortcut_send_sms_message">Send a message</string>
 
   <!-- Shortcut item used to make a video call directly from search. [CHAR LIMIT=25] -->
   <string name="search_shortcut_make_video_call">Make video call</string>
@@ -529,7 +526,7 @@
   <string name="call_settings_label">Calls</string>
 
   <!-- Label for the blocked numbers settings section [CHAR LIMIT=30] -->
-  <string name="manage_blocked_numbers_label">Blocked numbers</string>
+  <string name="manage_blocked_numbers_label">Call blocking</string>
 
   <!-- Label for the voicemail settings section [CHAR LIMIT=30] -->
   <string name="voicemail_settings_label">Voicemail</string>
@@ -718,4 +715,127 @@
   <!-- If a user deletes a call that has attachments (photo, message, ect) bundled with it, they need
         to be told that they need to go to the SMS app to delete the attachments. [CHAR LIMIT=NONE] -->
   <string name="multiple_ec_data_deleted">Calls deleted. View and delete attachments shared during calls in Messages.</string>
+
+  <!-- UNISOC AndroidQ Feature Porting: bug1072991 check location permission before using it -->
+  <string name="location_permission_message">Allow Dialer to access this device\'s location?</string>
+
+  <!-- UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE -->
+  <string name="view_setting">View</string>
+  <string name="item_all_calls">All call logs</string>
+  <string name="item_sim_calls">SIM%d call logs</string>
+
+  <!-- UNISOC: Bug 1072694 androidq porting feature for FEATURE_SIM_CARD_IDENTIFICATION_IN_CALLLOG -->
+  <string name="sim">"SIM"</string>
+
+  <!-- UNISOC AndroidQ Feature Porting:bug1072688 CLEAR CALL LOG FEATURE. @{ -->
+  <string name="doneButton">Done</string>
+  <string name="cancel">Cancel</string>
+  <string name="delete_selected_calls">Are you sure to delete the selected records?</string>
+  <string name="delete_success">Deleted successfully</string>
+  <string name="clear_all_call_log">Clear all the call log</string>
+  <string name="clear_selected_call_log">Clear selected call log</string>
+  <string name="unselect_all">Deselect all</string>
+  <string name="delete_all_calls_confirm">Do you want to delete the records of all yours?</string>
+  <string name="do_not_select">You did not choose record to delete.</string>
+  <string name="delete_calls">Delete</string>
+  <!-- @} -->
+  <!-- UNISOC: Bug 1072692 search call log in google FEATURE. @{-->
+  <string name="search_description">Search call logs</string>
+  <!-- @} -->
+
+  <!-- UNISOC AndroidQ Feature Porting: bug1072989 add for feature to set video call meeting photo @{ -->
+  <string name="select_horizontal_photo">Select horizontal photo</string>
+  <string name="select_vertical_photo">Select vertical photo</string>
+  <string name="video_photo_select_title">Video meeting photo</string>
+  <string name="select_photo">Select Photo</string>
+  <string name="gallery_error">Gallery has been stopped.</string>
+  <string name="no_photo">No photo</string>
+  <string name="default_photo">Default photo</string>
+  <string name="select_photo_from_gallery">Select photo from gallery</string>
+  <string name="save_photo_successful">Save photo successful</string>
+  <string name="save_photo_failed">Save photo failed</string>
+  <string name="permission_set_meeting_photo">To set video call meeting photo, turn on the Storage permission.</string>
+  <!-- @} -->
+
+  <!--UNISOC: Bug 1073017 androidq porting feature for delete all call of number from this call history@{-->
+  <string name="delete_unsuccess">Delete failed</string>
+  <string name="delete_all_calls_specific_number_confirm">This will delete all calls of this number</string>
+  <string name="action_delete_all_call_of_this_number">Delete all calls of this number</string>
+  <!--@}-->
+
+  <!-- UNISOC:bug1072678 FAST DIAL FEATURE @{ -->
+  <string name="fast_dial_settings">Fast dial settings</string>
+  <string name="delete_fastdial">Delete fast dial</string>
+  <string name="update_fastdial">Update fast dial</string>
+  <string name="network_not_on">Network is not on, Do you want to set network status?</string>
+  <string name="sim_list_title">"Please select SIM card"</string>
+  <string name="no_sim_text">Please insert or launch SIM card</string>
+  <string name="fast_dial_number_invalid">Please enter a valid number</string>
+  <string name="fast_dial_title">Fast dial</string>
+  <string name="fast_dial_in_guest_mode">Can not use fast dial not in owner mode</string>
+  <string name="no_fast_dial_number">Fast dial number not set.</string>
+  <string name="dialog_make_call_airplane_mode_message">To make a call, first turn off Airplane mode.</string>
+  <string name="selectContact">select contact</string>
+  <string name="menu_add">Add contact</string>
+  <string name="alert_dialog_yes">Yes</string>
+  <string name="alert_dialog_no">No</string>
+
+  <!--UNISOC: Bug 1072686 androidq porting feature for filter call log by type feature @{-->
+  <string name="call_log_outgoing_title">Outgoing</string>
+  <string name="call_log_incoming_title">Incoming</string>
+  <string name="call_log_outgoing_empty">You have no outgoing calls.</string>
+  <string name="call_log_incoming_empty">You have no incoming calls.</string>
+
+  <!-- UNISOC: bug877517 add CALL DETAIL ACTIONS FEATURE @{ -->
+  <string name="no_available_sim">Please insert or enable SIM card</string>
+  <string name="ip_dial_in_guest_mode">Can not use ip dial not in owner mode</string>
+  <!-- @} -->
+
+  <!-- UNISOC: modify for Bug1080090, porting for bug936563   -->
+  <string name="modem_abnormal">Modem is abnormal and can not be entered into other applications by password.</string>
+
+  <!--UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD @{-->
+  <string-array name="country_code_with_plus">
+    <item>+7</item>
+    <item>+44</item>
+  </string-array>
+  <string-array name="country_code_no_plus">
+    <item>8</item>
+  </string-array>
+  <!-- @} -->
+
+  <!-- Feature porting IP Dial Setting for bug1072676-->
+  <string name="ip_dialing_title">IP dialing</string>
+  <string name="ip_dialing_list_title">IP dial list</string>
+  <string name="ip_no_number">Lack of IP prefix</string>
+  <string name="ip_no_number_msg">IP prefix is not stored on the phone.</string>
+  <string name="ip_number_empty_loading">The IP dial list is empty.</string>
+  <string name="remove">Remove</string>
+  <string name="ip_number_is_too_long">IP dial numbers can not be greater than 20.</string>
+  <string name="add_ip_number_str">NEW</string>
+  <string name="ip_dialing_num_error">Can only save 10 IP number</string>
+  <string name="ip_dialing_num_repeat">Repeat number,add failed.</string>
+  <string name="menu_selected_all">Select all</string>
+  <string name="menu_select_none">Unselect all</string>
+  <string name="ip_dial_menu">IP Dial</string>
+  <!-- @} -->
+
+  <!-- UNISOC: Add for video volte  @{ -->
+  <string name="vowifi_conf_do_not_support">Do not support this action now.</string>
+  <string name="make_video_call_menu">Make video call</string>
+  <string name="dialpad_multi_call_menu">Multi call</string>
+
+  <!-- UNISOC:add for bug1138460-->
+  <string name="cound_not_make_mutil_call">Could not make multi call</string>
+  <!-- @} -->
+
+  <!-- UNISOC: add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK -->
+  <string name="no_available_number">No available number</string>
+
+  <!-- UNISOC: modify for bug1086119 -->
+  <string name="number_anr_isnull">The contact number is empty.</string>
+
+  <!-- UNISOC: modify for bug1103272 -->
+  <string name="menu_call_blocked_label">Call blocking</string>
+
 </resources>

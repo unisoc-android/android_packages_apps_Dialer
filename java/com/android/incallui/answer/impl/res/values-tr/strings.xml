@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Sesli çağrı olarak cevaplamak için, simgeden hızlıca kaydırın</string>
   <string name="call_incoming_default_label_answer_and_release_second">Devam eden çağrı cevaplamak ve bekletmek için hızlıca yukarı kaydırın</string>
   <string name="call_incoming_default_label_answer_and_release_third">Cevaplamak ve beklemedeki çağrıyı sona erdirmek için hızlıca yukarı kaydırın</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Cevap vermek veya devam eden aramayı bitirmek için yukarı kaydırın"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Bir çağrıyı cevaplamak ve devam eden çağrıyı sona erdirmek için simgeden hızlıca kaydırın</string>
   <string name="call_incoming_message_custom">Kendi yanıtınızı oluşturun…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Kendi yanıtınızı oluşturun…</string>

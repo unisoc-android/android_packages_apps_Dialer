@@ -50,4 +50,10 @@ public interface InCallScreen {
   boolean isShowingLocationUi();
 
   Fragment getInCallScreenFragment();
+
+  /* UNISOC Feature Porting: Add for call recorder feature. @{ */
+  void setRecordTime(String recordTime);
+
+  void setRecord(boolean value);
+  /* @} */
 }

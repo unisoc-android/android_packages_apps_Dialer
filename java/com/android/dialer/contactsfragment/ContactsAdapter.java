@@ -18,7 +18,9 @@ package com.android.dialer.contactsfragment;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.provider.ContactsContract;
 import android.provider.ContactsContract.Contacts;
 import android.support.annotation.IntDef;
 import android.support.v4.util.ArrayMap;
@@ -26,6 +28,9 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import com.android.contacts.common.model.AccountTypeManager;
+import com.android.contacts.common.model.account.AccountType;
+import com.android.contacts.common.model.account.AccountWithDataSet;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.contactphoto.ContactPhotoManager;
@@ -117,7 +122,54 @@ final class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     String name = getDisplayName(cursor);
     String header = getHeaderString(position);
     Uri contactUri = getContactUri(cursor);
+    /**
+     * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+     * @{
+     */
+    Drawable drawable = null;
+    String accountType = getDisplayAccountType(cursor);
+    String accountName = getDisplayAccountName(cursor);
 
+    if (accountType != null
+            && accountName != null
+            && !(accountName.equals("Phone") || accountType
+            .equals("sprd.com.android.account.phone"))) {
+      AccountWithDataSet account = new AccountWithDataSet(accountName, accountType, null);
+      boolean isSdn = false;
+      String sdnStr = getDisplaysdnName(cursor);
+      if (accountType.equalsIgnoreCase(AccountTypeManager.ACCOUNT_SIM)
+              || accountType.equalsIgnoreCase(AccountTypeManager.ACCOUNT_USIM)) {
+        if ("sdn".equals(sdnStr)) {
+          isSdn = true;
+        }
+        AccountType simAccountType = AccountTypeManager.getInstance(context)
+               .getAccountType(accountType, null);
+        if (simAccountType != null) {
+          try {
+            drawable = AccountTypeManager.getInstance(context).getListSimIcon(accountType, accountName,
+                    isSdn);
+          } catch (SecurityException e) {
+            drawable = null;
+          }
+        }
+      } else {
+        drawable = AccountTypeManager.getInstance(context).getAccountIcon(account,
+                isSdn);
+      }
+    } else {
+      String fdnStr = getDisplayfdnName(cursor);
+      boolean isFdn = false;
+      int phoneId = -1;
+      /**UNISOC: Bug1158370 Coverity code scan: FB.ES_COMPARING_STRINGS_WITH_EQ @{*/
+      if (fdnStr != null && !("".equals(fdnStr)) && fdnStr.startsWith("fdn")) {
+      /** @} */
+        isFdn = true;
+        phoneId = Integer.parseInt(fdnStr.substring(3));
+      }
+      if (accountName != null && accountName.equals("Phone") && isFdn && phoneId != -1) {
+        drawable = AccountTypeManager.getInstance(context).getListFdnIcon(phoneId);
+      }
+    }
     ContactPhotoManager.getInstance(context)
         .loadDialerThumbnailOrPhoto(
             contactViewHolder.getPhoto(),
@@ -136,7 +188,10 @@ final class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     // it to the previous element and only show the anchored header if the row elements fall into
     // the same sublists.
     boolean showHeader = position == 0 || !header.equals(getHeaderString(position - 1));
-    contactViewHolder.bind(header, name, contactUri, getContactId(cursor), showHeader);
+    contactViewHolder.bind(header, name, contactUri, getContactId(cursor), showHeader, drawable);
+    /**
+     * @}
+     */
   }
 
   /**
@@ -179,6 +234,29 @@ final class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     return count;
   }
 
+  /**
+   * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+   * @{
+   */
+  private static String getDisplaysdnName(Cursor cursor) {
+    return cursor.getString(ContactsCursorLoader.CONTACT_SYNC1_KEY);
+  }
+
+  private static String getDisplayAccountType(Cursor cursor) {
+    return cursor.getString(ContactsCursorLoader.CONTACT_ACCOUNT_TYPE);
+  }
+
+  private static String getDisplayAccountName(Cursor cursor) {
+    return cursor.getString(ContactsCursorLoader.CONTACT_ACCOUNT_NAME);
+  }
+
+  private static String getDisplayfdnName(Cursor cursor) {
+    return cursor.getString(ContactsCursorLoader.CONTACT_SYNC2_KEY);
+  }
+  /**
+   * @}
+   */
+
   private static String getDisplayName(Cursor cursor) {
     return cursor.getString(ContactsCursorLoader.CONTACT_DISPLAY_NAME);
   }
@@ -215,6 +293,12 @@ final class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     while (sum <= position) {
       sum += counts[++index];
     }
-    return headers[index];
+    /* UNISOC: modify for bug1196531 @{ */
+    if (index >= 0 && index < headers.length) {
+      return headers[index];
+    } else {
+      return "";
+    }
+    /* @} */
   }
 }

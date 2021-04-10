@@ -93,12 +93,14 @@ public class TelecomAdapter implements InCallServiceListener {
       if (!conferenceable.isEmpty()) {
         call.conference(conferenceable.get(0));
         // It's safe to clear restrict count for merge action.
-        DialerCall.clearRestrictedCount();
+        // UNISOC: delete for bug 1152838
+        // DialerCall.clearRestrictedCount();
       } else {
         if (call.getDetails().can(android.telecom.Call.Details.CAPABILITY_MERGE_CONFERENCE)) {
           call.mergeConference();
           // It's safe to clear restrict count for merge action.
-          DialerCall.clearRestrictedCount();
+          // UNISOC: delete for bug 1152838
+          // DialerCall.clearRestrictedCount();
         }
       }
     } else {

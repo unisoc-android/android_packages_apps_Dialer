@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<string name="incall_calling_via_template">"<xliff:g id="provider_name">%s</xliff:g> ৰ দ্বাৰা কল কৰা হৈছে"</string>
+<string name="incall_calling_on_same_carrier_template">"একেই বাহকক কল কৰি থকা হৈছে <xliff:g id="provider_name">%s</xliff:g>"</string>
+<string name="incall_calling_on_recent_choice_template">"শেহতীয়া পছন্দত কল কৰি থকা হৈছে <xliff:g id="provider_name">%s</xliff:g>"</string>
+<string name="incall_connecting">"কলিং..."</string>
+<string name="incall_connecting_assited_dialed">"+<xliff:g example="1" id="ad_country_code">%1$s</xliff:g> (<xliff:g example="1" id="ad_user_home_locale">%2$s</xliff:g>)\u2026 ব্যৱহাৰ কৰি কল কৰি থকা হৈছে"</string>
+<string name="incall_connecting_assited_dialed_component">"+<xliff:g example="1" id="ad_country_code">%1$s</xliff:g> (<xliff:g example="1" id="ad_user_home_locale">%2$s</xliff:g>)\u2026 ব্যৱহাৰ কৰি"</string>
+<string name="incall_transferring">"ট্ৰান্সফাৰিং...."</string>
+<string name="incall_video_call_requesting">"বাহক ভিডিঅ\'ই কল কৰি আছে..."</string>
+<string name="incall_wifi_video_call_requesting">"Wi-Fi বাহক ভিডিঅ\'ই কল কৰি আছে..."</string>
+<string name="incall_video_call_upgrade_request">"কেৰিয়াৰ ভিডিঅ’লৈ সলনি কৰি আছে…"</string>
+<string name="incall_video_call_request_failed">"যোগাযোগত ব্যৰ্থ"</string>
+<string name="incall_video_call_request_rejected">"ক’ল ডিক্লাইন"</string>
+<string name="incall_video_call_request_timed_out">"ক’ল টাইম আউট"</string>
+<string name="incall_hanging_up">"ওলমি আছে"</string>
+<string name="incall_call_ended">"কল শেষ হ’ল"</string>
+<string name="incall_remotely_held">"ৰৈ থকা"</string>
+<string name="contact_grid_incoming_video_call">"ইয়াৰ পৰা কেৰিয়াৰ ভিডিঅ’ কল"</string>
+<string name="contact_grid_incoming_wifi_video_call">"পৰা Wi-Fi বাহক ভিডিঅ\' কল"</string>
+<string name="contact_grid_incoming_voice_call">"ক’ল ফ্ৰ’ম"</string>
+<string name="contact_grid_incoming_work_call">"ৱৰ্ক ক’ল ফ্ৰ’ম"</string>
+<string name="contact_grid_incoming_via_template">"পৰা <xliff:g id="provider_name">%s</xliff:g> মাধ্যমেৰে কল কৰক"</string>
+<string name="contact_grid_incoming_suspected_spam">"চাচপেক্ট স্পাম ক’লাৰ"</string>
+<string name="contact_grid_callback_number">"এই ফোনৰ নম্বৰ: <xliff:g id="light_number">%1$s</xliff:g>"</string>
+</resources>

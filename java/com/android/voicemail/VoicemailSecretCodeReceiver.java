@@ -26,6 +26,11 @@ public class VoicemailSecretCodeReceiver extends BroadcastReceiver {
 
   @Override
   public void onReceive(Context context, Intent intent) {
+    /* UNISOC modify for bug1078975: porting for bug918932 @{ */
+    if(intent.getData() == null) {
+      return;
+    }
+    /* @} */
     String host = intent.getData().getHost();
     if (!VoicemailClient.VOICEMAIL_SECRET_CODE.equals(host)) {
       return;

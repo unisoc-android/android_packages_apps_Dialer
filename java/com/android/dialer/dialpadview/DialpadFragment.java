@@ -58,7 +58,9 @@ import android.text.Editable;
 import android.text.Selection;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.InputFilter;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -81,6 +83,7 @@ import com.android.contacts.common.dialog.CallSubjectDialog;
 import com.android.contacts.common.util.StopWatch;
 import com.android.dialer.animation.AnimUtils;
 import com.android.dialer.animation.AnimUtils.AnimationCallback;
+import com.android.dialer.app.fastdial.FastDialUtils;
 import com.android.dialer.callintent.CallInitiationType;
 import com.android.dialer.callintent.CallIntentBuilder;
 import com.android.dialer.common.Assert;
@@ -98,6 +101,7 @@ import com.android.dialer.precall.PreCall;
 import com.android.dialer.proguard.UsedByReflection;
 import com.android.dialer.telecom.TelecomUtil;
 import com.android.dialer.util.CallUtil;
+import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.util.ViewUtil;
 import com.android.dialer.widget.FloatingActionButtonController;
@@ -107,6 +111,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import android.content.ComponentName;
+import android.os.UserManager;
+import com.android.dialer.sprd.util.IpDialingUtils;
+import com.android.contacts.common.widget.SelectPhoneAccountDialogFragment.SelectPhoneAccountListener;
+import android.widget.Toast;
+import android.telecom.TelecomManager;
+import com.android.dialer.calllogutils.PhoneAccountUtils;
+import android.telephony.SubscriptionManager;
+import android.os.RemoteException;
+import android.provider.ContactsContract.CommonDataKinds.Phone;
+import com.android.ims.internal.ImsManagerEx;
+import com.android.ims.internal.IImsServiceEx;
+import com.android.ims.internal.IImsRegisterListener;
+import com.android.ims.ImsManager;
+import android.telephony.CarrierConfigManager;
+import android.telephony.CarrierConfigManagerEx;
+import static android.Manifest.permission.READ_PHONE_STATE;
+import android.widget.Toast;
+import android.telephony.SubscriptionManager;
 
 /** Fragment that displays a twelve-key phone dialpad. */
 public class DialpadFragment extends Fragment
@@ -206,6 +229,38 @@ public class DialpadFragment extends Fragment
 
   private DialerExecutor<String> initPhoneNumberFormattingTextWatcherExecutor;
   private boolean isDialpadSlideUp;
+
+
+  /**UNISOC: Bug1084836 Add character limits in the search box @{*/
+  private static final int INPUT_MAX_LENGTH = 50;
+  /** @} */
+
+  /** UNISOC: Feature porting IP dialing for bug1072676 @{ */
+  private static final int MENU_IP_DIAL = 102;
+  public static final String SUB_ID_EXTRA =
+          "com.android.phone.settings.SubscriptionInfoHelper.SubscriptionId";
+  private static final String PHONE_PACKAGE_NAME = "com.android.dialer";
+  private static final String IP_NUMBER_LIST_ACTIVITY =
+          "com.android.dialer.app.ipdial.IpNumberListActivity";
+  /* @} */
+
+  /* UNISOC: Add for VoLTE bug1072820 @{*/
+  private boolean mIsVideoEnable;
+  private boolean mIsImsListenerRegistered;
+  private IImsServiceEx mIImsServiceEx;
+  private PopupMenu mPopupMenu;
+  private static final int MENU_MAKE_VIDEO_CALL  = 100;
+  private static final int MENU_MAKE_MULTE_CALL = 101;
+  private static final String ADD_MULTI_CALL = "addMultiCall";
+  private static final String MULTI_PICK_CONTACTS_ACTION = "com.android.contacts.action.MULTI_TAB_PICK";
+  private static final int MAX_CONTACTS_NUMBER = 5;
+  private static final int MIN_CONTACTS_NUMBER = 2;
+  private static final int REQUEST_CODE_PICK = 99;
+  public static final int RESULT_OK = -1;
+  /* @} */
+
+  //UNISOC:modify for bug 931236
+  private boolean mIsSupportMultiCall;
 
   /**
    * Determines whether an add call operation is requested.
@@ -385,6 +440,7 @@ public class DialpadFragment extends Fragment
                 new InitPhoneNumberFormattingTextWatcherWorker())
             .onSuccess(watcher -> dialpadView.getDigits().addTextChangedListener(watcher))
             .build();
+    tryRegisterImsListener();//UNISOC: Add for VoLTE
     Trace.endSection();
   }
 
@@ -411,6 +467,10 @@ public class DialpadFragment extends Fragment
     digits.setOnLongClickListener(this);
     digits.addTextChangedListener(this);
     digits.setElegantTextHeight(false);
+    /**UNISOC: Bug1084836 Add character limits in the search box @{*/
+    digits.setFilters(new InputFilter[] { new InputFilter.LengthFilter(
+            INPUT_MAX_LENGTH) });
+    /** @}*/
 
     if (!MotorolaUtils.shouldDisablePhoneNumberFormatting(getContext())) {
       initPhoneNumberFormattingTextWatcherExecutor.executeSerial(getCurrentCountryIso());
@@ -721,6 +781,14 @@ public class DialpadFragment extends Fragment
     for (int buttonId : buttonIds) {
       dialpadKey = fragmentView.findViewById(buttonId);
       dialpadKey.setOnPressedListener(this);
+      /** UNISOC:bug1072678 FAST DIAL feature @{ */
+      dialpadKey.setOnLongClickListener(this);
+      /** @} */
+      /* UNISOC: Add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK @{ */
+      if (buttonId == R.id.pound) {
+        dialpadKey.setOnClickListener(this);
+      }
+      /* @} */
     }
 
     // Long-pressing one button will initiate Voicemail.
@@ -884,6 +952,18 @@ public class DialpadFragment extends Fragment
       pseudoEmergencyAnimator = null;
     }
     getActivity().unregisterReceiver(callStateReceiver);
+    /*UNISOC: add for VoLTE 712380 {@*/
+    if (getActivity() != null && PermissionsUtil.hasPermission(getActivity(), READ_PHONE_STATE)) {
+      try {
+        if (mIsImsListenerRegistered) {
+          mIsImsListenerRegistered = false;
+          mIImsServiceEx.unregisterforImsRegisterStateChanged(mImsUtListenerExBinder);
+        }
+      } catch (RemoteException e) {
+        LogUtil.e("DialpadFragment.onDestroy:", "e: " + e);
+      }
+    }
+    /* @} */
   }
 
   private void keyPressed(int keyCode) {
@@ -1007,26 +1087,64 @@ public class DialpadFragment extends Fragment
    * @param invoker the View that invoked the options menu, to act as an anchor location.
    */
   private PopupMenu buildOptionsMenu(View invoker) {
-    final PopupMenu popupMenu =
-        new PopupMenu(getActivity(), invoker) {
-          @Override
-          public void show() {
-            final Menu menu = getMenu();
+    if(mPopupMenu == null) {
+      mPopupMenu = new PopupMenu(getActivity(), invoker) {
+        @Override
+        public void show() {
+          final Menu menu = getMenu();
 
-            boolean enable = !isDigitsEmpty();
-            for (int i = 0; i < menu.size(); i++) {
-              MenuItem item = menu.getItem(i);
-              item.setEnabled(enable);
-              if (item.getItemId() == R.id.menu_call_with_note) {
-                item.setVisible(CallUtil.isCallWithSubjectSupported(getContext()));
-              }
+          boolean enable = !isDigitsEmpty();
+          for (int i = 0; i < menu.size(); i++) {
+            MenuItem item = menu.getItem(i);
+            item.setEnabled(enable);
+            if (item.getItemId() == R.id.menu_call_with_note) {
+              item.setVisible(CallUtil.isCallWithSubjectSupported(getContext()));
             }
-            super.show();
           }
-        };
-    popupMenu.inflate(R.menu.dialpad_options);
-    popupMenu.setOnMenuItemClickListener(this);
-    return popupMenu;
+          super.show();
+        }
+      };
+    }
+    mPopupMenu.getMenu().clear();
+    mPopupMenu.inflate(R.menu.dialpad_options);
+    /* UNISOC: bug#890160, check permission for Diapad @{ */
+    final boolean hasReadReadPhoneStatePermission = PermissionsUtil.hasPermission(getActivity(), READ_PHONE_STATE);
+    if (hasReadReadPhoneStatePermission) {
+      //Modify for 3GVT for bug576512@{*/
+      mPopupMenu.getMenu().add(0, MENU_MAKE_VIDEO_CALL, 0, R.string.make_video_call_menu);
+      mPopupMenu.getMenu()
+              .findItem(MENU_MAKE_VIDEO_CALL)
+              /** UNISOC: bug895158 Card One Unicom Card II moves, the model closes the “Video Call” function,
+               * the dial pad enters the number, and the option still has the “Start Video Call” option.@{*/
+              .setVisible(CallUtil.isVideoEnabled(getActivity()));
+      /** @} */
+      /**UNISOC:modify for bug 931236 @{*/
+      CarrierConfigManager configManager =
+                (CarrierConfigManager) getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+      int primeSubId = SubscriptionManager.getDefaultDataSubscriptionId();
+      if (configManager.getConfigForDefaultPhone() != null) {
+          // need carrierManager supports later
+          mIsSupportMultiCall = configManager.getConfigForSubId(primeSubId).getBoolean(
+                  CarrierConfigManagerEx.KEY_CARRIER_SUPPORTS_MULTI_CALL);
+          Log.d("DialPadFragment", "mIsSupportMultiCall" + mIsSupportMultiCall);
+      }
+      mPopupMenu.getMenu().add(0, MENU_MAKE_MULTE_CALL, 0,
+              R.string.dialpad_multi_call_menu);
+      mPopupMenu.getMenu().findItem(MENU_MAKE_MULTE_CALL).setVisible(mIsVideoEnable && mIsSupportMultiCall);
+      /**@}*/
+      /** UNISOC: Feature porting IP dialing for bug1072676 @{ */
+      /**UNISOC:970074,983956 cmcc,cucc show IP feature  @{*/
+      boolean shouldShowIP = getResources().getBoolean(com.android.internal.R.bool.ip_dial_enabled_bool);
+      Log.d(TAG,"shouldShowIP:"+shouldShowIP);
+      if (shouldShowIP) {
+        mPopupMenu.getMenu().add(0, MENU_IP_DIAL, 0, R.string.ip_dial_menu);
+        mPopupMenu.setOnMenuItemClickListener(this);
+      }
+      /** @} */
+    }
+    /*@}*/
+    mPopupMenu.setOnMenuItemClickListener(this);
+    return mPopupMenu;
   }
 
   @Override
@@ -1043,6 +1161,14 @@ public class DialpadFragment extends Fragment
       }
     } else if (resId == R.id.dialpad_overflow) {
       overflowPopupMenu.show();
+      /* UNISOC: Add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK @{ */
+    } else if (resId == R.id.pound) {
+      if (!digitsFilledByIntent && getActivity() != null && digits != null
+              && digits.getText() != null) {
+        SpecialCharSequenceMgr.handleAdnEntry(getActivity(), digits.getText()
+                .toString(), digits);
+      }
+      /* @} */
     } else {
       LogUtil.w("DialpadFragment.onClick", "Unexpected event from: " + view);
     }
@@ -1072,8 +1198,12 @@ public class DialpadFragment extends Fragment
             subscriptionAccountHandles.contains(
                 TelecomUtil.getDefaultOutgoingPhoneAccount(
                     getActivity(), PhoneAccount.SCHEME_VOICEMAIL));
+        /** UNISOC: Bug1090145 add check for voicemail when in call.
+         *  UNISOC: Bug1181991 The voicemail call doesnot be dialed out directly when the voicemail number has been set. @{*/
         boolean needsAccountDisambiguation =
-            subscriptionAccountHandles.size() > 1 && !hasUserSelectedDefault;
+            subscriptionAccountHandles.size() > 1 && !hasUserSelectedDefault && !(getContext() != null
+                    && TelecomUtil.isInManagedCall(getContext()));
+        /** @} */
 
         if (needsAccountDisambiguation || isVoicemailAvailable()) {
           // On a multi-SIM phone, if the user has not selected a default
@@ -1083,19 +1213,9 @@ public class DialpadFragment extends Fragment
         } else if (getActivity() != null) {
           // Voicemail is unavailable maybe because Airplane mode is turned on.
           // Check the current status and show the most appropriate error message.
-          final boolean isAirplaneModeOn =
-              Settings.System.getInt(
-                      getActivity().getContentResolver(), Settings.System.AIRPLANE_MODE_ON, 0)
-                  != 0;
-          if (isAirplaneModeOn) {
-            DialogFragment dialogFragment =
-                ErrorDialogFragment.newInstance(R.string.dialog_voicemail_airplane_mode_message);
-            dialogFragment.show(getFragmentManager(), "voicemail_request_during_airplane_mode");
-          } else {
-            DialogFragment dialogFragment =
-                ErrorDialogFragment.newInstance(R.string.dialog_voicemail_not_ready_message);
-            dialogFragment.show(getFragmentManager(), "voicemail_not_ready");
-          }
+          DialogFragment dialogFragment =
+              ErrorDialogFragment.newInstance(R.string.dialog_voicemail_not_ready_message);
+          dialogFragment.show(getFragmentManager(), "voicemail_not_ready");
         }
         return true;
       }
@@ -1115,6 +1235,41 @@ public class DialpadFragment extends Fragment
     } else if (id == R.id.digits) {
       this.digits.setCursorVisible(true);
       return false;
+    /* UNISOC: Add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK @{ */
+    } else if (id == R.id.star) {
+      if (this.digits.getSelectionStart() > 1) {
+        // Remove tentative input ('*') done by onTouch().
+        removePreviousDigitIfPossible('*');
+        keyPressed(KeyEvent.KEYCODE_COMMA);
+        // Stop tone immediately
+        stopTone();
+        pressedDialpadKeys.remove(view);
+      }
+      return true;
+    } else if (id == R.id.pound) {
+      if (this.digits.getSelectionStart() > 1) {
+        // Remove tentative input ('#') done by onTouch().
+        removePreviousDigitIfPossibleForPound();
+        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        updateDialString(WAIT);
+        // Stop tone immediately
+        stopTone();
+        pressedDialpadKeys.remove(view);
+      }
+      return true;
+    /* @} */
+    } else {
+      /** UNISOC:bug1072678 FAST DIAL FEATURE @{ */
+      /* UNISOC:BUG 896033 PreCall for start fastdial @{*/
+      String fastPhoneNumber = FastDialUtils.getFastDialPhoneNumber(this, digits, id);
+      if (fastPhoneNumber != null) {
+        PreCall.start(
+                getContext(), new CallIntentBuilder(fastPhoneNumber,CallInitiationType.Type.DIALPAD));
+        digits.clear();
+        return true;
+      }
+      /* @} */
+      /** @} */
     }
     return false;
   }
@@ -1345,9 +1500,11 @@ public class DialpadFragment extends Fragment
       if (dialpadView != null) {
         LogUtil.i("DialpadFragment.showDialpadChooser", "mDialpadView not null");
         dialpadView.setVisibility(View.VISIBLE);
-        if (isDialpadSlideUp()) {
+        /**UNISOC: Bug1113216 The floating button desenot display when add a call during a call is already in progress. @{*/
+        if (floatingActionButtonController != null) {
           floatingActionButtonController.scaleIn();
         }
+        /**@]*/
       } else {
         LogUtil.i("DialpadFragment.showDialpadChooser", "mDialpadView null");
         digits.setVisibility(View.VISIBLE);
@@ -1431,10 +1588,166 @@ public class DialpadFragment extends Fragment
       CallSubjectDialog.start(getActivity(), digits.getText().toString());
       hideAndClearDialpad();
       return true;
+    }else if (resId == MENU_IP_DIAL) {
+      /** UNISOC: Feature porting IP dialing for bug1072676 @{ */
+      Context context = getActivity();
+      if (digits != null && context != null) {
+        String number = digits.getText().toString();
+        /* UNISOC: add for 900020 @{ */
+        final boolean isAirplaneModeOn = Settings.System.getInt(context.getContentResolver(),
+                    Settings.System.AIRPLANE_MODE_ON, 0) != 0;
+        if (isAirplaneModeOn && !PhoneNumberUtils.isEmergencyNumber(number)) {
+          Toast.makeText(context, R.string.dialog_make_call_airplane_mode_message,
+                  Toast.LENGTH_LONG).show();
+          return true;
+        }
+        /* @{ */
+        List<PhoneAccountHandle> subscriptionAccountHandles =
+                PhoneAccountUtils.getSubscriptionPhoneAccounts(context);
+        PhoneAccountHandle defaultPhoneAccountHandle = TelecomUtil
+                .getDefaultOutgoingPhoneAccount(context,
+                        PhoneAccount.SCHEME_TEL);
+        boolean hasUserSelectedDefault = subscriptionAccountHandles
+                .contains(defaultPhoneAccountHandle);
+        /* UNISOC: modify for bug598787 @{ */
+        int activeSimCount = SubscriptionManager.from(context)
+                .getActiveSubscriptionInfoCount();
+        if (activeSimCount <= 0) {
+          Toast.makeText(context, R.string.no_available_sim, Toast.LENGTH_SHORT).show();
+          return true;
+        }
+        /* UNISOC: add for bug613018 @{ */
+        UserManager userManager = (UserManager) context.getSystemService(
+                Context.USER_SERVICE);
+        if (userManager != null && !userManager.isSystemUser()) {
+          Toast.makeText(context, R.string.ip_dial_in_guest_mode,
+                  Toast.LENGTH_SHORT).show();
+          return true;
+        }
+        /* @} */
+        /**UNISOC: modify for bug1181745 */
+        if (getContext() != null
+                && TelecomUtil.isInManagedCall(getContext())) {
+          /** @} */
+          handleIpDial(context, DialerUtils.getCallingPhoneAccountHandle(context), number);
+        } else if (subscriptionAccountHandles.size() <= 1 || hasUserSelectedDefault) {
+          /* @} */
+          handleIpDial(context, defaultPhoneAccountHandle, number);
+        } else {
+          SelectPhoneAccountListener ipDialCallback =
+                  new HandleDialAccountSelectedCallback(context, number, false);
+          DialerUtils.showSelectPhoneAccountDialog(context, subscriptionAccountHandles,
+                  ipDialCallback);
+        }
+      }
+      return true;
+      /** @} */
+      /* UNISOC: add for VoLTE@{*/
+    } else if (resId == MENU_MAKE_VIDEO_CALL) {
+      /* UNISOC: add for bug634770 @{ */
+      if (digits != null) {
+        String number = digits.getText().toString();
+        PreCall.start(
+                getContext(), new CallIntentBuilder(number,CallInitiationType.Type.DIALPAD).setIsVideoCall(true));
+        /* @} */
+        /**UNISOC: add for bug1168800 @{*/
+        hideAndClearDialpad();
+        /** @} */
+      }
+      return true;
+    } else if (resId == MENU_MAKE_MULTE_CALL) {
+      /**UNISOC: modify for bug1181745 */
+      if (!(getContext() != null
+              && TelecomUtil.isInManagedCall(getContext()))) {
+        /** @} */
+        if (getTelephonyManager().isWifiCallingAvailable()){// UNISOC: add for bug764072
+          Toast.makeText(getContext(), R.string.vowifi_conf_do_not_support, Toast.LENGTH_SHORT).show();
+        } else {
+          Intent intentPick = new Intent(MULTI_PICK_CONTACTS_ACTION).
+                  putExtra("checked_limit_count", MAX_CONTACTS_NUMBER).
+                  putExtra("checked_min_limit_count", MIN_CONTACTS_NUMBER).
+                  putExtra("cascading", new Intent(MULTI_PICK_CONTACTS_ACTION).setType(Phone.CONTENT_ITEM_TYPE)).
+                  putExtra("multi", ADD_MULTI_CALL);
+          DialerUtils.startActivityWithErrorToast(getActivity(), intentPick);
+          //UNISOC: modify for bug938786
+          hideAndClearDialpad();
+        }
+      } else {
+        //add for UNISOC:617749
+        Toast.makeText(getContext(), R.string.cound_not_make_mutil_call, Toast.LENGTH_SHORT).show();
+      }
+      return true;
+      /* @} */
     } else {
       return false;
     }
   }
+
+  /** UNISOC: Feature porting IP dialing for bug1072676 @{ */
+  public class HandleDialAccountSelectedCallback extends SelectPhoneAccountListener {
+    final private Context mContext;
+    final private String mNumber;
+    final private boolean misVoicemail;
+
+    public HandleDialAccountSelectedCallback(Context context, String number, boolean isVoiceMail) {
+      mContext = context;
+      mNumber = number;
+      misVoicemail = isVoiceMail;
+    }
+
+    @Override
+    public void onPhoneAccountSelected(PhoneAccountHandle selectedAccountHandle, boolean setDefault, String callId) {
+      super.onPhoneAccountSelected(selectedAccountHandle, setDefault, callId);
+      if (misVoicemail) {
+        //DialerUtils.callVoicemail(mContext, selectedAccountHandle);comment this line temporarily
+      } else {
+        handleIpDial(mContext, selectedAccountHandle, mNumber);
+      }
+    }
+  }
+
+  public void handleIpDial(Context context, PhoneAccountHandle phoneAccountHandle, String number) {
+    /* UNISOC: modify for bug598787 @{ */
+    if (phoneAccountHandle == null) {
+      return;
+    }
+    /* @} */
+    IpDialingUtils ipUtils = new IpDialingUtils(context);
+    for (String prefix : IpDialingUtils.EXCLUDE_PREFIX) {
+      if (number.startsWith(prefix)) {
+        number = number.substring(prefix.length());
+        break;
+      }
+    }
+    TelecomManager telecomManager = (TelecomManager) context
+            .getSystemService(Context.TELECOM_SERVICE);
+    PhoneAccount phoneAccount = telecomManager.getPhoneAccount(phoneAccountHandle);
+    TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+    int subId = tm.getSubIdForPhoneAccount(phoneAccount);
+    String ipPrefixNum = ipUtils.getIpDialNumber(subId);
+    if (!TextUtils.isEmpty(ipPrefixNum)) {
+      number = ipPrefixNum + number;
+      // append ip prefix-num, also as we will pass it to
+      // Telecomm, so dial number can be handled in Telecom.
+      final Intent intent = CallUtil.getCallIntent(number);
+      intent.putExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
+      intent.putExtra(IpDialingUtils.EXTRA_IS_IP_DIAL, true);
+      intent.putExtra(IpDialingUtils.EXTRA_IP_PRFIX_NUM, ipPrefixNum);
+      DialerUtils.startActivityWithErrorToast(context, intent);
+    } else {
+      /* UNISOC:BUG 895579 modify the package name @{ */
+      final Intent ipListIntent = new Intent();
+      ipListIntent.putExtra(SUB_ID_EXTRA, subId);
+      ipListIntent.setAction(Intent.ACTION_MAIN);//android.intent.action.MAIN
+      ipListIntent.addCategory(Intent.CATEGORY_DEVELOPMENT_PREFERENCE);
+      ipListIntent.setClassName(PHONE_PACKAGE_NAME, IP_NUMBER_LIST_ACTIVITY);
+      DialerUtils.startActivityWithErrorToast(context, ipListIntent);
+      /* @} */
+    }
+  }
+  /** @} */
+
+
 
   /**
    * Updates the dial string (mDigits) after inserting a Pause character (,) or Wait character (;).
@@ -1512,11 +1825,38 @@ public class DialpadFragment extends Fragment
    */
   private boolean isVoicemailAvailable() {
     try {
-      PhoneAccountHandle defaultUserSelectedAccount =
-          TelecomUtil.getDefaultOutgoingPhoneAccount(getActivity(), PhoneAccount.SCHEME_VOICEMAIL);
+      PhoneAccountHandle defaultUserSelectedAccount = null;
+      /** UNISOC: Bug1181991 The voicemail call doesnot be dialed out directly when the voicemail number has been set. @{*/
+      if (getContext() != null
+              && TelecomUtil.isInManagedCall(getContext())) {
+        defaultUserSelectedAccount = DialerUtils.getCallingPhoneAccountHandle(getContext());
+      } else {
+        defaultUserSelectedAccount =
+                TelecomUtil.getDefaultOutgoingPhoneAccount(getActivity(), PhoneAccount.SCHEME_VOICEMAIL);
+      }
+      /**@}*/
       if (defaultUserSelectedAccount == null) {
         // In a single-SIM phone, there is no default outgoing phone account selected by
         // the user, so just call TelephonyManager#getVoicemailNumber directly.
+        /* UNISOC: Bug1090145 add check for voicemail when in call. @{*/
+        List<PhoneAccountHandle> phoneAccoutHandle =
+                TelecomUtil.getCallCapablePhoneAccounts(getActivity());
+        for (PhoneAccountHandle accoutHandle: phoneAccoutHandle) {
+          int slotId = DialerUtils.getPhoneIdByAccountHandle(getActivity(), accoutHandle);
+
+          Log.d(TAG, " Get call state for phone "
+                  + slotId
+                  + " with state is "
+                  + TelephonyManager.getDefault()
+                  .getCallStateForSlot(slotId));
+
+          if (TelephonyManager.getDefault().getCallStateForSlot(slotId)
+                  != TelephonyManager.CALL_STATE_IDLE) {
+            return !TextUtils.isEmpty(TelecomUtil.getVoicemailNumber(
+                    getActivity(), accoutHandle));
+          }
+        }
+        /* @} */
         return !TextUtils.isEmpty(getTelephonyManager().getVoiceMailNumber());
       } else {
         return !TextUtils.isEmpty(
@@ -1532,7 +1872,8 @@ public class DialpadFragment extends Fragment
   }
 
   /** @return true if the widget with the phone number digits is empty. */
-  private boolean isDigitsEmpty() {
+  // UNISOC: Bug1090190 touch assist search and menu useless.
+  public boolean isDigitsEmpty() {
     return digits.length() == 0;
   }
 
@@ -1894,6 +2235,18 @@ public class DialpadFragment extends Fragment
     }
   }
 
+  /* UNISOC: Add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK @{ */
+  private void removePreviousDigitIfPossibleForPound() {
+    final int currentPosition = digits.getSelectionStart();
+    if (currentPosition > 0
+            && (digits.getText().toString().endsWith("#") || currentPosition < digits
+            .getText().toString().length())) {
+      digits.setSelection(currentPosition);
+      digits.getText().delete(currentPosition - 1, currentPosition);
+    }
+  }
+  /* @} */
+
   /** Listener for dialpad's parent. */
   public interface DialpadListener {
     void getLastOutgoingCall(LastOutgoingCallCallback callback);
@@ -2108,4 +2461,65 @@ public class DialpadFragment extends Fragment
       return rawNumberBuilder.toString();
     }
   }
+
+  /* UNISOC: Add for VoLTE bug1072820 @{*/
+  private synchronized void tryRegisterImsListener() {
+    if(getActivity() != null && PermissionsUtil.hasPhonePermissions(getActivity())) {
+      mIImsServiceEx = ImsManagerEx.getIImsServiceEx();
+      if(mIImsServiceEx != null) {
+        try{
+          if(!mIsImsListenerRegistered) {
+            mIsImsListenerRegistered = true;
+            mIImsServiceEx.registerforImsRegisterStateChanged(mImsUtListenerExBinder);
+          }
+        }catch(RemoteException e) {
+          LogUtil.e(
+                  "DialpadFragment.tryRegisterImsListener",
+                  "regiseterforImsException:" + e);
+        }
+      }
+    }
+  }
+
+  private final IImsRegisterListener.Stub mImsUtListenerExBinder = new IImsRegisterListener.Stub() {
+    @Override
+    public void imsRegisterStateChange(boolean isRegistered) {
+      final MenuItem videoCallItem = (mPopupMenu == null)? null:mPopupMenu.getMenu().findItem(MENU_MAKE_VIDEO_CALL);
+      final MenuItem groupCallItem = (mPopupMenu == null) ? null : mPopupMenu.getMenu().
+              findItem(MENU_MAKE_MULTE_CALL);
+      LogUtil.i("DialpadFragment.imsRegisterStateChange", "isRegistered: " + isRegistered + ", videoCallItem: " + videoCallItem
+              + " groupCallItem: "+ groupCallItem);
+      if(mIsVideoEnable != isRegistered) {
+        mIsVideoEnable = isRegistered;
+      }
+
+      /**UNISOC: bug1176123 Make sure the content of your adapter is not modified from a background thread, but only from the UI thread @{ */
+      if (getActivity() != null) {
+          getActivity().runOnUiThread(new Runnable() {
+              public void run() {
+                  /** UNISOC: bug895158 Card One Unicom Card II moves, the model closes the “Video Call” function,
+                   * the dial pad enters the number, and the option still has the “Start Video Call” option.@{*/
+                  if (videoCallItem != null) {
+                      videoCallItem.setVisible(CallUtil.isVideoEnabled(getActivity()));
+                  }
+                  /** @} */
+                  if (groupCallItem != null) {
+                      //UNISOC:modify for bug 931236
+                      groupCallItem.setVisible(mIsVideoEnable && mIsSupportMultiCall);
+                  }
+
+
+              }
+          });
+      }
+      /** @} */
+    }
+  };
+  /* @} */
+
+  /* UNISOC: Bug1090190 touch assist search and menu useless. @{ */
+  public PopupMenu getOverflowPopupMenu() {
+    return overflowPopupMenu;
+  }
+  /* @} */
 }

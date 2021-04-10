@@ -18,6 +18,7 @@ package com.android.dialer.app.calllog;
 
 import android.content.Context;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import com.android.dialer.app.R;
 import com.android.dialer.calllogutils.CallTypeIconsView;
@@ -29,17 +30,20 @@ public final class PhoneCallDetailsViews {
   public final BidiTextView nameView;
   public final View callTypeView;
   public final CallTypeIconsView callTypeIcons;
+  // UNISOC: Support For CallLog Icon Display in bug1072697.
+  public final ImageView callTypeExIcon;
   public final TextView callLocationAndDate;
   public final View transcriptionView;
   public final TextView voicemailTranscriptionView;
   public final TextView voicemailTranscriptionBrandingView;
   public final View voicemailTranscriptionRatingView;
   public final TextView callAccountLabel;
-
+  /* UNISOC: Support For CallLog Icon Display in bug1072697. @{*/
   private PhoneCallDetailsViews(
       BidiTextView nameView,
       View callTypeView,
       CallTypeIconsView callTypeIcons,
+      ImageView callTypeExIcon,
       TextView callLocationAndDate,
       View transcriptionView,
       TextView voicemailTranscriptionView,
@@ -55,7 +59,9 @@ public final class PhoneCallDetailsViews {
     this.voicemailTranscriptionBrandingView = voicemailTranscriptionBrandingView;
     this.voicemailTranscriptionRatingView = voicemailTranscriptionRatingView;
     this.callAccountLabel = callAccountLabel;
+    this.callTypeExIcon = callTypeExIcon;
   }
+  /* @} */
 
   /**
    * Create a new instance by extracting the elements from the given view.
@@ -64,11 +70,13 @@ public final class PhoneCallDetailsViews {
    * R.id.date}, and {@code R.id.number}, and a linear layout with identifier {@code
    * R.id.call_types}.
    */
+  /* UNISOC: Support For CallLog Icon Display in bug1072697. @{*/
   public static PhoneCallDetailsViews fromView(View view) {
     return new PhoneCallDetailsViews(
         (BidiTextView) view.findViewById(R.id.name),
         view.findViewById(R.id.call_type),
         (CallTypeIconsView) view.findViewById(R.id.call_type_icons),
+        (ImageView) view.findViewById(R.id.call_type_ex_icon),
         (TextView) view.findViewById(R.id.call_location_and_date),
         view.findViewById(R.id.transcription),
         (TextView) view.findViewById(R.id.voicemail_transcription),
@@ -76,12 +84,15 @@ public final class PhoneCallDetailsViews {
         view.findViewById(R.id.voicemail_transcription_rating),
         (TextView) view.findViewById(R.id.call_account_label));
   }
+  /* @} */
 
+  /* UNISOC: Support For CallLog Icon Display in bug645018. @{*/
   public static PhoneCallDetailsViews createForTest(Context context) {
     return new PhoneCallDetailsViews(
         new BidiTextView(context),
         new View(context),
         new CallTypeIconsView(context),
+        new ImageView(context),
         new TextView(context),
         new View(context),
         new TextView(context),
@@ -89,4 +100,5 @@ public final class PhoneCallDetailsViews {
         new View(context),
         new TextView(context));
   }
+  /* @} */
 }

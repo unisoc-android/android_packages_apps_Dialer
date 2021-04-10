@@ -60,8 +60,15 @@
   <uses-permission android:name="android.permission.CONNECTIVITY_USE_RESTRICTED_NETWORKS"/>
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
   <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE"/>
+  <uses-permission android:name="android.permission.SYSTEM_OVERLAY_WINDOW" />
 
   <uses-permission android:name="android.permission.CONTROL_INCALL_EXPERIENCE"/>
+  <!--UNISOC Feature Porting: Add for call recorder feature.-->
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+  <!--add for bug1105602 follow 976510.-->
+  <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT"/>
+
   <!-- We use this to disable the status bar buttons of home, back and recent
   during an incoming call. By doing so this allows us to not show the user
   is viewing the activity in full screen alert, on a fresh system/factory

@@ -20,6 +20,7 @@ import android.graphics.Point;
 import android.support.annotation.IntDef;
 import android.view.Surface;
 import android.view.TextureView;
+import android.widget.ImageView;//add for bug 1130479
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -53,5 +54,20 @@ public interface VideoSurfaceTexture {
 
   void attachToTextureView(TextureView textureView);
 
+  // add for bug 1130479
+  void attachToImageView(ImageView imageView);
+
   void setDoneWithSurface();
+
+  boolean getSmallSurface();
+
+  void setSmallSurface(boolean isSmallSurface);
+
+  TextureView getTextureView();
+
+  ImageView getImageView();
+
+  void changeToSmallSurface();
+
+  void changeToBigSurface();
 }

@@ -295,8 +295,8 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
     }
     return name;
   }
-
-  ContactCacheEntry getInfo(String callId) {
+//UNISOC:modify for bug940943
+  public ContactCacheEntry getInfo(String callId) {
     return infoMap.get(callId);
   }
 
@@ -416,6 +416,9 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
       // -> new cache after query)
       cacheEntry.queryId = queryToken.queryId;
       Log.d(TAG, "There is an existing cache. Do not override until new query is back");
+      if(cacheEntry.isVoicemailNumber){//UNISOC:add for bug1180003
+        cacheEntry.isVoicemailNumber = false;
+      }
     } else {
       ContactCacheEntry initialCacheEntry =
           updateCallerInfoInCacheOnAnyThread(
@@ -925,7 +928,8 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
   }
 
   private boolean needForceQuery(DialerCall call, ContactCacheEntry cacheEntry) {
-    if (call == null || call.isConferenceCall()) {
+    // UNISOC: for bug887066
+    if (call == null || (call.isConferenceCall() && call.getChildCallIds().size() > 1)) {
       return false;
     }
 
@@ -939,6 +943,9 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
 
     if (!TextUtils.equals(oldPhoneNumber, newPhoneNumber)) {
       Log.d(TAG, "phone number has changed: " + oldPhoneNumber + " -> " + newPhoneNumber);
+      if (!call.isVoiceMailNumber()) { //UNISOC:add for bug1149859
+        call.updateIsVoiceMailNumber();
+      }
       return true;
     }
 

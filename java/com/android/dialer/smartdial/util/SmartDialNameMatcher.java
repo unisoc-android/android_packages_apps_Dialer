@@ -43,6 +43,8 @@ public class SmartDialNameMatcher {
 
   // Controls whether to treat an empty query as a match (with anything).
   private boolean shouldMatchEmptyQuery = false;
+  // UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD
+  private static boolean mNeedstripCountryCode = false;
 
   public SmartDialNameMatcher(String query) {
     this.query = query;
@@ -232,6 +234,15 @@ public class SmartDialNameMatcher {
       String query,
       ArrayList<SmartDialMatchPosition> matchList) {
     StringBuilder builder = new StringBuilder();
+    /**
+     * UNISOC: Bug1100416 occur java.lang.NullPointerException in monkey test. {@
+     * */
+    if (displayName == null) {
+        return false;
+    }
+    /**
+     * }@
+     * */
     constructEmptyMask(builder, displayName.length());
     final int nameLength = displayName.length();
     final int queryLength = query.length();
@@ -427,4 +438,38 @@ public class SmartDialNameMatcher {
   public void setShouldMatchEmptyQuery(boolean matches) {
     shouldMatchEmptyQuery = matches;
   }
+  /**
+   * UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD @{
+   * judge if the numner is a countrycode number
+   *
+   * @param number Phone number we want to Strip
+   * @param countrycode countrycode we want to match
+   * @return if the numner is a countrycode number
+   */
+  public static boolean isCountryCodeNumber(String number,
+                                            String[] countryCodeArray) {
+    if (countryCodeArray == null || countryCodeArray.length <= 0
+            || TextUtils.isEmpty(number)) {
+      return false;
+    }
+
+    int count = countryCodeArray.length;
+    for (int i = 0; i < count; i++) {
+      if (countryCodeArray[i] != null
+              && number.length() > countryCodeArray[i].length()
+              && number.startsWith(countryCodeArray[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static void setNeedstripCountryCode(boolean stripCountryCode) {
+    mNeedstripCountryCode = stripCountryCode;
+  }
+
+  public static boolean isNeedstripCountryCode() {
+    return mNeedstripCountryCode;
+  }
+  /** @} */
 }

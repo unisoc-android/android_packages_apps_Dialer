@@ -54,11 +54,17 @@ public abstract class PrimaryInfo {
 
   public abstract boolean isContactPhotoShown();
 
+  // UNISOC: add for bug1105277
+  public abstract boolean isConference();
+
   public abstract boolean isWorkCall();
 
   public abstract boolean isSpam();
 
   public abstract boolean isLocalContact();
+
+  //UNISOC: add for bug1142453
+  public abstract boolean isVoiceMailNumber();
 
   public abstract boolean answeringDisconnectsOngoingCall();
 
@@ -73,6 +79,13 @@ public abstract class PrimaryInfo {
   public abstract boolean showInCallButtonGrid();
 
   public abstract int numberPresentation();
+
+  // UNISOC Feature Porting: Show fdn list name in incallui feature.
+  public abstract int subId();
+
+  // UNISOC Feature Porting:mt conference call support
+  @Nullable
+  public abstract String contactName();
 
   public static Builder builder() {
     return new AutoValue_PrimaryInfo.Builder();
@@ -101,11 +114,17 @@ public abstract class PrimaryInfo {
 
     public abstract Builder setIsContactPhotoShown(boolean isContactPhotoShown);
 
+    // UNISOC: add for bug1105277
+    public abstract Builder setIsConference(boolean isConference);
+
     public abstract Builder setIsWorkCall(boolean isWorkCall);
 
     public abstract Builder setIsSpam(boolean isSpam);
 
     public abstract Builder setIsLocalContact(boolean isLocalContact);
+
+    //UNISOC: add for bug1142453
+    public abstract Builder setIsVoiceMailNumber(boolean isVoiceMailNumber);
 
     public abstract Builder setAnsweringDisconnectsOngoingCall(
         boolean answeringDisconnectsOngoingCall);
@@ -120,6 +139,11 @@ public abstract class PrimaryInfo {
 
     public abstract Builder setNumberPresentation(int numberPresentation);
 
+    // UNISOC Feature Porting: Show fdn list name in incallui feature.
+    public abstract Builder setSubId(int subId);
+
+    public abstract Builder setContactName(String contactName);
+
     public abstract PrimaryInfo build();
   }
 
@@ -129,13 +153,18 @@ public abstract class PrimaryInfo {
         .setPhotoType(ContactPhotoType.DEFAULT_PLACEHOLDER)
         .setIsSipCall(false)
         .setIsContactPhotoShown(false)
+        // UNISOC: add for bug1105277
+        .setIsConference(false)
         .setIsWorkCall(false)
         .setIsSpam(false)
         .setIsLocalContact(false)
+        //UNISOC: add for bug1142453
+        .setIsVoiceMailNumber(false)
         .setAnsweringDisconnectsOngoingCall(false)
         .setShouldShowLocation(false)
         .setShowInCallButtonGrid(true)
         .setNumberPresentation(-1)
+        .setSubId(-1) // UNISOC Feature Porting: Show fdn list name in incallui feature.
         .build();
   }
 

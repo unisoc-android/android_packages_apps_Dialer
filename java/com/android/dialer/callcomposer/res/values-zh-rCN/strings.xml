@@ -16,6 +16,6 @@
   <string name="description_call_composer_photo">选择一张照片</string>
   <string name="description_call_composer_message">发送信息</string>
   <string name="image_sent_messages">已通过“信息”应用发送照片</string>
-  <string name="message_sent_messages">已通过“信息”应用发送短信</string>
+  <string name="message_sent_messages">已通过“信息”应用发送信息</string>
   <string name="call_composer_image_uploading">正在发送图片…</string>
 </resources>

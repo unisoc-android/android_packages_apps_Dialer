@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">អូស​ចេញ​ពី​រូបតំណាង​ដើម្បី​ឆ្លើយ​​​ជា​ការ​ហៅ​សំឡេង</string>
   <string name="call_incoming_default_label_answer_and_release_second">អូស​ឡើង​លើ ដើម្បី​ឆ្លើយ និង​រង់ចាំ​ការ​ហៅ​ដែល​កំពុង​ដំណើរការ</string>
   <string name="call_incoming_default_label_answer_and_release_third">អូស​ឡើង​លើ ដើម្បី​ឆ្លើយ និង​បញ្ចប់​ការ​ហៅ​ដែល​កំពុង​រង់ចាំ</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"វាសម្រាមដៃឡើងលើដើម្បីឆ្លើយ និងបញ្ចប់ការហៅទូរសព្ទបន្ត"</string>
   <string name="call_incoming_swipe_to_answer_and_release">អូស​ពី​រូបតំណាង ដើម្បី​ឆ្លើយ និង​បញ្ចប់​ការ​ហៅ​ទូរសព្ទ​ដែល​កំពុង​ដំណើរការ</string>
   <string name="call_incoming_message_custom">សរសេរ​ផ្ទាល់ខ្លួន​​​អ្នក…</string>
   <string name="call_incoming_respond_via_sms_custom_message">សរសេរ​​ផ្ទាល់ខ្លួន​អ្នក…</string>

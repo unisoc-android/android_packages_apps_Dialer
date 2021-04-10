@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT membantu penelepon yang tunarungu, kesulitan mendengar, memiliki gangguan berbicara, atau memerlukan lebih dari sekadar suara.</string>
   <string name="rtt_button_decline_request">Tidak</string>
   <string name="rtt_button_accept_request">Bergabung ke RTT</string>
+  <string name="notification_action_answer_voice">"Suara"</string>
+  <string name="notification_action_mute_on">Bisu</string>
+  <string name="notification_action_mute_off">Nyalakan suara</string>
+  <string name="notification_action_reject_with_message">"Tolak SMS"</string>
+  <string name="card_title_in_call">"Sedang dalam panggilan"</string>
+  <string name="card_title_conf_call">"Panggilan konferensi"</string>
+  <string name="fail_change_video_due_to_bgcall">"Ada panggilan di latar belakang, gagal mengubah panggilan yang aktif menjadi panggilan video."</string>
 </resources>

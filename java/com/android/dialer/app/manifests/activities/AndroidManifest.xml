@@ -19,7 +19,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.dialer.app">
 
-  <application>
+  <!-- UNISOC Add for bug1078704: Porting Bug 951514  set resizeableActivity to false  @{ -->
+  <application
+      android:resizeableActivity="false">
+  <!-- @} -->
 
     <activity
         android:name="com.android.dialer.app.settings.DialerSettingsActivity"

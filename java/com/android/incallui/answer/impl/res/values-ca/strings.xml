@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Llisca des de la icona per respondre amb una trucada d\'àudio</string>
   <string name="call_incoming_default_label_answer_and_release_second">Llisca cap amunt per respondre a la trucada i posar l\'actual en espera</string>
   <string name="call_incoming_default_label_answer_and_release_third">Llisca cap amunt per respondre a la trucada i finalitzar la que està en espera</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Llisca cap amunt per respondre i finalitzar una trucada sortint"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Llisca des de la icona per respondre a la trucada i finalitzar l\'actual</string>
   <string name="call_incoming_message_custom">Escriu la teva…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Escriu la teva…</string>

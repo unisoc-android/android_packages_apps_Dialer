@@ -34,6 +34,7 @@ import com.android.dialer.enrichedcall.EnrichedCallManager;
 import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.widget.DialerToolbar;
 import com.android.dialer.widget.MessageFragment;
+import android.text.TextUtils;
 
 /** Activity used to send post call messages after a phone call. */
 public class PostCallActivity extends AppCompatActivity implements MessageFragment.Listener {
@@ -44,6 +45,12 @@ public class PostCallActivity extends AppCompatActivity implements MessageFragme
   private static final int REQUEST_CODE_SEND_SMS = 1;
 
   private boolean useRcs;
+
+  /* UNISOC: add for bug 1130082 @{ */
+  private static final String KEY_MESSAGE_FRAGMENT_TEXT = "message_fragment_text";
+  private MessageFragment mMessageFragment;
+  private String mCustomMessageText;
+  /* @} */
 
   public static Intent newIntent(
       @NonNull Context context, @NonNull String number, boolean isRcsPostCall) {
@@ -72,7 +79,7 @@ public class PostCallActivity extends AppCompatActivity implements MessageFragme
           getString(R.string.post_call_message_2),
           getString(R.string.post_call_message_3)
         };
-    MessageFragment fragment =
+    mMessageFragment =
         MessageFragment.builder()
             .setCharLimit(postCallCharLimit)
             .showSendIcon()
@@ -80,8 +87,14 @@ public class PostCallActivity extends AppCompatActivity implements MessageFragme
             .build();
     getSupportFragmentManager()
         .beginTransaction()
-        .replace(R.id.message_container, fragment)
+        .replace(R.id.message_container, mMessageFragment)
         .commit();
+    /* UNISOC: add for bug 1130082 @{ */
+    if (bundle != null) {
+        String message = bundle.getString(KEY_MESSAGE_FRAGMENT_TEXT, "");
+        mCustomMessageText = message;
+    }
+    /* @} */
   }
 
   @Override
@@ -99,7 +112,9 @@ public class PostCallActivity extends AppCompatActivity implements MessageFragme
       SmsManager smsManager = SmsManager.getDefault();
       smsManager.sendMultipartTextMessage(
           number, null, smsManager.divideMessage(message), null, null);
-      PostCall.onMessageSent(this, number);
+      /* UNISOC: add for bug 1138335 @{ */
+      //      PostCall.onMessageSent(this, number);
+      /* @} */
       finish();
     } else if (PermissionsUtil.isFirstRequest(this, permission.SEND_SMS)
         || shouldShowRequestPermissionRationale(permission.SEND_SMS)) {
@@ -136,4 +151,23 @@ public class PostCallActivity extends AppCompatActivity implements MessageFragme
   private EnrichedCallManager getEnrichedCallManager() {
     return EnrichedCallComponent.get(this).getEnrichedCallManager();
   }
+
+  /* UNISOC: add for bug 1130082 @{ */
+  @Override
+  protected void onSaveInstanceState(Bundle outState) {
+    super.onSaveInstanceState(outState);
+    String message = mMessageFragment.getCustomMessageText();
+    if (!TextUtils.isEmpty(message)) {
+      outState.putString(KEY_MESSAGE_FRAGMENT_TEXT, message);
+    }
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    if (!TextUtils.isEmpty(mCustomMessageText)) {
+      mMessageFragment.setCustomMessageText(mCustomMessageText);
+    }
+  }
+  /* @} */
 }

@@ -34,6 +34,7 @@ import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -62,6 +63,11 @@ import com.google.internal.communications.voicemailtranscription.v1.Transcriptio
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
+import android.telephony.SubscriptionInfo;
+import android.telephony.TelephonyManager;
+import com.android.dialer.util.PermissionsUtil;
+import com.android.ims.ImsManager;
+import static android.Manifest.permission.READ_PHONE_STATE;
 
 /** Helper class to fill in the views in {@link PhoneCallDetailsViews}. */
 public class PhoneCallDetailsHelper
@@ -87,6 +93,13 @@ public class PhoneCallDetailsHelper
   /** List of items to be concatenated together for accessibility descriptions */
   private ArrayList<CharSequence> descriptionItems = new ArrayList<>();
 
+  // UNISOC: Bug 698812 add For VOLTE and VoWiFi CallLog icon.
+  private static final String TAG = "PhoneCallDetailsHelper";
+  private boolean mIsVoLTECallEnable;
+  private boolean mIsWifiCallEnable;
+  // UNISOC: Support For CallLog Icon Display in bug1072697.
+  private boolean mShowCallLogEx;
+
   /**
    * Creates a new instance of the helper.
    *
@@ -99,6 +112,20 @@ public class PhoneCallDetailsHelper
     this.resources = resources;
     this.callLogCache = callLogCache;
     calendar = Calendar.getInstance();
+    /* UNISOC: Bug 698812 add For VOLTE and VoWiFi CallLog icon. @{ */
+    if (PermissionsUtil.hasPermission(context, READ_PHONE_STATE)) {
+      mIsVoLTECallEnable = ImsManager.isVolteEnabledByPlatform(context);
+      mIsWifiCallEnable = ImsManager.isWfcEnabledByPlatform(context);
+    } else {
+      mIsVoLTECallEnable = false;
+      mIsWifiCallEnable = false;
+    }
+    Log.d(TAG, "mIsVoLTECallEnable = " + mIsVoLTECallEnable +
+            " mIsWifiCallEnable = " + mIsWifiCallEnable);
+    /* @} */
+    // UNISOC: Support For CallLog Icon Display in bug739771.
+    mShowCallLogEx = context.getResources()
+            .getBoolean(R.bool.config_show_calllog_ex_icon);
     cachedNumberLookupService = PhoneNumberCache.get(context).getCachedNumberLookupService();
   }
 
@@ -162,23 +189,45 @@ public class PhoneCallDetailsHelper
         isVoicemail = details.callTypes[index] == Calls.VOICEMAIL_TYPE;
       }
     }
-
-    // Show the video icon if the call had video enabled.
-    views.callTypeIcons.setShowVideo(
-        (details.features & Calls.FEATURES_VIDEO) == Calls.FEATURES_VIDEO);
-    views.callTypeIcons.setShowHd(
-        (details.features & Calls.FEATURES_HD_CALL) == Calls.FEATURES_HD_CALL);
-    views.callTypeIcons.setShowWifi(
-        MotorolaUtils.shouldShowWifiIconInCallLog(context, details.features));
-    views.callTypeIcons.setShowAssistedDialed(
-        (details.features & TelephonyManagerCompat.FEATURES_ASSISTED_DIALING)
-            == TelephonyManagerCompat.FEATURES_ASSISTED_DIALING);
-    if (BuildCompat.isAtLeastP()) {
-      views.callTypeIcons.setShowRtt((details.features & Calls.FEATURES_RTT) == Calls.FEATURES_RTT);
-    }
-    views.callTypeIcons.requestLayout();
-    views.callTypeIcons.setVisibility(View.VISIBLE);
-
+      /* UNISOC: Support For CallLog Icon Display in bug1072697. @{ */
+      Log.d(TAG, "mShowCallLogEx: " + mShowCallLogEx);
+      if (mShowCallLogEx) {
+          if ((details.features & Calls.FEATURES_VIDEO) == Calls.FEATURES_VIDEO) {
+              views.callTypeExIcon.setImageDrawable(context.getResources().getDrawable(
+                      R.drawable.ic_phone_video_reliance));
+              views.callTypeExIcon.setVisibility(View.VISIBLE);
+          } else if (mIsVoLTECallEnable &&
+                  (details.features & Calls.FEATURES_HD_CALL) == Calls.FEATURES_HD_CALL) {
+              views.callTypeExIcon.setImageDrawable(context.getResources().getDrawable(
+                      R.drawable.ic_phone_volte_reliance));
+              views.callTypeExIcon.setVisibility(View.VISIBLE);
+          } else if (mIsWifiCallEnable &&
+                  (details.features & Calls.FEATURES_WIFI) == Calls.FEATURES_WIFI) {
+              views.callTypeExIcon.setImageDrawable(context.getResources().getDrawable(
+                      R.drawable.ic_phone_vowifi_reliance));
+              views.callTypeExIcon.setVisibility(View.VISIBLE);
+          } else {
+              views.callTypeExIcon.setVisibility(View.GONE);
+          }
+      } else {
+        // Show the video icon if the call had video enabled.
+        views.callTypeIcons.setShowVideo(
+            (details.features & Calls.FEATURES_VIDEO) == Calls.FEATURES_VIDEO);
+        views.callTypeIcons.setShowHd(mIsVoLTECallEnable &&
+                (details.features & Calls.FEATURES_HD_CALL) == Calls.FEATURES_HD_CALL);
+        views.callTypeIcons.setShowWifi(mIsWifiCallEnable &&
+                (details.features & Calls.FEATURES_WIFI) == Calls.FEATURES_WIFI);
+        /* @} */
+        views.callTypeIcons.setShowAssistedDialed(
+            (details.features & TelephonyManagerCompat.FEATURES_ASSISTED_DIALING)
+                == TelephonyManagerCompat.FEATURES_ASSISTED_DIALING);
+        if (BuildCompat.isAtLeastP()) {
+        views.callTypeIcons.setShowRtt((details.features & Calls.FEATURES_RTT) == Calls.FEATURES_RTT);
+        }
+        views.callTypeIcons.requestLayout();
+        views.callTypeIcons.setVisibility(View.VISIBLE);
+      }
+      /* @} */
     // Show the total call count only if there are more than the maximum number of icons.
     final Integer callCount;
     if (count > MAX_CALL_TYPE_ICONS) {
@@ -203,6 +252,26 @@ public class PhoneCallDetailsHelper
     }
     if (!TextUtils.isEmpty(accountLabel)) {
       views.callAccountLabel.setVisibility(View.VISIBLE);
+      /* UNISOC: Bug 1072694 androidq porting feature for FEATURE_SIM_CARD_IDENTIFICATION_IN_CALLLOG @{ */
+      String simIdentification = "";
+      final String iccId = details.accountHandle.getId();
+      TelephonyManager telephonyManager = (TelephonyManager) context
+              .getSystemService(Context.TELEPHONY_SERVICE);
+      final int phoneCount = telephonyManager.getPhoneCount();
+      if (iccId != null) {
+        for (int i = 0; i < phoneCount; i++) {
+          SubscriptionInfo subscriptionInfo = DialerUtils
+                  .getActiveSubscriptionInfo(context, i, false);
+          if (subscriptionInfo != null
+                  && iccId.equals(subscriptionInfo.getIccId())) {
+            simIdentification = resources.getString(R.string.sim) + (i + 1);
+          }
+        }
+      }
+      if (!TextUtils.isEmpty(simIdentification)) {
+        accountLabel = simIdentification + " " + accountLabel;
+      }
+      /* @} */
       views.callAccountLabel.setText(accountLabel);
       int color = callLogCache.getAccountColor(details.accountHandle);
       if (color == PhoneAccount.NO_HIGHLIGHT_COLOR) {

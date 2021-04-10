@@ -65,6 +65,7 @@ EXCLUDE_MANIFESTS := \
 	$(BASE_DIR)/dialer/binary/google/AndroidManifest.xml \
 	$(BASE_DIR)/incallui/calllocation/impl/AndroidManifest.xml \
 	$(BASE_DIR)/incallui/maps/impl/AndroidManifest.xml \
+        $(BASE_DIR)/dialer/app/sprd/go/AndroidManifest.xml \
 
 # Dialer manifest files to merge.
 DIALER_MANIFEST_FILES := $(call all-named-files-under,AndroidManifest.xml,.)
@@ -133,6 +134,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
 	libbackup \
 	libphonenumber \
 	volley \
+	sprd.halmanager \
 
 LOCAL_STATIC_ANDROID_LIBRARIES := \
 	android-support-core-ui \
@@ -147,6 +149,11 @@ LOCAL_STATIC_ANDROID_LIBRARIES := \
 LOCAL_JAVA_LIBRARIES := \
 	dialer-auto-value-target \
 	org.apache.http.legacy \
+        ims-common \
+        telephony-common \
+        radio_interactor_common \
+        unisoc_ims_common \
+        radio_interactor_common \
 
 LOCAL_ANNOTATION_PROCESSORS := \
 	dialer-auto-value \
@@ -170,7 +177,8 @@ LOCAL_PROGUARD_ENABLED := custom
 
 LOCAL_PROGUARD_ENABLED += optimization
 
-LOCAL_SDK_VERSION := system_current
+#LOCAL_SDK_VERSION := system_current
+LOCAL_PRIVATE_PLATFORM_APIS := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_PACKAGE_NAME := Dialer
 LOCAL_CERTIFICATE := shared
@@ -188,6 +196,197 @@ RES_DIRS :=
 DIALER_MANIFEST_FILES :=
 EXCLUDE_MANIFESTS :=
 EXCLUDE_EXTRA_PACKAGES :=
+
+# Bug 937597 remove the calllog icon for go version begin
+include $(CLEAR_VARS)
+
+# The base directory for Dialer sources.
+BASE_DIR := java/com/android
+
+# Exclude files incompatible with AOSP.
+EXCLUDE_FILES := \
+        $(BASE_DIR)/incallui/calllocation/impl/AuthException.java \
+        $(BASE_DIR)/incallui/calllocation/impl/CallLocationImpl.java \
+        $(BASE_DIR)/incallui/calllocation/impl/CallLocationModule.java \
+        $(BASE_DIR)/incallui/calllocation/impl/DownloadMapImageTask.java \
+        $(BASE_DIR)/incallui/calllocation/impl/GoogleLocationSettingHelper.java \
+        $(BASE_DIR)/incallui/calllocation/impl/HttpFetcher.java \
+        $(BASE_DIR)/incallui/calllocation/impl/LocationFragment.java \
+        $(BASE_DIR)/incallui/calllocation/impl/LocationHelper.java \
+        $(BASE_DIR)/incallui/calllocation/impl/LocationPresenter.java \
+        $(BASE_DIR)/incallui/calllocation/impl/LocationUrlBuilder.java \
+        $(BASE_DIR)/incallui/calllocation/impl/ReverseGeocodeTask.java \
+        $(BASE_DIR)/incallui/calllocation/impl/TrafficStatsTags.java \
+        $(BASE_DIR)/incallui/maps/impl/MapsImpl.java \
+        $(BASE_DIR)/incallui/maps/impl/MapsModule.java \
+        $(BASE_DIR)/incallui/maps/impl/StaticMapFragment.java \
+
+# Exclude testing only class, not used anywhere here
+EXCLUDE_FILES += \
+        $(BASE_DIR)/contacts/common/format/testing/SpannedTestUtils.java
+
+# Exclude rootcomponentgenerator
+EXCLUDE_FILES += \
+        $(call all-java-files-under, $(BASE_DIR)/dialer/rootcomponentgenerator) \
+        $(call all-java-files-under, $(BASE_DIR)/dialer/inject/demo)
+
+# Exclude build variants for now
+EXCLUDE_FILES += \
+        $(BASE_DIR)/dialer/constants/googledialer/ConstantsImpl.java \
+        $(BASE_DIR)/dialer/binary/google/GoogleStubDialerRootComponent.java \
+        $(BASE_DIR)/dialer/binary/google/GoogleStubDialerApplication.java \
+
+# * b/62875795
+ifneq ($(wildcard packages/apps/Dialer/java/com/android/voicemail/impl/com/google/internal/communications/voicemailtranscription/v1/VoicemailTranscriptionServiceGrpc.java),)
+$(error Please remove file packages/apps/Dialer/java/com/android/voicemail/impl/com/google/internal/communications/voicemailtranscription/v1/VoicemailTranscriptionServiceGrpc.java )
+endif
+
+EXCLUDE_RESOURCE_DIRECTORIES := \
+        java/com/android/incallui/maps/impl/res \
+
+# All Dialers resources.
+RES_DIRS := $(call all-subdir-named-dirs,res,.)
+RES_DIRS := $(filter-out $(EXCLUDE_RESOURCE_DIRECTORIES),$(RES_DIRS))
+
+EXCLUDE_MANIFESTS := \
+        $(BASE_DIR)/dialer/binary/aosp/testing/AndroidManifest.xml \
+        $(BASE_DIR)/dialer/binary/google/AndroidManifest.xml \
+        $(BASE_DIR)/incallui/calllocation/impl/AndroidManifest.xml \
+        $(BASE_DIR)/incallui/maps/impl/AndroidManifest.xml \
+        $(BASE_DIR)/dialer/app/AndroidManifest.xml \
+
+# Dialer manifest files to merge.
+DIALER_MANIFEST_FILES := $(call all-named-files-under,AndroidManifest.xml,.)
+DIALER_MANIFEST_FILES := $(filter-out $(EXCLUDE_MANIFESTS),$(DIALER_MANIFEST_FILES))
+
+# Merge all manifest files.
+LOCAL_FULL_LIBS_MANIFEST_FILES := \
+        $(addprefix $(LOCAL_PATH)/, $(DIALER_MANIFEST_FILES))
+
+LOCAL_SRC_FILES := $(call all-java-files-under, $(BASE_DIR))
+LOCAL_SRC_FILES += $(call all-proto-files-under, $(BASE_DIR))
+LOCAL_SRC_FILES += $(call all-Iaidl-files-under, $(BASE_DIR))
+LOCAL_SRC_FILES := $(filter-out $(EXCLUDE_FILES),$(LOCAL_SRC_FILES))
+
+LOCAL_AIDL_INCLUDES := $(call all-Iaidl-files-under, $(BASE_DIR))
+
+LOCAL_PROTOC_FLAGS := --proto_path=$(LOCAL_PATH)
+
+LOCAL_RESOURCE_DIR := $(addprefix $(LOCAL_PATH)/, $(RES_DIRS))
+
+EXCLUDE_EXTRA_PACKAGES := \
+        com.android.dialer.binary.aosp.testing \
+        com.android.dialer.binary.google \
+        com.android.incallui.calllocation.impl \
+        com.android.incallui.maps.impl \
+
+# We specify each package explicitly to glob resource files.
+include ${LOCAL_PATH}/packages.mk
+
+LOCAL_AAPT_FLAGS := $(filter-out $(EXCLUDE_EXTRA_PACKAGES),$(LOCAL_AAPT_FLAGS))
+LOCAL_AAPT_FLAGS := $(addprefix --extra-packages , $(LOCAL_AAPT_FLAGS))
+LOCAL_AAPT_FLAGS += \
+        --auto-add-overlay \
+        --extra-packages me.leolin.shortcutbadger \
+
+LOCAL_STATIC_JAVA_LIBRARIES := \
+        android-common \
+        android-support-dynamic-animation \
+        com.android.vcard \
+        dialer-animal-sniffer-annotations-target \
+        dialer-commons-io-target \
+        dialer-dagger2-target \
+        dialer-disklrucache-target \
+        dialer-gifdecoder-target \
+        dialer-glide-target \
+        dialer-grpc-all-target \
+        dialer-grpc-context-target \
+        dialer-grpc-core-target \
+        dialer-grpc-okhttp-target \
+        dialer-grpc-protobuf-lite-target \
+        dialer-grpc-stub-target \
+        dialer-j2objc-annotations-target \
+        dialer-javax-annotation-api-target \
+        dialer-javax-inject-target \
+        dialer-libshortcutbadger-target \
+        dialer-mime4j-core-target \
+        dialer-mime4j-dom-target \
+        dialer-okhttp-target \
+        dialer-okio-target \
+        dialer-error-prone-target \
+        dialer-guava-target \
+        dialer-glide-target \
+        dialer-glide-annotation-target \
+        dialer-zxing-target \
+        jsr305 \
+        libbackup \
+        libphonenumber \
+        volley \
+        sprd.halmanager \
+
+LOCAL_STATIC_ANDROID_LIBRARIES := \
+        android-support-core-ui \
+        $(ANDROID_SUPPORT_DESIGN_TARGETS) \
+        android-support-transition \
+        android-support-v13 \
+        android-support-v4 \
+        android-support-v7-appcompat \
+        android-support-v7-cardview \
+        android-support-v7-recyclerview \
+
+LOCAL_JAVA_LIBRARIES := \
+        dialer-auto-value-target \
+        org.apache.http.legacy \
+        ims-common \
+        telephony-common \
+        radio_interactor_common \
+        unisoc_ims_common \
+        radio_interactor_common \
+
+LOCAL_ANNOTATION_PROCESSORS := \
+        dialer-auto-value \
+        javapoet-prebuilt-jar \
+        dialer-dagger2 \
+        dialer-dagger2-compiler \
+        dialer-dagger2-producers \
+        dialer-glide-annotation \
+        dialer-glide-compiler \
+        dialer-guava \
+        dialer-javax-annotation-api \
+        dialer-javax-inject \
+        dialer-rootcomponentprocessor
+
+LOCAL_ANNOTATION_PROCESSOR_CLASSES := \
+  com.google.auto.value.processor.AutoValueProcessor,dagger.internal.codegen.ComponentProcessor,com.bumptech.glide.annotation.compiler.GlideAnnotationProcessor,com.android.dialer.rootcomponentgenerator.RootComponentProcessor
+
+# Proguard includes
+LOCAL_PROGUARD_FLAG_FILES := proguard.flags $(call all-named-files-under,proguard.*flags,$(BASE_DIR))
+LOCAL_PROGUARD_ENABLED := custom
+
+LOCAL_PROGUARD_ENABLED += optimization
+
+#LOCAL_SDK_VERSION := system_current
+LOCAL_PRIVATE_PLATFORM_APIS := true
+LOCAL_MODULE_TAGS := optional
+LOCAL_PACKAGE_NAME := SprdDialerGo
+LOCAL_OVERRIDES_PACKAGES := Dialer
+LOCAL_CERTIFICATE := shared
+LOCAL_PRIVILEGED_MODULE := true
+LOCAL_PRODUCT_MODULE := true
+LOCAL_USE_AAPT2 := true
+LOCAL_REQUIRED_MODULES := privapp_whitelist_com.android.dialer
+
+include $(BUILD_PACKAGE)
+
+# Cleanup local state
+BASE_DIR :=
+EXCLUDE_FILES :=
+RES_DIRS :=
+DIALER_MANIFEST_FILES :=
+EXCLUDE_MANIFESTS :=
+EXCLUDE_EXTRA_PACKAGES :=
+
+# Bug 937597 remove the calllog icon for go version end
 
 # Create references to prebuilt libraries.
 include $(CLEAR_VARS)

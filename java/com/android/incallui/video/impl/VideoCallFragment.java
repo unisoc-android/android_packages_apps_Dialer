@@ -40,7 +40,10 @@ import android.support.v4.view.animation.FastOutLinearInInterpolator;
 import android.support.v4.view.animation.LinearOutSlowInInterpolator;
 import android.telecom.CallAudioState;
 import android.text.TextUtils;
+import android.util.SparseIntArray;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -55,14 +58,19 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
+import android.widget.PopupMenu.OnMenuItemClickListener;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.FragmentUtils;
 import com.android.dialer.common.LogUtil;
+import com.android.dialer.postcall.PostCall;
 import com.android.dialer.util.PermissionsUtil;
 import com.android.incallui.audioroute.AudioRouteSelectorDialogFragment;
 import com.android.incallui.audioroute.AudioRouteSelectorDialogFragment.AudioRouteSelectorPresenter;
+import com.android.incallui.call.CallList;
+import com.android.incallui.call.DialerCall;
 import com.android.incallui.contactgrid.ContactGridManager;
 import com.android.incallui.hold.OnHoldFragment;
 import com.android.incallui.incall.protocol.InCallButtonIds;
@@ -76,6 +84,7 @@ import com.android.incallui.incall.protocol.InCallScreenDelegateFactory;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.incallui.incall.protocol.SecondaryInfo;
+import com.android.incallui.sprd.InCallUiUtils;
 import com.android.incallui.video.impl.CheckableImageButton.OnCheckedChangeListener;
 import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
@@ -83,6 +92,7 @@ import com.android.incallui.video.protocol.VideoCallScreenDelegateFactory;
 import com.android.incallui.videosurface.bindings.VideoSurfaceBindings;
 import com.android.incallui.videosurface.protocol.VideoSurfaceTexture;
 import com.android.incallui.videotech.utils.VideoUtils;
+import com.android.incallui.videosurface.impl.VideoSurfaceTextureImpl;//add for bug 1130479
 
 /** Contains UI elements for a video call. */
 
@@ -110,7 +120,7 @@ public class VideoCallFragment extends Fragment
   private static final long CAMERA_PERMISSION_DIALOG_DELAY_IN_MILLIS = 2000L;
   private static final long VIDEO_OFF_VIEW_FADE_OUT_DELAY_IN_MILLIS = 2000L;
   private static final long VIDEO_CHARGES_ALERT_DIALOG_DELAY_IN_MILLIS = 500L;
-
+  private ImageButton mChangeVideoTypeButton;
   private final ViewOutlineProvider circleOutlineProvider =
       new ViewOutlineProvider() {
         @Override
@@ -131,6 +141,7 @@ public class VideoCallFragment extends Fragment
   private CheckableImageButton muteButton;
   private CheckableImageButton cameraOffButton;
   private ImageButton swapCameraButton;
+  private ImageButton mOverflowButton;
   private View switchOnHoldButton;
   private View onHoldContainer;
   private SwitchOnHoldCallController switchOnHoldCallController;
@@ -151,8 +162,23 @@ public class VideoCallFragment extends Fragment
   private boolean isInGreenScreenMode;
   private boolean hasInitializedScreenModes;
   private boolean isRemotelyHeld;
+  //add for bug 1130479
+  private int smallTextureViewIndex = 0;
+  private int smallBlurredImageIndex = 0;
+  private int bigTextureViewIndex = 0;
+  private int bigBlurredImageIndex = 0;
   private ContactGridManager contactGridManager;
   private SecondaryInfo savedSecondaryInfo;
+  /* UNISOC: Add video call option menu@{ */
+  private PopupMenu mOverflowPopup;
+  //The button is currently visible in the UI
+  private static final int BUTTON_VISIBLE = 1;
+  // The button is hidden in the UI
+  private static final int BUTTON_HIDDEN = 2;
+  private SparseIntArray mButtonVisibilityMap = new SparseIntArray(InCallButtonIds.BUTTON_COUNT);
+  /*@}*/
+  private boolean isRecording = false;//UNISOC:add for bug1143842 whether call recording started
+  private Context context;
   private final Runnable cameraPermissionDialogRunnable =
       new Runnable() {
         @Override
@@ -248,6 +274,20 @@ public class VideoCallFragment extends Fragment
     swapCameraButton.setOnClickListener(this);
     view.findViewById(R.id.videocall_switch_controls)
         .setVisibility(getActivity().isInMultiWindowMode() ? View.GONE : View.VISIBLE);
+    /* UNISOC: Add video call option menu@{ */
+    mOverflowButton = (ImageButton) view.findViewById(R.id.videocall_overflow_button);
+    mOverflowButton.setOnClickListener(this);
+    /*@}*/
+    /* UNISOC: Add for change video type feature@{ */
+    mChangeVideoTypeButton = (ImageButton) view.findViewById(R.id.videocall_change_type);
+    mChangeVideoTypeButton.setOnClickListener(
+            new OnClickListener() {
+              @Override
+              public void onClick(View v) {
+                inCallButtonUiDelegate.changeVideoTypeClicked();
+              }
+            });
+    /*@}*/
     switchOnHoldButton = view.findViewById(R.id.videocall_switch_on_hold);
     onHoldContainer = view.findViewById(R.id.videocall_on_hold_banner);
     remoteVideoOff = (TextView) view.findViewById(R.id.videocall_remote_video_off);
@@ -268,6 +308,11 @@ public class VideoCallFragment extends Fragment
     remoteTextureView = (TextureView) view.findViewById(R.id.videocall_video_remote);
     greenScreenBackgroundView = view.findViewById(R.id.videocall_green_screen_background);
     fullscreenBackgroundView = view.findViewById(R.id.videocall_fullscreen_background);
+    //add for bug 1130479
+    smallTextureViewIndex = ((ViewGroup)previewTextureView.getParent()).indexOfChild(previewTextureView);
+    smallBlurredImageIndex = ((ViewGroup)previewOffBlurredImageView.getParent()).indexOfChild(previewOffBlurredImageView);
+    bigTextureViewIndex = ((ViewGroup)remoteTextureView.getParent()).indexOfChild(remoteTextureView);
+    bigBlurredImageIndex = ((ViewGroup)remoteOffBlurredImageView.getParent()).indexOfChild(remoteOffBlurredImageView);
 
     remoteTextureView.addOnLayoutChangeListener(
         new OnLayoutChangeListener() {
@@ -328,6 +373,11 @@ public class VideoCallFragment extends Fragment
             switchOnHoldButton, onHoldContainer, inCallScreenDelegate, videoCallScreenDelegate);
 
     videoCallScreenDelegate.initVideoCallScreenDelegate(getContext(), this);
+    //add for bug 113479
+    videoCallScreenDelegate.getLocalVideoSurfaceTexture().attachToTextureView(previewTextureView);
+    videoCallScreenDelegate.getLocalVideoSurfaceTexture().attachToImageView(previewOffBlurredImageView);
+    videoCallScreenDelegate.getRemoteVideoSurfaceTexture().attachToTextureView(remoteTextureView);
+    videoCallScreenDelegate.getRemoteVideoSurfaceTexture().attachToImageView(remoteOffBlurredImageView);
 
     inCallScreenDelegate.onInCallScreenDelegateInit(this);
     inCallScreenDelegate.onInCallScreenReady();
@@ -353,6 +403,8 @@ public class VideoCallFragment extends Fragment
   @Override
   public void onAttach(Context context) {
     super.onAttach(context);
+    LogUtil.i("VideoCallFragment.onAttach", null);
+    this.context = Assert.isNotNull(context).getApplicationContext(); //add for bug1145284
     if (savedSecondaryInfo != null) {
       setSecondary(savedSecondaryInfo);
     }
@@ -363,6 +415,7 @@ public class VideoCallFragment extends Fragment
     super.onStart();
     LogUtil.i("VideoCallFragment.onStart", null);
     onVideoScreenStart();
+    onVideoCallIsFront(); //UNISOC: add for bug1166982
   }
 
   @Override
@@ -379,6 +432,16 @@ public class VideoCallFragment extends Fragment
     super.onResume();
     LogUtil.i("VideoCallFragment.onResume", null);
     inCallScreenDelegate.onInCallScreenResumed();
+    if(!videoCallScreenDelegate.getLocalVideoSurfaceTexture().getSmallSurface()) {
+      // UNISOC: add for bug1181012
+      if (getCall() != null && getCall().isConferenceCall()) {
+        LogUtil.i("VideoCallFragment.onResume", "PreviewTexture is small for call is conference");
+        remoteSurfaceClickForChange();
+      } else {
+        LogUtil.i("VideoCallFragment.onResume", "PreviewTexture is big");
+        localSurfaceClickForChange();
+      }
+    }
   }
 
   @Override
@@ -393,6 +456,7 @@ public class VideoCallFragment extends Fragment
     super.onStop();
     LogUtil.i("VideoCallFragment.onStop", null);
     onVideoScreenStop();
+    onVideoCallIsBack();// UNISOC:add for bug1166982
   }
 
   @Override
@@ -400,6 +464,10 @@ public class VideoCallFragment extends Fragment
     getView().removeCallbacks(videoChargesAlertDialogRunnable);
     getView().removeCallbacks(cameraPermissionDialogRunnable);
     videoCallScreenDelegate.onVideoCallScreenUiUnready();
+    if (mOverflowPopup != null && mOverflowPopup.getMenu() != null
+            && mOverflowPopup.getMenu().hasVisibleItems()) { //UNISOC:add for bug1110191
+      mOverflowPopup.dismiss();
+    }
   }
 
   private void exitFullscreenMode() {
@@ -651,6 +719,10 @@ public class VideoCallFragment extends Fragment
       }
     }
     updateOverlayBackground();
+    //UNISOC: Add video call option menu
+    if (mOverflowPopup != null && mOverflowPopup.getMenu() != null && mOverflowPopup.getMenu().hasVisibleItems()) {
+        mOverflowPopup.dismiss();
+    }
   }
 
   @Override
@@ -659,12 +731,23 @@ public class VideoCallFragment extends Fragment
       LogUtil.i("VideoCallFragment.onClick", "end call button clicked");
       inCallButtonUiDelegate.onEndCallClicked();
       videoCallScreenDelegate.resetAutoFullscreenTimer();
+      PostCall.onDisconnectPressed(context);//add for bug1145284
     } else if (v == swapCameraButton) {
       if (swapCameraButton.getDrawable() instanceof Animatable) {
-        ((Animatable) swapCameraButton.getDrawable()).start();
+          /* UNISOC: add for bug1177044(1111450) {@*/
+          Animatable swapAnime = (Animatable) swapCameraButton.getDrawable();
+          if (swapAnime.isRunning()) {
+              swapAnime.stop();
+          }
+          swapAnime.start();
+          /* @} */
       }
       inCallButtonUiDelegate.toggleCameraClicked();
       videoCallScreenDelegate.resetAutoFullscreenTimer();
+    } else if (v == mOverflowButton){  //UNISOC: Add video call option menu
+        if (mOverflowPopup != null) {
+            mOverflowPopup.show();
+        }
     }
   }
 
@@ -693,11 +776,10 @@ public class VideoCallFragment extends Fragment
         shouldShowPreview,
         shouldShowRemote);
 
-    videoCallScreenDelegate.getLocalVideoSurfaceTexture().attachToTextureView(previewTextureView);
-    videoCallScreenDelegate.getRemoteVideoSurfaceTexture().attachToTextureView(remoteTextureView);
 
-    this.isRemotelyHeld = isRemotelyHeld;
-    if (this.shouldShowRemote != shouldShowRemote) {
+    // UNISOC: add for bug1147261
+    if (this.shouldShowRemote != shouldShowRemote || this.isRemotelyHeld != isRemotelyHeld) {
+      this.isRemotelyHeld = isRemotelyHeld;
       this.shouldShowRemote = shouldShowRemote;
       updateRemoteOffView();
     }
@@ -758,10 +840,13 @@ public class VideoCallFragment extends Fragment
     if (getView().isAttachedToWindow() && !getActivity().isInMultiWindowMode()) {
       controlsContainer.onApplyWindowInsets(getView().getRootWindowInsets());
     }
-    if (shouldShowGreenScreen) {
+    // UNISOC: modify for bug1155897
+    if (shouldShowGreenScreen && !InCallUiUtils.isSupportRingTone(getContext(), getCall())) {
       enterGreenScreenMode();
-    } else {
+    } else if(videoCallScreenDelegate.getLocalVideoSurfaceTexture().getSmallSurface()) {
       exitGreenScreenMode();
+    } else if (remoteTextureView != null) {
+      remoteTextureView.setVisibility(View.VISIBLE);
     }
     if (shouldShowFullscreen) {
       enterFullscreenMode();
@@ -795,31 +880,38 @@ public class VideoCallFragment extends Fragment
 
   @Override
   public void showButton(@InCallButtonIds int buttonId, boolean show) {
-    LogUtil.v(
-        "VideoCallFragment.showButton",
-        "buttonId: %s, show: %b",
-        InCallButtonIdsExtension.toString(buttonId),
-        show);
+    LogUtil.i(
+            "VideoCallFragment.showButton",
+            " buttonId:"+InCallButtonIdsExtension.toString(buttonId) + " show:"+show);
     if (buttonId == InCallButtonIds.BUTTON_AUDIO) {
       speakerButtonController.setEnabled(show);
     } else if (buttonId == InCallButtonIds.BUTTON_MUTE) {
       muteButton.setEnabled(show);
     } else if (buttonId == InCallButtonIds.BUTTON_PAUSE_VIDEO) {
-      cameraOffButton.setEnabled(show);
+      cameraOffButton.setVisibility(show ? View.VISIBLE : View.GONE); // UNISOC: add for bug1152075
     } else if (buttonId == InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY) {
       switchOnHoldCallController.setVisible(show);
     } else if (buttonId == InCallButtonIds.BUTTON_SWITCH_CAMERA) {
       swapCameraButton.setEnabled(show);
+    } else if (buttonId == InCallButtonIds.BUTTON_ADD_CALL
+            || buttonId == InCallButtonIds.BUTTON_MERGE
+            || buttonId == InCallButtonIds.BUTTON_HOLD
+            || buttonId == InCallButtonIds.BUTTON_SWAP
+            || buttonId == InCallButtonIds.BUTTON_DOWNGRADE_TO_AUDIO
+            || buttonId == InCallButtonIds.BUTTON_DIALPAD // UNISOC: add for bug1152075
+            || buttonId == InCallButtonIds.BUTTON_RECORD){
+      mButtonVisibilityMap.put(buttonId, show ? BUTTON_VISIBLE : BUTTON_HIDDEN);
+    }//UNISOC: Add video call option menu
+    else if (buttonId == InCallButtonIds.BUTTON_CHANGE_VIDEO_TYPE) { // UNISOC:add for bug1137837 1137838
+      mChangeVideoTypeButton.setVisibility(show ? View.VISIBLE : View.GONE);
     }
   }
 
   @Override
   public void enableButton(@InCallButtonIds int buttonId, boolean enable) {
-    LogUtil.v(
-        "VideoCallFragment.setEnabled",
-        "buttonId: %s, enable: %b",
-        InCallButtonIdsExtension.toString(buttonId),
-        enable);
+    LogUtil.i(
+            "VideoCallFragment.setEnabled",
+            " buttonId:" + InCallButtonIdsExtension.toString(buttonId) + " enable:" + enable);
     if (buttonId == InCallButtonIds.BUTTON_AUDIO) {
       speakerButtonController.setEnabled(enable);
     } else if (buttonId == InCallButtonIds.BUTTON_MUTE) {
@@ -828,21 +920,50 @@ public class VideoCallFragment extends Fragment
       cameraOffButton.setEnabled(enable);
     } else if (buttonId == InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY) {
       switchOnHoldCallController.setEnabled(enable);
-    }
+    } else if (buttonId == InCallButtonIds.BUTTON_ADD_CALL
+            || buttonId == InCallButtonIds.BUTTON_DIALPAD // UNISOC: add for bug1152075
+            || buttonId == InCallButtonIds.BUTTON_MERGE
+            || buttonId == InCallButtonIds.BUTTON_HOLD
+            || buttonId == InCallButtonIds.BUTTON_SWAP
+            || buttonId == InCallButtonIds.BUTTON_DOWNGRADE_TO_AUDIO){
+      mButtonVisibilityMap.put(buttonId, enable ? BUTTON_VISIBLE : BUTTON_HIDDEN);
+    }//UNISOC: Add video call option menu
   }
 
   @Override
   public void setEnabled(boolean enabled) {
-    LogUtil.v("VideoCallFragment.setEnabled", "enabled: " + enabled);
+    LogUtil.i("VideoCallFragment.setEnabled", "enabled: " + enabled);
     speakerButtonController.setEnabled(enabled);
+    speakerButton.setEnabled(enabled);//add for bug1151371
     muteButton.setEnabled(enabled);
     cameraOffButton.setEnabled(enabled);
     switchOnHoldCallController.setEnabled(enabled);
+    //add for bug1151371
+    swapCameraButton.setEnabled(enabled);
+    mOverflowButton.setEnabled(enabled);
+
+    mOverflowButton.setEnabled(enabled);//UNISOC: Add video call option menu
+    /* UNISOC: Add for change video type feature@{ */
+    mChangeVideoTypeButton.setEnabled(enabled);
+    /*@}*/
   }
 
   @Override
   public void setHold(boolean value) {
     LogUtil.i("VideoCallFragment.setHold", "value: " + value);
+    /* UNISOC: Add video call option menu@{ */
+    if(mOverflowPopup == null){
+        LogUtil.i("VideoCallFragment.setHold", "mOverflowPopup is null ");
+        return;
+    }
+    MenuItem menuItem = mOverflowPopup.getMenu().findItem(R.id.hold_call_menu);
+    if ( menuItem != null && menuItem.isChecked()!= value) {
+        menuItem.setChecked(value);
+        menuItem.setTitle(getContext().getString(
+                value ? R.string.incall_content_description_hold
+                        : R.string.incall_content_description_unhold));
+    }
+    /*@}*/
   }
 
   @Override
@@ -869,6 +990,61 @@ public class VideoCallFragment extends Fragment
     LogUtil.i("VideoCallFragment.updateButtonState", null);
     speakerButtonController.updateButtonState();
     switchOnHoldCallController.updateButtonState();
+
+    /* UNISOC: Add video call option menu@{ */
+    /* UNISOC:modify for bug608545 @ { */
+    if (mOverflowPopup != null && mOverflowPopup.getMenu() != null && mOverflowPopup.getMenu().hasVisibleItems()) {
+        mOverflowPopup.dismiss();
+    }
+    /* @} */
+    mOverflowPopup = new PopupMenu(getActivity(), mOverflowButton);
+    mOverflowPopup.getMenuInflater().inflate(R.menu.videocall_option_menu, mOverflowPopup.getMenu());
+
+    Menu menu = mOverflowPopup.getMenu();
+    int count = menu.size();
+    for (int i = 0; i < count; i++) {
+        MenuItem item = menu.getItem(i);
+        boolean visible = false;
+        switch (item.getItemId()) {
+            case R.id.add_call_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_ADD_CALL) == BUTTON_VISIBLE ? true : false;
+                break;
+            case R.id.merge_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_MERGE) == BUTTON_VISIBLE ? true : false;
+                break;
+            case R.id.hold_call_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_HOLD) == BUTTON_VISIBLE ? true : false;
+                break;
+            case R.id.swap_call_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_SWAP) == BUTTON_VISIBLE ? true : false;
+                break;
+            case R.id.changeto_audio_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_DOWNGRADE_TO_AUDIO) == BUTTON_VISIBLE ? true : false;
+                break;
+            // UNISOC: add for bug1143842
+            case R.id.call_record_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_RECORD) == BUTTON_VISIBLE ? true : false;
+                break;
+            // UNISOC: add for bug1142881
+            case R.id.manager_conference_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_MANAGE_VIDEO_CONFERENCE) == BUTTON_VISIBLE ? true : false;
+                break;
+            // UNISOC: add for bug1152075
+            case R.id.dialpad_menu:
+                visible = mButtonVisibilityMap.get(InCallButtonIds.BUTTON_DIALPAD) == BUTTON_VISIBLE ? true : false;
+                break;
+        }
+        item.setVisible(visible);
+    }
+    mOverflowPopup.setOnMenuItemClickListener(new OnMenuItemClickListener() {
+        @Override
+        public boolean onMenuItemClick(MenuItem item) {
+            selectMenuItem(item);
+            return true;
+        }
+    });
+    mOverflowButton.setVisibility((mOverflowPopup != null && mOverflowPopup.getMenu() != null && mOverflowPopup.getMenu().hasVisibleItems()) ? View.VISIBLE : View.GONE);
+    /*@}*/
   }
 
   @Override
@@ -934,18 +1110,28 @@ public class VideoCallFragment extends Fragment
 
   @Override
   public void setEndCallButtonEnabled(boolean enabled, boolean animate) {
+    // add for bug1151371
+    if (endCallButton != null) {
+      endCallButton.setEnabled(enabled);
+    }
     LogUtil.i("VideoCallFragment.setEndCallButtonEnabled", "enabled: " + enabled);
   }
 
   @Override
   public void showManageConferenceCallButton(boolean visible) {
     LogUtil.i("VideoCallFragment.showManageConferenceCallButton", "visible: " + visible);
+    mButtonVisibilityMap.put(InCallButtonIds.BUTTON_MANAGE_VIDEO_CONFERENCE, visible ? BUTTON_VISIBLE : BUTTON_HIDDEN);//modify sor bug1182821
+    // UNISOC: add for bug1142881 1168216 1176681 1185265
+    if (visible) {
+      updateButtonStates();
+    }
   }
 
   @Override
   public boolean isManageConferenceVisible() {
     LogUtil.i("VideoCallFragment.isManageConferenceVisible", null);
-    return false;
+    // UNISOC: add for bug1142881
+    return mButtonVisibilityMap.get(InCallButtonIds.BUTTON_MANAGE_VIDEO_CONFERENCE) == BUTTON_VISIBLE ? true :false;
   }
 
   @Override
@@ -970,7 +1156,8 @@ public class VideoCallFragment extends Fragment
 
   @Override
   public int getAnswerAndDialpadContainerResourceId() {
-    return 0;
+    // UNISOC: modify for bug1152075
+    return R.id.videocall_dialpad_container;
   }
 
   @Override
@@ -1002,19 +1189,38 @@ public class VideoCallFragment extends Fragment
           "VideoCallFragment.updatePreviewVideoScaling", "camera dimensions haven't been set");
       return;
     }
-    if (isLandscape()) {
-      VideoSurfaceBindings.scaleVideoAndFillView(
-          previewTextureView,
-          cameraDimensions.x,
-          cameraDimensions.y,
-          videoCallScreenDelegate.getDeviceOrientation());
+    /* UNISOC: bug1146954 1155897 (900278,905887)@{ */
+    if((isInGreenScreenMode || !videoCallScreenDelegate.getLocalVideoSurfaceTexture().getSmallSurface())
+            && !InCallUiUtils.isSupportRingTone(getContext(), getCall())) {
+      if (isLandscape()) {
+        VideoSurfaceBindings.scaleVideoMaintainingAspectRatioWithRot(
+                previewTextureView,
+                cameraDimensions.y,
+                cameraDimensions.x,
+                videoCallScreenDelegate.getDeviceOrientation());
+      }else{
+        VideoSurfaceBindings.scaleVideoMaintainingAspectRatioWithRot(
+                previewTextureView,
+                cameraDimensions.x,
+                cameraDimensions.y,
+                videoCallScreenDelegate.getDeviceOrientation());
+      }
     } else {
-      VideoSurfaceBindings.scaleVideoAndFillView(
-          previewTextureView,
-          cameraDimensions.y,
-          cameraDimensions.x,
-          videoCallScreenDelegate.getDeviceOrientation());
+      if (isLandscape()) {
+        VideoSurfaceBindings.scaleVideoAndFillView(
+                previewTextureView,
+                cameraDimensions.y,
+                cameraDimensions.x,
+                videoCallScreenDelegate.getDeviceOrientation());
+      } else {
+        VideoSurfaceBindings.scaleVideoAndFillView(
+                previewTextureView,
+                cameraDimensions.x,
+                cameraDimensions.y,
+                videoCallScreenDelegate.getDeviceOrientation());
+      }
     }
+    /*@}*/
   }
 
   private void updateRemoteVideoScaling() {
@@ -1037,7 +1243,13 @@ public class VideoCallFragment extends Fragment
     float delta = Math.abs(videoAspectRatio - displayAspectRatio);
     float sum = videoAspectRatio + displayAspectRatio;
     if (delta / sum < ASPECT_RATIO_MATCH_THRESHOLD) {
-      VideoSurfaceBindings.scaleVideoAndFillView(remoteTextureView, videoSize.x, videoSize.y, 0);
+      // UNISOC: modify for bug1212023
+      if (remoteVideoSurfaceTexture.getSmallSurface()) {
+        VideoSurfaceBindings.scaleVideoAndFillView(remoteTextureView, videoSize.x, videoSize.y, 0);
+      } else {
+        LogUtil.i("VideoCallFragment.updateRemoteVideoScaling", "is not samllSurface");
+        VideoSurfaceBindings.scaleVideoMaintainingAspectRatioWithRot(remoteTextureView, videoSize.x, videoSize.y, 0);
+      }
     } else {
       VideoSurfaceBindings.scaleVideoMaintainingAspectRatio(
           remoteTextureView, videoSize.x, videoSize.y);
@@ -1060,12 +1272,17 @@ public class VideoCallFragment extends Fragment
     previewTextureView.setLayoutParams(params);
     previewTextureView.setOutlineProvider(null);
     updateOverlayBackground();
-    contactGridManager.setIsMiddleRowVisible(true);
+    // UNISOC: modify for bug1155897
+    contactGridManager.setIsMiddleRowVisible(isInGreenScreenMode ? true : false);
     updateMutePreviewOverlayVisibility();
 
     previewOffBlurredImageView.setLayoutParams(params);
     previewOffBlurredImageView.setOutlineProvider(null);
     previewOffBlurredImageView.setClipToOutline(false);
+    //UNISOC:add for bug1147201
+    if (remoteTextureView != null) {
+      remoteTextureView.setVisibility(View.GONE);
+    }
   }
 
   private void exitGreenScreenMode() {
@@ -1094,6 +1311,10 @@ public class VideoCallFragment extends Fragment
     previewOffBlurredImageView.setLayoutParams(params);
     previewOffBlurredImageView.setOutlineProvider(circleOutlineProvider);
     previewOffBlurredImageView.setClipToOutline(true);
+    //UNISOC:add for bug1147201
+    if (remoteTextureView != null) {
+      remoteTextureView.setVisibility(View.VISIBLE);
+    }
   }
 
   private void updatePreviewOffView() {
@@ -1101,7 +1322,14 @@ public class VideoCallFragment extends Fragment
 
     // Always hide the preview off and remote off views in green screen mode.
     boolean previewEnabled = isInGreenScreenMode || shouldShowPreview;
-    previewOffOverlay.setVisibility(previewEnabled ? View.GONE : View.VISIBLE);
+    previewOffOverlay.setVisibility(previewEnabled
+            // UNISOC: add for bug1209744
+            || (getContext() != null && getContext().getResources().getBoolean(R.bool.config_hideConferencePreviewView))
+            ? View.GONE : View.VISIBLE);
+    // UNISOC: modify for bug1155897
+    if (videoCallScreenDelegate.isRingToneOnAudioCall()) {
+      previewTextureView.setVisibility(shouldShowPreview ? View.VISIBLE : View.INVISIBLE);
+    }
     updateBlurredImageView(
         previewTextureView,
         previewOffBlurredImageView,
@@ -1136,7 +1364,12 @@ public class VideoCallFragment extends Fragment
     } else {
       remoteVideoOff.setText(
           isRemotelyHeld ? R.string.videocall_remotely_held : R.string.videocall_remote_video_off);
-      remoteVideoOff.setVisibility(View.VISIBLE);
+      //modify for bug 1130479
+      if(videoCallScreenDelegate.getLocalVideoSurfaceTexture().getSmallSurface()) {
+        remoteVideoOff.setVisibility(View.VISIBLE);
+      } else {
+        remoteVideoOff.setVisibility(View.GONE);
+      }
     }
     updateBlurredImageView(
         remoteTextureView,
@@ -1161,6 +1394,14 @@ public class VideoCallFragment extends Fragment
       return;
     }
 
+    // UNISOC: add for bug1209744
+    if (textureView == previewTextureView
+            && context.getResources().getBoolean(R.bool.config_hideConferencePreviewView)) {
+      LogUtil.i("VideoCallFragment.updateBlurredImageView", "hide the blurred image for reliance");
+      blurredImageView.setVisibility(View.GONE);
+      return;
+    }
+
     long startTimeMillis = SystemClock.elapsedRealtime();
     int width = Math.round(textureView.getWidth() * scaleFactor);
     int height = Math.round(textureView.getHeight() * scaleFactor);
@@ -1170,9 +1411,32 @@ public class VideoCallFragment extends Fragment
     // This call takes less than 10 milliseconds.
     Bitmap bitmap = textureView.getBitmap(width, height);
 
+    /* UNISOC:add for bug 1154772(960205 965780) @{ */
+    if (textureView == previewTextureView  && bitmap != null) {
+      VideoSurfaceTexture localVideoSurfaceTexture =
+              videoCallScreenDelegate.getLocalVideoSurfaceTexture();
+      Point cameraDimensions = localVideoSurfaceTexture.getSurfaceDimensions();
+      if (cameraDimensions != null && !isLandscape()) {
+        if (height * cameraDimensions.x > width * cameraDimensions.y) {
+          height = (int) (width * cameraDimensions.y / cameraDimensions.x);
+        } else if (height * cameraDimensions.x < width * cameraDimensions.y) {
+          width = (int) (height * cameraDimensions.x / cameraDimensions.y);
+        }
+        bitmap = textureView.getBitmap(width, height);
+        // UNISOC: modify for bug1211397
+        if (InCallUiUtils.isSupportRingTone(getContext(), getCall())) {
+          blurredImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        } else {
+          blurredImageView.setScaleType(ImageView.ScaleType.CENTER);
+        }
+      }
+    }
+    /*@}*/
+
     if (bitmap == null) {
-      blurredImageView.setImageBitmap(null);
-      blurredImageView.setVisibility(View.GONE);
+      // UNISOC:modify for bug 1154772
+      // blurredImageView.setImageBitmap(null);
+      blurredImageView.setVisibility(View.VISIBLE);
       return;
     }
 
@@ -1297,5 +1561,205 @@ public class VideoCallFragment extends Fragment
       }
     }
   }
+
+  /* UNISOC Feature Porting: Add for call recorder feature.for bug1143842 @{  */
+  @Override
+  public void setRecord(boolean value) {
+    LogUtil.i("VideoCallFragment.setRecord", "value: " + value);
+    isRecording = value;
+    if(mOverflowPopup == null){//UNISOC:add for bug1143842
+      LogUtil.e(
+              "VideoCallFragment", "setRecord mOverflowPopup is null return");
+      return;
+    }
+    MenuItem menuItem =  mOverflowPopup.getMenu().findItem(R.id.call_record_menu);
+    if(!value){
+      menuItem.setTitle(R.string.record_menu_title);
+    }else{
+      menuItem.setTitle(R.string.record_menu_title_recording);
+    }
+  }
+
+  @Override
+  public void setRecordTime(String recordTime) {
+    LogUtil.i("VideoCallFragment.setRecordTime", "recordTime: " + recordTime);
+    if(mOverflowPopup == null){//UNISOC:add for bug1143842
+      LogUtil.e(
+              "VideoCallFragment", "setRecordTime mOverflowPopup is null return");
+      return;
+    }
+    MenuItem menuItem =  mOverflowPopup.getMenu().findItem(R.id.call_record_menu);
+    if(menuItem!=null && isRecording){
+      String timeStr = mOverflowButton.getResources().getString(R.string.record_menu_title_recording)+" "+recordTime;
+      menuItem.setTitle(timeStr);
+    }
+  }
+  /* @} */
+
+  /* UNISOC: Added for video call conference @{ */
+  @Override
+  public void showPreviewVideoViews(boolean showPreview) {
+    if (previewTextureView != null) {
+      previewTextureView.setVisibility(showPreview ? View.VISIBLE : View.INVISIBLE);
+    }else{
+      LogUtil.i("VideoCallFragment.showPreviewVideoViews", "previewView == null ");
+    }
+  }
+  /* @} */
+
+  /* UNISOC: Add video call option menu@{ */
+  protected void selectMenuItem(MenuItem item) {
+      switch (item.getItemId()) {
+          case R.id.add_call_menu:
+              inCallButtonUiDelegate.addCallClicked();
+              break;
+          case R.id.merge_menu:
+              inCallButtonUiDelegate.mergeClicked();
+              break;
+          case R.id.hold_call_menu:
+              inCallButtonUiDelegate.holdClicked(!item.isChecked());
+              break;
+          case R.id.swap_call_menu:
+              inCallButtonUiDelegate.swapClicked();
+              break;
+          case R.id.changeto_audio_menu:
+              inCallButtonUiDelegate.changeToVoiceClicked();
+              break;
+          //UNISOC:add for bug1143842
+          case R.id.call_record_menu:
+              inCallButtonUiDelegate.recordClick(!isRecording);
+              break;
+          // UNISOC: add for bug1142881
+          case R.id.manager_conference_menu:
+              inCallScreenDelegate.onManageConferenceClicked();
+              break;
+          // UNISOC: add for bug1152075
+          case R.id.dialpad_menu:
+              inCallButtonUiDelegate.showDialpadClicked(!item.isChecked());
+              break;
+      }
+  }
+  /*@}*/
+  //add for bug 1130479
+
+  public void localSurfaceClickForChange() {
+    videoCallScreenDelegate.getLocalVideoSurfaceTexture().changeToBigSurface();
+    videoCallScreenDelegate.getRemoteVideoSurfaceTexture().changeToSmallSurface();
+    updateMuteLocation();
+    updateMutePreviewOverlayVisibility();
+  }
+
+  public void remoteSurfaceClickForChange() {
+    videoCallScreenDelegate.getRemoteVideoSurfaceTexture().changeToBigSurface();
+    videoCallScreenDelegate.getLocalVideoSurfaceTexture().changeToSmallSurface();
+    updateMuteLocation();
+    updateMutePreviewOverlayVisibility();
+  }
+
+  public void changeSmallSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface){
+    Resources resources = getResources();
+    RelativeLayout.LayoutParams params =
+            new RelativeLayout.LayoutParams(
+                    (int) resources.getDimension(R.dimen.videocall_preview_width),
+                    (int) resources.getDimension(R.dimen.videocall_preview_height));
+    params.setMargins(
+            0, 0, 0, (int) resources.getDimension(R.dimen.videocall_preview_margin_bottom));
+    if (isLandscape()) {
+      params.addRule(RelativeLayout.ALIGN_PARENT_END);
+      params.setMarginEnd((int) resources.getDimension(R.dimen.videocall_preview_margin_end));
+    } else {
+      params.addRule(RelativeLayout.ALIGN_PARENT_START);
+      params.setMarginStart((int) resources.getDimension(R.dimen.videocall_preview_margin_start));
+    }
+    params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+    videoCallSurface.getTextureView().setLayoutParams(params);
+    videoCallSurface.getTextureView().setOutlineProvider(circleOutlineProvider);
+    videoCallSurface.getTextureView().setClipToOutline(true);
+    bringToIndex(videoCallSurface.getTextureView(),smallTextureViewIndex);
+    updateOverlayBackground();
+    contactGridManager.setIsMiddleRowVisible(false);
+
+    videoCallSurface.getImageView().setLayoutParams(params);
+    videoCallSurface.getImageView().setOutlineProvider(circleOutlineProvider);
+    videoCallSurface.getImageView().setClipToOutline(true);
+    bringToIndex(videoCallSurface.getImageView(),smallBlurredImageIndex);
+
+    videoCallSurface.setSmallSurface(true);
+  }
+
+  public void changeBigSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {
+    RelativeLayout.LayoutParams params =
+            new RelativeLayout.LayoutParams(
+                    RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
+    params.addRule(RelativeLayout.ALIGN_PARENT_START);
+    params.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+    videoCallSurface.getTextureView().setLayoutParams(params);
+    videoCallSurface.getTextureView().setOutlineProvider(null);
+    updateOverlayBackground();
+    contactGridManager.setIsMiddleRowVisible(true);
+    bringToIndex(videoCallSurface.getTextureView(),bigTextureViewIndex);
+
+    videoCallSurface.getImageView().setLayoutParams(params);
+    videoCallSurface.getImageView().setOutlineProvider(null);
+    videoCallSurface.getImageView().setClipToOutline(false);
+    bringToIndex(videoCallSurface.getImageView(),bigBlurredImageIndex);
+
+    videoCallSurface.setSmallSurface(false);
+  }
+
+  private void bringToIndex(View child, int index) {
+    ViewGroup mParent = (ViewGroup) child.getParent();
+    if (index >= 0) {
+      mParent.removeView(child);
+      mParent.addView(child, index);
+      mParent.requestLayout();
+      mParent.invalidate();
+    }
+  }
+
+  private void updateMuteLocation() {
+    Resources resources = getResources();
+    RelativeLayout.LayoutParams params =
+            new RelativeLayout.LayoutParams(
+                    (int) resources.getDimension(R.dimen.videocall__mute_image_size),
+                    (int) resources.getDimension(R.dimen.videocall__mute_image_size));
+    if(getSmallTextureView() != null){//add for bug1158394
+      params.addRule(RelativeLayout.ALIGN_BOTTOM,getSmallTextureView().getId());
+      params.addRule(RelativeLayout.ALIGN_RIGHT,getSmallTextureView().getId());
+      mutePreviewOverlay.setLayoutParams(params);
+    }else{
+      LogUtil.i("VideoCallFragment.updateMuteLocation", "getSmallTextureView() == null ");
+    }
+
+  }
+
+  private TextureView getSmallTextureView() {
+    if(videoCallScreenDelegate.getLocalVideoSurfaceTexture().getSmallSurface()) {
+      return previewTextureView != null ? previewTextureView: null;
+    } else {
+      return remoteTextureView != null ? remoteTextureView: null;
+    }
+  }
+  // UNISOC: modify for bug1155897
+  private DialerCall getCall() {
+    return CallList.getInstance().getCallById(getCallId());
+  }
+
+  /* unisoc: add for bug1166982(bug904816)@{ */
+  @Override
+  public void onVideoCallIsFront() {
+    LogUtil.i("VideoCallFragment.onVideoCallIsFront", null);
+    if (videoCallScreenDelegate != null) {
+      videoCallScreenDelegate.onVideoCallIsFront();
+    }
+  }
+  @Override
+  public void onVideoCallIsBack() {
+    LogUtil.i("VideoCallFragment.onVideoCallIsBack", null);
+    if (videoCallScreenDelegate != null) {
+      videoCallScreenDelegate.onVideoCallIsBack();
+    }
+  }
+  /* @} */
 }
 

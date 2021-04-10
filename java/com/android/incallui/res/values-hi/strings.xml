@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">आरटीटी सुविधा ऐसे कॉल करने वालों (कॉलर) की मदद करती है, जो बधिर हैं, ऊंचा सुनते हैं, ठीक से बोल नहीं पाते या जिनके लिए सिर्फ़ आवाज़ काफ़ी नहीं होती.</string>
   <string name="rtt_button_decline_request">नहीं, धन्यवाद</string>
   <string name="rtt_button_accept_request">आरटीटी में शामिल हों</string>
+  <string name="notification_action_answer_voice">"वोयस "</string>
+  <string name="notification_action_mute_on">मूक</string>
+  <string name="notification_action_mute_off">मूक नहीं</string>
+  <string name="notification_action_reject_with_message">"एसएमएस अस्वीकार करें"</string>
+  <string name="card_title_in_call">"कॉल में"</string>
+  <string name="card_title_conf_call">"कांफ्रेंस कॉल"</string>
+  <string name="fail_change_video_due_to_bgcall">"पृष्ठभूमि कॉल है, वर्तमान कॉल को वीडियो कॉल में बदलने में विफल."</string>
 </resources>

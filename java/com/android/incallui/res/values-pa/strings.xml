@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT ਬੋਲੇ, ਗੂੰਗੇ, ਸੁਣਨ ਸੰਬੰਧੀ ਪਰੇਸ਼ਾਨੀਆਂ ਵਾਲੇ ਕਾਲਰਾਂ ਜਾਂ ਚੀਜ਼ਾਂ ਨੂੰ ਸਮਝਣ ਲਈ ਅਵਾਜ਼ ਤੋਂ ਇਲਾਵਾ ਹੋਰ ਚੀਜ਼ਾਂ \'ਤੇ ਨਿਰਭਰ ਕਰਨ ਵਾਲੇ ਕਾਲਰਾਂ ਦੀ ਸਹਾਇਤਾ ਕਰਦਾ ਹੈ।</string>
   <string name="rtt_button_decline_request">ਨਹੀਂ ਧੰਨਵਾਦ</string>
   <string name="rtt_button_accept_request">RTT ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ</string>
+  <string name="notification_action_answer_voice">ਆਵਾਜ਼</string>
+  <string name="notification_action_mute_on">ਮਿਊਟ ਕਰੋ</string>
+  <string name="notification_action_mute_off">ਅਣਮਿਊਟ ਕਰੋ</string>
+  <string name="notification_action_reject_with_message">"SMS ਨੂੰ ਰੱਦ ਕਰੋ"</string>
+  <string name="card_title_in_call">ਕਾੱਲ ਵਿੱਚ</string>
+  <string name="card_title_conf_call">ਕਨਫਰੰਸ ਕਾੱਲ</string>
+  <string name="fail_change_video_due_to_bgcall">"ਬੈਕਗਰਾਊਂਡ ਕਾਲ ਮੌਜੂਦ ਹੈ, ਮੌਜੂਦਾ ਕਾਲ ਨੂੰ ਵੀਡੀਓ ਕਾਲ ਵਿੱਚ ਬਦਲਣ ਵਿਚ ਅਸਫਲ।"</string>
 </resources>

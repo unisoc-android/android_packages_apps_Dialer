@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT helpt dove en slechthorende bellers en bellers met een spraakbeperking. Deze functie kan ook handig zijn voor bellers die meer dan alleen gesproken communicatie nodig hebben.</string>
   <string name="rtt_button_decline_request">Nee</string>
   <string name="rtt_button_accept_request">Deelnemen aan RTT</string>
+  <string name="notification_action_answer_voice">"Stem"</string>
+  <string name="notification_action_mute_on">DEMPEN</string>
+  <string name="notification_action_mute_off">Dempen uitzetten</string>
+  <string name="notification_action_reject_with_message">"Sms-bericht afwijzen"</string>
+  <string name="card_title_in_call">"Actief gesprek"</string>
+  <string name="card_title_conf_call">"Vergadering gesprek"</string>
+  <string name="fail_change_video_due_to_bgcall">"Er is een achtergrondoproep, omschakelen van huidige oproep naar videogesprek is mislukt."</string>
 </resources>

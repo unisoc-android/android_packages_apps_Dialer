@@ -48,7 +48,7 @@
   <string name="description_contact_details">Сведения о контакте %1$s</string>
   <string name="description_spam_contact_details">Сведения о контакте %1$s (подозрение на спам)</string>
   <string name="description_num_calls">Вызовов: %1$s.</string>
-  <string name="description_video_call">Видеовстреча</string>
+  <string name="description_video_call">Видеовызов</string>
   <string name="description_start_voice_search">Начать голосовой поиск</string>
   <string name="voicemail">Голосовая почта</string>
   <string name="description_cancel_multi_select">Отмена режима массового действия</string>
@@ -89,7 +89,7 @@
   <string name="speed_dial_empty_add_favorite_action">Настроить быстрый набор</string>
   <string name="remove_contact">Удалить</string>
   <string name="select_all">Выбрать все</string>
-  <string name="call_log_action_video_call">Видеовстреча</string>
+  <string name="call_log_action_video_call">Видеовызов</string>
   <string name="call_log_action_set_up_video">Настроить видеосвязь</string>
   <string name="call_log_action_invite_video">Пригласить на видеовстречу</string>
   <string name="call_log_action_send_message">Отправить сообщение</string>
@@ -104,7 +104,7 @@
   <string name="call_log_via_number">Номер: %1$s</string>
   <string name="call_log_via_number_phone_account">%1$s. Номер: %2$s.</string>
   <string name="description_call_action">Позвонить: ^1</string>
-  <string name="description_video_call_action">Видеовстреча: ^1</string>
+  <string name="description_video_call_action">Видеовызов: ^1</string>
   <string name="description_voicemail_action">Прослушать сообщение от контакта ^1.</string>
   <string name="description_create_new_contact_action">Добавить контакт: ^1</string>
   <string name="description_add_to_existing_contact_action">Добавить \"^1\" к контакту</string>

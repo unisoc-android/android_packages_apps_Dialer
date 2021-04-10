@@ -201,4 +201,20 @@ public class DuoVideoTech implements VideoTech, DuoListener {
   public com.android.dialer.logging.VideoTech.Type getVideoTechType() {
     return com.android.dialer.logging.VideoTech.Type.LIGHTBRINGER_VIDEO_TECH;
   }
+  /* UNISOC: Add video call option menu@{ */
+  @Override
+  public void degradeToVoice() {
+    // TODO: degrade to a voice call
+  }
+  /*@}*/
+
+  /* UNISOC: Add for change video type feature@{ */
+  @Override
+  public void changeToRxVideo() {
+    // TODO: change To Rx Video
+  }
+  /*@}*/
+  //UNISOC: Add for bug1137831
+  @Override
+  public void changeToTxVideo(){}
 }

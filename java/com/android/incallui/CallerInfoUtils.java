@@ -94,7 +94,9 @@ public class CallerInfoUtils {
       // Don't split it if it's a SIP number.
       if (!PhoneNumberHelper.isUriNumber(number)) {
         final String[] numbers = number.split("&");
-        number = numbers[0];
+        if(numbers!=null && numbers.length > 0){//add for 1129167
+          number = numbers[0];
+        }
         if (numbers.length > 1) {
           info.forwardingNumber = numbers[1];
         }
@@ -103,12 +105,18 @@ public class CallerInfoUtils {
       info.phoneNumber = number;
     }
 
+    /* UNISOC: add for bug1166662 1180536 @{*/
+    if (call.isEmergencyCall()) {
+      info.setEmergency(context);//modify for bug1169783
+    } else
+    /*@}*/
     // Because the InCallUI is immediately launched before the call is connected, occasionally
     // a voicemail call will be passed to InCallUI as a "voicemail:" URI without a number.
     // This call should still be handled as a voicemail call.
     if (call.isVoiceMailNumber()) {
       info.markAsVoiceMail(context);
     }
+
 
     ContactInfoCache.getInstance(context).maybeInsertCnapInformationIntoCache(context, call, info);
 

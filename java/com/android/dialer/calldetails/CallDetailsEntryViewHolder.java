@@ -25,6 +25,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.os.BuildCompat;
 import android.support.v7.widget.RecyclerView.ViewHolder;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -40,6 +41,9 @@ import com.android.dialer.glidephotomanager.PhotoInfo;
 import com.android.dialer.oem.MotorolaUtils;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.IntentUtil;
+import com.android.dialer.util.PermissionsUtil;
+import com.android.ims.ImsManager;
+import static android.Manifest.permission.READ_PHONE_STATE;
 
 /** ViewHolder for call entries in {@link OldCallDetailsActivity} or {@link CallDetailsActivity}. */
 public class CallDetailsEntryViewHolder extends ViewHolder {
@@ -72,6 +76,13 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
   private final TextView multimediaAttachmentsNumber;
 
   private final Context context;
+  /* UNISOC: Bug 698812 add For VOLTE and VoWiFi CallLog icon. @{ */
+  private static final String TAG = "CallDetailsEntryViewHolder";
+  private boolean mIsVoLTECallEnable;
+  private boolean mIsWifiCallEnable;
+  /* @} */
+
+  private final boolean mShowDuration;
 
   public CallDetailsEntryViewHolder(
       View container, CallDetailsEntryListener callDetailsEntryListener) {
@@ -91,8 +102,22 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
     multimediaImage = (ImageView) container.findViewById(R.id.multimedia_image);
     multimediaAttachmentsNumber =
         (TextView) container.findViewById(R.id.multimedia_attachments_number);
+    /** UNISOC: bug1072690 not show duration time in call detail for cmcc case @{ */
+    mShowDuration = context.getResources().getBoolean(R.bool.config_allow_show_call_duration);
+    /** @} */
     rttTranscript = container.findViewById(R.id.rtt_transcript);
     this.callDetailsEntryListener = callDetailsEntryListener;
+    /* UNISOC: Bug 698812 add For VOLTE and VoWiFi CallLog icon. @{ */
+    if (PermissionsUtil.hasPermission(context, READ_PHONE_STATE)) {
+      mIsVoLTECallEnable = ImsManager.isVolteEnabledByPlatform(context);
+      mIsWifiCallEnable = ImsManager.isWfcEnabledByPlatform(context);
+    } else {
+      mIsVoLTECallEnable = false;
+      mIsWifiCallEnable = false;
+    }
+    Log.d(TAG, "mIsVoLTECallEnable = " + mIsVoLTECallEnable +
+            " mIsWifiCallEnable = " + mIsWifiCallEnable);
+    /* @} */
   }
 
   void setCallDetails(
@@ -116,10 +141,10 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
     callTypeIcon.clear();
     callTypeIcon.add(callType);
     callTypeIcon.setShowVideo(isVideoCall);
-    callTypeIcon.setShowHd(
-        (entry.getFeatures() & Calls.FEATURES_HD_CALL) == Calls.FEATURES_HD_CALL);
-    callTypeIcon.setShowWifi(
-        MotorolaUtils.shouldShowWifiIconInCallLog(context, entry.getFeatures()));
+    callTypeIcon.setShowHd(mIsVoLTECallEnable &&
+            (entry.getFeatures() & Calls.FEATURES_HD_CALL) == Calls.FEATURES_HD_CALL);
+    callTypeIcon.setShowWifi(mIsWifiCallEnable &&
+            (entry.getFeatures() & Calls.FEATURES_WIFI) == Calls.FEATURES_WIFI);
     if (BuildCompat.isAtLeastP()) {
       callTypeIcon.setShowRtt((entry.getFeatures() & Calls.FEATURES_RTT) == Calls.FEATURES_RTT);
     }
@@ -127,10 +152,10 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
     callTypeText.setText(
         callTypeHelper.getCallTypeText(callType, isVideoCall, isPulledCall, isDuoCall));
     callTime.setText(CallLogDates.formatDate(context, entry.getDate()));
-
+    /** UNISOC: bug1072690 not show duration time in call detail for cmcc case @{ */
     if (CallTypeHelper.isMissedCallType(callType)) {
       callDuration.setVisibility(View.GONE);
-    } else {
+    } else if (mShowDuration) {
       callDuration.setVisibility(View.VISIBLE);
       callDuration.setText(
           CallLogDurations.formatDurationAndDataUsage(
@@ -138,7 +163,9 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
       callDuration.setContentDescription(
           CallLogDurations.formatDurationAndDataUsageA11y(
               context, entry.getDuration(), entry.getDataUsage()));
-    }
+    } else {
+        callDuration.setVisibility(View.GONE);
+    }/** @} */
     setMultimediaDetails(number, entry, showMultimediaDivider);
     if (isRttCall) {
       if (entry.getHasRttTranscript()) {

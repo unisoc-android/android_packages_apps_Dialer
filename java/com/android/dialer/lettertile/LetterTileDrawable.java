@@ -87,6 +87,9 @@ public class LetterTileDrawable extends Drawable {
   /** Default icon scale for vector drawable. */
   private static final float VECTOR_ICON_SCALE = 0.7f;
 
+  /** UNISOC: add for bug1153726. */
+  private static final float DEFAULT_ICON_SCALE = 1.0f;
+
   /** Reusable components to avoid new allocations */
   private final Paint paint = new Paint();
 
@@ -169,6 +172,8 @@ public class LetterTileDrawable extends Drawable {
       case TYPE_PERSON:
       case TYPE_GENERIC_AVATAR:
       default:
+        // UNISOC: add for bug1153726
+        scale = DEFAULT_ICON_SCALE;
         return defaultPersonAvatar;
     }
   }

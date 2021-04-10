@@ -20,6 +20,11 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
+import android.view.Window;
+import android.view.WindowManager;
+import android.graphics.drawable.ColorDrawable;
+import android.content.res.TypedArray;
+import android.content.res.Configuration;
 
 /** Shows the {@link ConferenceManagerFragment} */
 public class ManageConferenceActivity extends AppCompatActivity {
@@ -45,6 +50,38 @@ public class ManageConferenceActivity extends AppCompatActivity {
           .beginTransaction()
           .replace(R.id.manageConferencePanel, fragment)
           .commit();
+    }
+    int currentNightMode =  getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+    if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+      updateTheme(currentNightMode);
+    }
+  }
+
+  private void updateTheme(int currentNightMode) {
+    final int[] attrs = new int[] {
+            android.R.attr.colorBackground,
+            android.R.attr.textColorPrimary,
+            android.R.attr.colorPrimary,
+            android.R.attr.colorPrimaryDark,
+            android.R.attr.colorAccent,
+    };
+    TypedArray array = getTheme().obtainStyledAttributes(attrs);
+    if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+      getSupportActionBar().setBackgroundDrawable(new ColorDrawable(array.getColor(0, 0xFF00FF)));
+    } else {
+      getSupportActionBar().setBackgroundDrawable(new ColorDrawable(array.getColor(2, 0xFF00FF)));
+    }
+
+
+    Window window = getWindow();
+    //After LOLLIPOP not translucent status bar
+    window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+    //Then call setStatusBarColor.
+    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+    if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+      window.setStatusBarColor(array.getColor(0, 0xFF00FF));
+    } else {
+      window.setStatusBarColor(array.getColor(3, 0xFF00FF));
     }
   }
 
@@ -82,5 +119,16 @@ public class ManageConferenceActivity extends AppCompatActivity {
   protected void onStop() {
     super.onStop();
     isVisible = false;
+  }
+  //add for Bug1150940
+  @Override
+  public void finish() {
+    super.finishAndRemoveTask();
+  }
+  @Override
+  public void onConfigurationChanged(Configuration newConfig) {
+    super.onConfigurationChanged(newConfig);
+    int currentNightMode =  newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
+    updateTheme(currentNightMode);
   }
 }

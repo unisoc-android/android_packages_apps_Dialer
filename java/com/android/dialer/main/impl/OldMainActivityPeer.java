@@ -69,6 +69,7 @@ import com.android.dialer.app.list.OnDragDropListener;
 import com.android.dialer.app.list.OnListFragmentScrolledListener;
 import com.android.dialer.app.list.PhoneFavoriteSquareTileView;
 import com.android.dialer.app.list.RemoveView;
+import com.android.dialer.blocking.FilteredNumberCompat;
 import com.android.dialer.callcomposer.CallComposerActivity;
 import com.android.dialer.calldetails.OldCallDetailsActivity;
 import com.android.dialer.callintent.CallIntentBuilder;
@@ -134,6 +135,10 @@ import com.google.common.util.concurrent.MoreExecutors;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import com.android.dialer.app.sprd.SecurityAccessLocation;
+import android.os.SystemProperties;
+import com.android.dialer.smartdial.util.SmartDialNameMatcher;
+import android.view.KeyEvent;
 
 /**
  * OldMainActivityPeer which implements all of the old fragments we know and love <3
@@ -145,11 +150,18 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
   private static final String KEY_SAVED_LANGUAGE_CODE = "saved_language_code";
   private static final String KEY_CURRENT_TAB = "current_tab";
   private static final String KEY_LAST_TAB = "last_tab";
-
   /** Action and extra to let the activity know which tab to open up to. */
   private static final String ACTION_SHOW_TAB = "ACTION_SHOW_TAB";
 
   private static final String EXTRA_SHOW_TAB = "EXTRA_SHOW_TAB";
+
+  //UNISOC: Bug1091930 No clear the previous voiceNumber make number not update.
+  private static final String VOICE_MAIL_CHANGE_INTENT = "android.callsettings.action.VM_SETTING_CHANGED";
+
+  // UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD
+  public static String[] mCountryCodeWithPlus = null;
+  public static String[] mCountryCodeNoPlus = null;
+  private static boolean mIsCountyCodeMatch = false;
 
   // TODO(calderwoodra): change to AppCompatActivity once new speed dial ships
   private final TransactionSafeActivity activity;
@@ -209,6 +221,15 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
   private UiListener<Integer> missedCallObserverUiListener;
   private View bottomSheet;
 
+  /* UNISOC: modify for bug 1148723  @{ */
+  private static MainToolbar toolbar;
+  /**@}*/
+
+  /**UNISOC AndroidQ Feature Porting: bug1072991 check location permission before using it @{*/
+  private static final String FLAG_SECURE_TEST = "1";
+  private static final String SUPPORT_SECURE_TEST = "persist.support.securetest";
+  /**@}*/
+
   public static Intent getShowTabIntent(Context context, @TabIndex int tabIndex) {
     Intent intent = new Intent(context, MainActivity.class);
     intent.setAction(ACTION_SHOW_TAB);
@@ -236,8 +257,47 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
     activity.setContentView(R.layout.main_activity);
     initUiListeners();
     initLayout(savedInstanceState);
+    /**UNISOC AndroidQ Feature Porting: bug1072991 check location permission before using it @{*/
+    String secureCheck = SystemProperties.get(SUPPORT_SECURE_TEST, "0");
+    LogUtil.i("OldMainActivityPeer.onActivityCreate", "secureCheck = " + secureCheck);
+    if (FLAG_SECURE_TEST.equals(secureCheck)) {
+      Intent intent = activity.getIntent();
+      Bundle bundle = (intent != null) ? intent.getExtras() : null;
+      String resultString = (bundle != null) ? bundle.getString("result") : "";
+      if (TextUtils.isEmpty(resultString)) {
+        checkLocationPermissions();
+      }
+    }
+    /**@}*/
     SmartDialPrefix.initializeNanpSettings(activity);
+    /* UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD @{ */
+    mCountryCodeWithPlus = activity.getResources().getStringArray(R.array.country_code_with_plus);
+    mCountryCodeNoPlus = activity.getResources().getStringArray(R.array.country_code_no_plus);
+    /* @} */
+
+    /** UNISOC: Bug1091930 No clear the previous voiceNumber make number not update.
+     *  UNISOC: Bug1128009 Reset voicemail cache when eneter the MainActivity. @{ */
+    TelecomUtil.resetVoicemailCache();
+    IntentFilter filter = new IntentFilter();
+    filter.addAction(VOICE_MAIL_CHANGE_INTENT);
+    activity.registerReceiver(mVMChangedReceiver, filter);
   }
+
+  private BroadcastReceiver mVMChangedReceiver = new BroadcastReceiver() {
+    public void onReceive(Context context, Intent intent) {
+      LogUtil.i("OldMainActivityPeer.onActivityCreate", "voicemail has been changed,so need reset voice mail chche.");
+      TelecomUtil.resetVoicemailCache();
+    }
+  };
+  /** @} */
+
+  /**UNISOC AndroidQ Feature Porting: bug1072991 check location permission before using it @{*/
+  private void checkLocationPermissions() {
+    Intent intent = new Intent(activity, SecurityAccessLocation.class);
+    activity.startActivity(intent);
+    activity.finish();
+  }
+  /**@}*/
 
   /** should be called before {@link AppCompatActivity#setContentView(int)}. */
   private void setTheme() {
@@ -284,9 +344,13 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
             callLogAdapterOnActionModeStateChangedListener.actionMode.finish();
           }
         });
-
-    MainToolbar toolbar = activity.findViewById(R.id.toolbar);
+    //UNISOC:Add for bug1072695
+    boolean showBlockedNumbers = FilteredNumberCompat.canCurrentUserOpenBlockSettings(activity);
+    /* UNISOC: modify for bug 1148723  @{ */
+    toolbar = activity.findViewById(R.id.toolbar);
+    /**@}*/
     toolbar.maybeShowSimulator(activity);
+    toolbar.showBlockedNumbers(showBlockedNumbers);
     activity.setSupportActionBar(activity.findViewById(R.id.toolbar));
 
     bottomNav = activity.findViewById(R.id.bottom_nav_bar);
@@ -508,9 +572,11 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
     callLogFragmentListener.onActivityResume();
     // Start the thread that updates the smart dial database if the activity is recreated with a
     // language change.
-    boolean forceUpdate =
-        !LocaleUtils.getLocale(activity).getISO3Language().equals(savedLanguageCode);
-    Database.get(activity).getDatabaseHelper(activity).startSmartDialUpdateThread(forceUpdate);
+    /**UNISOC:modify the bug for 1189659 @{*/
+//  boolean forceUpdate =
+//      !LocaleUtils.getLocale(activity).getISO3Language().equals(savedLanguageCode);
+//  Database.get(activity).getDatabaseHelper(activity).startSmartDialUpdateThread(forceUpdate);
+    /* @} */
     showPostCallPrompt();
 
     if (searchController.isInSearch()
@@ -539,7 +605,9 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
     bottomNavTabListener.ensureCorrectVoicemailShown();
 
     // Config the badge of missed calls for the new call log.
-    if (bottomNavTabListener.newCallLogFragmentActive()) {
+
+    /*UNISOC: modify for the bug 1162346 to listen the calllog.db @{*/
+    //if (bottomNavTabListener.newCallLogFragmentActive()) {
       if (PermissionsUtil.hasCallLogReadPermissions(activity)) {
         missedCallCountObserver.onChange(false); // Set the initial value for the badge
         activity
@@ -548,7 +616,8 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
       } else {
         bottomNav.setNotificationCount(TabIndex.CALL_LOG, 0);
       }
-    }
+    //}
+    /* @}*/
 
     // add 1 sec delay to get memory snapshot so that dialer wont react slowly on resume.
     ThreadUtil.postDelayedOnUiThread(
@@ -580,7 +649,16 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
   }
 
   @Override
-  public void onActivityDestroyed() {}
+  public void onActivityDestroyed() {
+    /* UNISOC: Bug1091930 No clear the previous voiceNumber make number not update. @{ */
+    LogUtil.i("OldMainActivityPeer.onActivityDestroyed", "mVMChangedReceiver:"+mVMChangedReceiver);
+    if (mVMChangedReceiver != null) {
+        TelecomUtil.resetVoicemailCache();
+        activity.unregisterReceiver(mVMChangedReceiver);
+        mVMChangedReceiver = null;
+    }
+    /* @} */
+  }
 
   private void showPostCallPrompt() {
     if (TelecomUtil.isInManagedCall(activity)) {
@@ -664,6 +742,17 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
     return false;
   }
 
+  /* UNISOC: Bug1090190 touch assist search and menu useless. @{ */
+  @Override
+  public boolean dispatchKeyEvent(KeyEvent event) {
+    LogUtil.enterBlock("OldMainActivityPeer.dispatchKeyEvent");
+    if (searchController.dispatchKeyEvent(event)) {
+      return true;
+    }
+    return false;
+  }
+  /* @} */
+
   @Nullable
   @Override
   @SuppressWarnings("unchecked") // Casts are checked using runtime methods
@@ -743,6 +832,11 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
 
     @Override
     public void onDialpadQueryChanged(String query) {
+      /* UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD @{ */
+      mIsCountyCodeMatch = SmartDialNameMatcher.isCountryCodeNumber(query, mCountryCodeWithPlus)
+                || SmartDialNameMatcher.isCountryCodeNumber(query, mCountryCodeNoPlus);
+      SmartDialNameMatcher.setNeedstripCountryCode(mIsCountyCodeMatch);
+      /* @} */
       searchController.onDialpadQueryChanged(query);
     }
   }
@@ -772,6 +866,11 @@ public class OldMainActivityPeer implements MainActivityPeer, FragmentUtilListen
 
     @Override
     public void onDialpadShown() {
+      /* UNISOC: modify for bug 1148723  @{ */
+      if (toolbar != null) {
+        toolbar.getOverflowMenu().dismiss();
+      }
+      /**@}*/
       searchController.onDialpadShown();
     }
 

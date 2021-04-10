@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="config_support_mp3_for_call_recorder">false</bool>
+    <!-- UNISOC: feature FL1000062139 add rejectmessage action in the notification -->
+    <bool name="incallui_notification_add_reject_message_button" targetCarriers="true">false</bool>
+    <!-- UNISOC: feature FL1000060353 fdn -->
+    <bool name="config_is_support_fdnname_feature" targetCarriers="telcel">false</bool>
+    <!-- UNISOC: feature FL0108020013 hdicon -->
+    <bool name="config_is_support_hd_audio_feature" targetCarriers="cucc,telcel">false</bool>
+    <!-- UNISOC: feature FL1000062299 update incallui to usual call -->
+    <bool name="update_incallui_to_usual_call" targetCarriers="true">false</bool>
+    <!-- Some carriers not expected to  -->
+    <bool name="config_is_show_conference_manager" targetCarriers="vodafone">true</bool>
+    <!-- UNISOC Feature Porting: ECT -->
+    <bool name="config_is_support_ect_feature" targetCarriers="vodafone, orange">false</bool>
+    <!-- Some carriers expected to  -->
+    <bool name="config_hideConferencePreviewView" targetCarriers="reliance">false</bool>
+</resources>

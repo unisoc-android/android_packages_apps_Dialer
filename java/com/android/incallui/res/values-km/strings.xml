@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT ជួយ​អ្នក​ហៅ​ទូរសព្ទ​ដែល​​ថ្លង់ ពិបាក​ក្នុង​ការស្ដាប់ មិន​អាច​និយាយ​បាន ឬ​មាន​តម្រូវការ​ក្រៅ​ពី​​សំឡេង។</string>
   <string name="rtt_button_decline_request">ទេ អរគុណ</string>
   <string name="rtt_button_accept_request">ចូលរួម RTT</string>
+  <string name="notification_action_answer_voice">"សំឡេង"</string>
+  <string name="notification_action_mute_on">សម្លេងស្ងៀមស្ងាត់</string>
+  <string name="notification_action_mute_off">បិទរបៀបសំឡេងស្ងៀម</string>
+  <string name="notification_action_reject_with_message">"ច្រានចោលស៊ីម"</string>
+  <string name="card_title_in_call">កំពុងនិយាយ</string>
+  <string name="card_title_conf_call">សន្និសីទតាមហៅ</string>
+  <string name="fail_change_video_due_to_bgcall">"មាន​ការ​ហៅ​នៅ​ផ្ទៃ​ខាងក្រោយ។ បរាជ័យ​ក្នុងការ​ផ្លាស់ប្ដូរការ​ហៅ​បច្ចុប្បន្ន​ ទៅជា​ការហៅ​ជាវីដេអូ។"</string>
 </resources>

@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Fai scorrere dall\'icona per rispondere con una chiamata audio</string>
   <string name="call_incoming_default_label_answer_and_release_second">Fai scorrere verso l\'alto per rispondere e mettere in attesa la chiamata in corso</string>
   <string name="call_incoming_default_label_answer_and_release_third">Fai scorrere verso l\'alto per rispondere e terminare la chiamata in attesa</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Scorri verso l\'alto per rispondere e terminare la chiamata in corso"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Fai scorrere dall\'icona per rispondere e terminare la chiamata in corso</string>
   <string name="call_incoming_message_custom">Scrivi risposta personale…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Scrivi risposta personale…</string>

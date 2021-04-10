@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">A RTT assiste os autores de chamadas surdos, com deficiências auditivas, dificuldades da fala ou que precisem de mais do que apenas a voz.</string>
   <string name="rtt_button_decline_request">Não, obrigado</string>
   <string name="rtt_button_accept_request">Participar na RTT</string>
+  <string name="notification_action_answer_voice">"Voz"</string>
+  <string name="notification_action_mute_on">Mute</string>
+  <string name="notification_action_mute_off">Não Mute</string>
+  <string name="notification_action_reject_with_message">Rejeitar SMS</string>
+  <string name="card_title_in_call">"A chamar"</string>
+  <string name="card_title_conf_call">"Chamada de conferência"</string>
+  <string name="fail_change_video_due_to_bgcall">"Existe uma chamada em segundo plano, falha ao alterar a chamada atual para videochamada."</string>
 </resources>

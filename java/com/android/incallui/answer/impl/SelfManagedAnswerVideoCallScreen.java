@@ -38,6 +38,7 @@ import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.incallui.video.protocol.VideoCallScreen;
 import java.util.Arrays;
+import com.android.incallui.videosurface.impl.VideoSurfaceTextureImpl;//add for bug 1130479
 
 /**
  * Shows the local preview for the incoming video call or video upgrade request. This class is used
@@ -268,4 +269,27 @@ public class SelfManagedAnswerVideoCallScreen extends StateCallback implements V
       LogUtil.e("CaptureSessionCallback.onConfigureFailed", "failed to configure");
     }
   }
+  /* UNISOC: Added for video call conference @{ */
+  @Override
+  public void showPreviewVideoViews(boolean showPreview) {}
+  /* @} */
+
+  public void localSurfaceClickForChange() {}
+
+  public void remoteSurfaceClickForChange() {}
+
+  public void changeSmallSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {}
+
+  public void changeBigSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {}
+  /* UNISOC: modify for bug1152075 @{ */
+  @Override
+  public int getAnswerAndDialpadContainerResourceId() {
+    return 0;
+  }
+  /* @} */
+
+  @Override
+  public void onVideoCallIsFront() {}
+  @Override
+  public void onVideoCallIsBack() {}
 }

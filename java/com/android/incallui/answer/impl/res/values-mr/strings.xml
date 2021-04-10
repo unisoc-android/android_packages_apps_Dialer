@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ऑडिओ कॉल म्हणून उत्तर देण्यासाठी चिन्हावरुन स्वाइप करा</string>
   <string name="call_incoming_default_label_answer_and_release_second">उत्तर देण्यासाठी आणि सुरु असलेला कॉल होल्ड करण्‍यासाठी वर स्वाइप करा</string>
   <string name="call_incoming_default_label_answer_and_release_third">उत्तर देण्यासाठी आणि होल्ड केलेला कॉल बंद करण्‍यासाठी वर स्वाइप करा</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"चालू कॉलला उत्तर देऊन बंद करण्यासाठी वर स्वाईप करा"</string>
   <string name="call_incoming_swipe_to_answer_and_release">उत्तर देण्‍यासाठी आणि सुरु असलेला कॉल बंद करण्‍यासाठी चिन्हावरून स्वाइप करा</string>
   <string name="call_incoming_message_custom">आपण स्वतःच लिहा…</string>
   <string name="call_incoming_respond_via_sms_custom_message">आपण स्वतःच लिहा…</string>

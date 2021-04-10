@@ -45,6 +45,8 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical|start"
         android:fontFamily="sans-serif"
+        android:ellipsize="end"
+        android:lines="1"
         style="@style/Dialer.TextAppearance.Primary"/>
 
     <com.android.dialer.widget.BidiTextView

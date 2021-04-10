@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ಆಡಿಯೊ ಕರೆ ರೀತಿಯಲ್ಲಿ ಉತ್ತರಿಸಲು ಐಕಾನ್‌ನಿಂದ ಸ್ವೈಪ್ ಮಾಡಿ</string>
   <string name="call_incoming_default_label_answer_and_release_second">ಕರೆಯನ್ನು ಉತ್ತರಿಸಲು ಮತ್ತು ಚಾಲ್ತಿಯಲ್ಲಿರುವ ಕರೆಯನ್ನು ಹೋಲ್ಡ್ ಮಾಡಲು ಮೇಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ</string>
   <string name="call_incoming_default_label_answer_and_release_third">ಕರೆಯನ್ನು ಉತ್ತರಿಸಲು ಮತ್ತು ಹೋಲ್ಡ್‌ನಲ್ಲಿರುವ ಕರೆಯನ್ನು ಅಂತ್ಯಗೊಳಿಸಲು ಮೇಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"ಉತ್ತರಿಸಲು ಸ್ವೈಪ್ ಮಾಡಿ ಮತ್ತು ನಡೆಯುತ್ತಿರುವ ಕರೆಯನ್ನು ಕೊನೆಗೊಳಿಸಿ"</string>
   <string name="call_incoming_swipe_to_answer_and_release">ಚಾಲ್ತಿಯಲ್ಲಿರುವ ಕರೆಗೆ ಉತ್ತರಿಸಲು ಮತ್ತು ಅಂತ್ಯಗೊಳಿಸಲು ಐಕಾನ್‌ನಿಂದ ಸ್ವೈಪ್ ಮಾಡಿ</string>
   <string name="call_incoming_message_custom">ನಿಮ್ಮ ಸ್ವಂತದ್ದನ್ನು ಬರೆಯಿರಿ…</string>
   <string name="call_incoming_respond_via_sms_custom_message">ನಿಮ್ಮ ಸ್ವಂತದ್ದನ್ನು ಬರೆಯಿರಿ…</string>

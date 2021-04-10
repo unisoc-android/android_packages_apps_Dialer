@@ -44,6 +44,7 @@ import com.android.dialer.spam.status.SpamStatus;
 import com.android.dialer.telecom.TelecomCallUtil;
 import com.android.incallui.call.state.DialerCallState;
 import com.android.incallui.latencyreport.LatencyReport;
+import com.android.incallui.multisim.SwapSimWorker;
 import com.android.incallui.videotech.utils.SessionModificationState;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -73,6 +74,7 @@ public class CallList implements DialerCallDelegate {
 
   private final Map<String, DialerCall> callById = new ArrayMap<>();
   private final Map<android.telecom.Call, DialerCall> callByTelecomCall = new ArrayMap<>();
+  private SwapSimWorker worker; //UNISOC: add for bug1221260
 
   /**
    * ConcurrentHashMap constructor params: 8 is initial table size, 0.9f is load factor before
@@ -229,6 +231,13 @@ public class CallList implements DialerCallDelegate {
       }
       onUpdateCall(call);
       notifyGenericListeners();
+      /*UNISOC:add for bug1178847 { @*/
+      if (!callById.containsKey(call.getId()) && call.getState() == DialerCallState.DISCONNECTED) {
+        LogUtil.w(
+                "CallList.onCallAdded", "Failed to add call:%s because the call is disconnected " , call.getId());
+        notifyListenersOfDisconnect(call);
+      }
+      /* @} */
     }
 
     if (call.getState() != DialerCallState.INCOMING) {
@@ -290,7 +299,8 @@ public class CallList implements DialerCallDelegate {
       call.onRemovedFromCallList();
     }
 
-    if (!hasLiveCall()) {
+    // UNISOC: modify for bug1152838
+    if (!hasLiveCall() && getBackgroundCall() == null) {
       DialerCall.clearRestrictedCount();
     }
   }
@@ -564,6 +574,9 @@ public class CallList implements DialerCallDelegate {
           && state != DialerCallState.INVALID
           && state != DialerCallState.DISCONNECTED) {
 
+        if(worker != null && call.getSwapSimActionFlag()){ //UNISOC: add for bug1221260
+          worker.setDisconnectLatch();
+        }
         call.setState(DialerCallState.DISCONNECTED);
         call.setDisconnectCause(new DisconnectCause(DisconnectCause.UNKNOWN));
         updateCallInMap(call);
@@ -645,12 +658,23 @@ public class CallList implements DialerCallDelegate {
 
         // Set up a timer to destroy the call after X seconds.
         final Message msg = handler.obtainMessage(EVENT_DISCONNECTED_TIMEOUT, call);
-        handler.sendMessageDelayed(msg, getDelayForDisconnect(call));
-        pendingDisconnectCalls.add(call);
+        try {  //UNISOC: modify for bug1231482
+          boolean notFinishUi = true;
+          notFinishUi = handler.sendMessageDelayed(msg, getDelayForDisconnect(call));
+          pendingDisconnectCalls.add(call);
 
-        callById.put(call.getId(), call);
-        callByTelecomCall.put(call.getTelecomCall(), call);
-        updated = true;
+          callById.put(call.getId(), call);
+          callByTelecomCall.put(call.getTelecomCall(), call);
+          updated = true;
+          if (!notFinishUi) {
+            LogUtil.i("DialerCallListenerImpl.updateCallInMap", "has IllegalStateException.");
+            finishDisconnectedCall(call);
+          }
+        } catch(IllegalStateException exception) {
+          updated = true;
+          LogUtil.i("DialerCallListenerImpl.updateCallInMap", "catch IllegalStateException.");
+          finishDisconnectedCall(call);
+        }
       }
     } else if (!isCallDead(call)) {
       callById.put(call.getId(), call);
@@ -687,6 +711,16 @@ public class CallList implements DialerCallDelegate {
         // no delay for missed/rejected incoming calls and canceled outgoing calls.
         delay = 0;
         break;
+      /* UNISOC: add for bug {@*/
+      case DisconnectCause.OTHER:
+        String reason = call.getDisconnectCause().getReason();
+        if (reason != null
+                && reason.indexOf(android.telephony.DisconnectCause.toString(
+                                android.telephony.DisconnectCause.IMS_MERGED_SUCCESSFULLY)) > -1) {
+          delay = 0;
+          break;
+        }
+      /* @} */
       default:
         delay = DISCONNECTED_CALL_LONG_TIMEOUT_MS;
         break;
@@ -879,4 +913,119 @@ public class CallList implements DialerCallDelegate {
       }
     }
   }
+
+  /* UNISOC Feature Porting: Enable send sms in incallui feature. */
+  public boolean hasValidGroupCall() {
+    for (DialerCall call : callById.values()) {
+      if (call.getChildCallIds().size() > 0 && call.getState() != DialerCallState.INVALID
+              && call.getState() != DialerCallState.IDLE
+              && call.getState() != DialerCallState.DISCONNECTED) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isforgroundCall(DialerCall call) {
+    final int state = call.getState();
+    return (DialerCallState.ACTIVE == state
+            || DialerCallState.CONFERENCED == state
+            || DialerCallState.DIALING == state
+            || DialerCallState.REDIALING == state);
+  }
+
+  public String[] getConferenceCallNumberArray() {
+    String[] ConferenceCallNumberArray = new String[getConferenceCallSize()];
+
+    if (getAllConferenceCall() != null && getAllConferenceCall().getChildCallIds() != null) {
+      String[] mCallerIds = getAllConferenceCall().getChildCallIds().toArray(new String[0]);
+      for (int i = 0, j = 0; i < mCallerIds.length; i++) {
+        if (mCallerIds[i] != null) {
+          DialerCall childCall = getCallById(mCallerIds[i]);
+          if (childCall != null && isforgroundCall(childCall)) {
+            ConferenceCallNumberArray[j] = childCall.getNumber();
+            j++;
+          }
+        }
+      }
+    }
+    return ConferenceCallNumberArray;
+  }
+
+  // UNISOC: add for bug922248, allow inviting same number when dialing
+  private boolean isforgroundAcitveCall(DialerCall call) {
+    final int state = call.getRealState();
+    return (DialerCallState.ACTIVE == state);
+  }
+  // UNISOC: add for bug922248
+  public String[] getActiveConferenceCallNumberArray() {
+    String[] ConferenceCallNumberArray = new String[getConferenceCallSize()];
+
+    if (getAllConferenceCall() != null && getAllConferenceCall().getChildCallIds() != null) {
+      String[] mCallerIds = getAllConferenceCall().getChildCallIds().toArray(new String[0]);
+      for (int i = 0, j = 0; i < mCallerIds.length; i++) {
+        if (mCallerIds[i] != null) {
+          DialerCall childCall = getCallById(mCallerIds[i]);
+          if (childCall != null && isforgroundAcitveCall(childCall)) {
+            ConferenceCallNumberArray[j] = childCall.getNumber();
+            j++;
+          }
+        }
+      }
+    }
+    return ConferenceCallNumberArray;
+  }
+
+  public int getConferenceCallSize(){
+    int number = 0;
+    if (getAllConferenceCall() != null && getAllConferenceCall().getChildCallIds() != null) {
+      String[] mCallerIds = getAllConferenceCall().getChildCallIds().toArray(new String[0]);
+      for (int i=0; i < mCallerIds.length; i++) {
+        if (mCallerIds[i] != null) {
+          DialerCall call = getCallById(mCallerIds[i]);
+          if (call != null && isforgroundCall(call)) {
+            number++;
+          }
+        }
+      }
+    }
+    return number;
+  }
+
+  /*UNISOC: add for VoLTE{@*/
+  public DialerCall getAllConferenceCall() {
+    DialerCall conferenceCall = null;
+    for (DialerCall call : callById.values()) {
+      if((call.getChildCallIds().size() > 0)
+              && (call.getState() == DialerCallState.DIALING ||
+              call.getState() == DialerCallState.REDIALING ||
+              call.getState() == DialerCallState.ACTIVE ||
+              call.getState() == DialerCallState.DISCONNECTING ||
+              call.getState() == DialerCallState.DISCONNECTED ||
+              call.getState() == DialerCallState.ONHOLD)){
+        conferenceCall = call;
+        return conferenceCall;
+      }
+    }
+    return conferenceCall;
+  }
+  /**
+   * UNISOC: add for bug1182427
+   */
+  public boolean isConferenceParticipant() {
+    for (DialerCall call : callById.values()) {
+      if (call!= null && call.isConferenceCall() && call.getState() != DialerCallState.DISCONNECTED && call.getChildCallIds() != null && call.getChildCallIds().size() < 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * UNISOC: add for bug1221260
+   */
+  public void setWorker(SwapSimWorker worker){
+    this.worker = worker;
+  }
+
 }

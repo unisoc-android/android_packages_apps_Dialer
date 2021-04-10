@@ -114,4 +114,16 @@ public class EmptyVideoTech implements VideoTech {
   public com.android.dialer.logging.VideoTech.Type getVideoTechType() {
     return com.android.dialer.logging.VideoTech.Type.NONE;
   }
+  /* UNISOC: Add video call option menu@{ */
+  @Override
+  public void degradeToVoice() {}
+  /*@}*/
+
+  /* UNISOC: Add for change video type feature@{ */
+  @Override
+  public void changeToRxVideo() {}
+  /*@}*/
+  //UNISOC: Add for bug1137831
+  @Override
+  public void changeToTxVideo(){}
 }

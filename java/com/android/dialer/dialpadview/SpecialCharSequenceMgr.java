@@ -71,6 +71,7 @@ import com.google.zxing.common.BitMatrix;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import android.content.ComponentName;
 
 /**
  * Helper class to listen for some magic character sequences that are handled specially by Dialer.
@@ -85,6 +86,15 @@ public class SpecialCharSequenceMgr {
 
   private static final String ADN_NAME_COLUMN_NAME = "name";
   private static final int ADN_QUERY_TOKEN = -1;
+  //UNISOC: add for bug1086119
+  private static final String ADN_ANR_COLUMN_NAME = "anr";
+
+  /** UNISOC: add for bug1255602 @{*/
+  private static final String MMI_SECETCODE = "83789";
+  private static final String MMI_ACTION = "com.unisoc.action.UNISOC_SECRET_CODE";
+  private static final String MMI_PACKAGE_NAME = "com.sprd.validationtools";
+  private static final String MMI_CLASS_NAME = "com.sprd.validationtools.ValidationToolsBroadcastReceiver";
+  /** @}*/
 
   /**
    * Remembers the previous {@link QueryHandler} and cancel the operation when needed, to prevent
@@ -156,20 +166,42 @@ public class SpecialCharSequenceMgr {
     // Secret codes are accessed by dialing *#*#<code>#*#* or "*#<code_starting_with_number>#"
     if (input.length() > 8 && input.startsWith("*#*#") && input.endsWith("#*#*")) {
       String secretCode = input.substring(4, input.length() - 4);
-      TelephonyManagerCompat.handleSecretCode(context, secretCode);
+      // UNISOC: add for bug1255602 & 1267172
+      sendBroadcastBySecretCode(context,secretCode);
       return true;
     }
-
     return false;
   }
 
+  /** UNISOC: add for bug1255602 & 1267172
+   *  if secretCode is 83789, dialer direct broadcast,otherwise TelephonyManagerCompat.handleSecretCode
+   * @{*/
+  static void sendBroadcastBySecretCode(Context context, String secretCode) {
+    android.util.Log.d("SpecialCharSequenceMgr.sendBroadcastBySecretCode","secretCode: " + secretCode);
+    if (secretCode != null && secretCode.equals(MMI_SECETCODE)) {
+      Intent intent =
+              new Intent(MMI_ACTION, Uri.parse("unisoc_secret_code://" + secretCode));
+      intent.setComponent(new ComponentName(MMI_PACKAGE_NAME, MMI_CLASS_NAME));
+      intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES|Intent.FLAG_RECEIVER_FOREGROUND);
+      context.sendBroadcast(intent);
+    } else {
+      TelephonyManagerCompat.handleSecretCode(context, secretCode);
+    }
+  }
+  /** @}*/
+  /***/
   /**
    * Handle ADN requests by filling in the SIM contact number into the requested EditText.
    *
    * <p>This code works alongside the Asynchronous query handler {@link QueryHandler} and query
    * cancel handler implemented in {@link SimContactQueryCookie}.
    */
-  static boolean handleAdnEntry(Context context, String input, EditText textField) {
+  public static boolean handleAdnEntry(Context context, String input, EditText textField) {
+    /* UNISOC: modify for bug1240583 @{ */
+    if (context == null) {
+      return false;
+    }
+    /* @} */
     /* ADN entries are of the form "N(N)(N)#" */
     TelephonyManager telephonyManager =
         (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
@@ -314,37 +346,42 @@ public class SpecialCharSequenceMgr {
     }
     TelephonyManager telephonyManager =
         (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-
     if (telephonyManager != null && input.equals(MMI_IMEI_DISPLAY)) {
-      int labelResId =
-          (telephonyManager.getPhoneType() == TelephonyManager.PHONE_TYPE_GSM)
-              ? R.string.imei
-              : R.string.meid;
-
+      /**UNISOC:modify the bug1028880 & 1145023 @{*/
+      int labelResId = R.string.imei;
       View customView = LayoutInflater.from(context).inflate(R.layout.dialog_deviceids, null);
       ViewGroup holder = customView.findViewById(R.id.deviceids_holder);
-
+      String meid = telephonyManager.getMeid();
+      if (!TextUtils.isEmpty(meid)) {
+         labelResId = R.string.meid_imei;
+         addDeviceIdRow(
+                 holder,
+                 "MEID:" + meid,
+                 false,
+                 false);
+      }
       if (TelephonyManagerCompat.getPhoneCount(telephonyManager) > 1) {
         for (int slot = 0; slot < telephonyManager.getPhoneCount(); slot++) {
-          String deviceId = telephonyManager.getDeviceId(slot);
-          if (!TextUtils.isEmpty(deviceId)) {
+          String imeiId = telephonyManager.getImei(slot);
+          if (!TextUtils.isEmpty(imeiId)) {
             addDeviceIdRow(
-                holder,
-                deviceId,
-                /* showDecimal */
-                context.getResources().getBoolean(R.bool.show_device_id_in_hex_and_decimal),
-                /* showBarcode */ false);
+                    holder,
+                    "IMEI" + (slot+1) + ":" + imeiId,
+                    /* showDecimal */
+                    context.getResources().getBoolean(R.bool.show_device_id_in_hex_and_decimal),
+                    /* showBarcode */ false);
           }
         }
       } else {
         addDeviceIdRow(
             holder,
-            telephonyManager.getDeviceId(),
+            "IMEI:" + telephonyManager.getImei(),
             /* showDecimal */
             context.getResources().getBoolean(R.bool.show_device_id_in_hex_and_decimal),
             /* showBarcode */
             context.getResources().getBoolean(R.bool.show_device_id_as_barcode));
       }
+      /**@}*/
 
       new AlertDialog.Builder(context)
           .setTitle(labelResId)
@@ -608,6 +645,9 @@ public class SpecialCharSequenceMgr {
         // close the progress dialog.
         sc.progressDialog.dismiss();
 
+        // display the name as a toast
+        Context context = sc.progressDialog.getContext();
+
         // get the EditText to update or see if the request was cancelled.
         EditText text = sc.getTextField();
 
@@ -617,17 +657,47 @@ public class SpecialCharSequenceMgr {
         if ((c != null) && (text != null) && (c.moveToPosition(sc.contactNum))) {
           String name = c.getString(c.getColumnIndexOrThrow(ADN_NAME_COLUMN_NAME));
           String number = c.getString(c.getColumnIndexOrThrow(ADN_PHONE_NUMBER_COLUMN_NAME));
+          /* UNISOC: Add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK @{ */
+          int oldLen = text.getText().length();
 
+          /*unisoc: Add for bug1086119 */
+          String anr = c.getString(c.getColumnIndexOrThrow(ADN_ANR_COLUMN_NAME));
+          if (TextUtils.isEmpty(number)) {
+            if (TextUtils.isEmpty(anr)) {
+              text.getText().clear();
+              Toast.makeText(context, R.string.number_anr_isnull, Toast.LENGTH_SHORT).show();
+              return;
+            } else {
+              number = anr;
+            }
+          }
+          /* @} */
           // fill the text in.
-          text.getText().replace(0, 0, number);
+          text.getText().replace(0, oldLen, number);
+          /* @} */
 
-          // display the name as a toast
-          Context context = sc.progressDialog.getContext();
+          /**
+           * UNISOC: add for bug1086802 @{
+           * display the name as a toast
+           */
+          String strMsg = name;
+          if (TextUtils.isEmpty(name) || TextUtils.isEmpty(name.trim())) {
+            strMsg = number;
+          } else {
+            strMsg = name.trim();
+          }
           CharSequence msg =
               ContactDisplayUtils.getTtsSpannedPhoneNumber(
-                  context.getResources(), R.string.menu_callNumber, name);
+                  context.getResources(), R.string.menu_callNumber, strMsg);
+          /** @} */
           Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
-        }
+          /* UNISOC: Add for bug1072621 androidq porting FEATURE_WAIT_PAUSE_ON_LONG_CLICK */
+          } else if ((c != null) && !(c.moveToPosition(sc.contactNum))
+                  && (text != null)) {
+            Toast.makeText(context, R.string.no_available_number, Toast.LENGTH_SHORT).show();
+            text.getText().clear();
+          }
+          /* @} */
       } finally {
         MoreCloseables.closeQuietly(c);
       }

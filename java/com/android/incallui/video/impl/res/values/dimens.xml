@@ -18,10 +18,11 @@
   <dimen name="videocall_preview_width">72dp</dimen>
   <dimen name="videocall_preview_height">72dp</dimen>
   <dimen name="videocall_preview_long">96dp</dimen>
-  <dimen name="videocall_preview_margin_bottom">24dp</dimen>
+  <dimen name="videocall_preview_margin_bottom">16dp</dimen>
   <dimen name="videocall_preview_margin_start">24dp</dimen>
   <dimen name="videocall_preview_margin_end">24dp</dimen>
   <dimen name="videocall_button_spacing">8dp</dimen>
   <dimen name="videocall_button_size">60dp</dimen>
   <dimen name="videocall_button_padding">12dp</dimen>
+  <dimen name="videocall__mute_image_size">32dp</dimen>
 </resources>

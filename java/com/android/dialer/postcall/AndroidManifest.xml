@@ -17,10 +17,12 @@
   xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.android.dialer.postcall">
 
-  <application>
+  <!--UNISOC: modify for Bug1089904 -->
+  <application android:theme="@style/Theme.AppCompat">
   <activity
       android:name="com.android.dialer.postcall.PostCallActivity"
       android:exported="false"
+      android:theme="@style/Dialer.ThemeBase.NoActionBar"
       android:windowSoftInputMode="adjustResize"/>
   </application>
 </manifest>

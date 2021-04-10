@@ -22,6 +22,7 @@ import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.view.Surface;
 import android.view.TextureView;
+import android.widget.ImageView;//add for bug 1130479
 import android.view.View;
 import com.android.dialer.common.LogUtil;
 import com.android.incallui.videosurface.protocol.VideoSurfaceDelegate;
@@ -39,6 +40,8 @@ public class VideoSurfaceTextureImpl implements VideoSurfaceTexture {
 
   private VideoSurfaceDelegate delegate;
   private TextureView textureView;
+  private ImageView imageView;//add for bug 1130479
+  private boolean isSmallSurface;
   private Surface savedSurface;
   private SurfaceTexture savedSurfaceTexture;
   private Point surfaceDimensions;
@@ -48,6 +51,7 @@ public class VideoSurfaceTextureImpl implements VideoSurfaceTexture {
   public VideoSurfaceTextureImpl(boolean isPixel2017, @SurfaceType int surfaceType) {
     this.isPixel2017 = isPixel2017;
     this.surfaceType = surfaceType;
+    isSmallSurface = (surfaceType == VideoSurfaceTexture.SURFACE_TYPE_LOCAL ) ? true:false;
   }
 
   @Override
@@ -64,6 +68,17 @@ public class VideoSurfaceTextureImpl implements VideoSurfaceTexture {
   @Override
   public Surface getSavedSurface() {
     return savedSurface;
+  }
+
+  //add for bug 1130479
+  @Override
+  public TextureView getTextureView() {
+    return textureView;
+  }
+
+  @Override
+  public ImageView getImageView() {
+    return imageView;
   }
 
   @Override
@@ -87,6 +102,17 @@ public class VideoSurfaceTextureImpl implements VideoSurfaceTexture {
   @Override
   public Point getSurfaceDimensions() {
     return surfaceDimensions;
+  }
+
+  //add for bug 1130479
+  @Override
+  public boolean getSmallSurface() {
+    return isSmallSurface;
+  }
+
+  @Override
+  public void setSmallSurface(boolean isSmallSurface) {
+    this.isSmallSurface =isSmallSurface;
   }
 
   @Override
@@ -124,6 +150,15 @@ public class VideoSurfaceTextureImpl implements VideoSurfaceTexture {
       }
     }
     isDoneWithSurface = false;
+  }
+
+  //add for bug 1130479
+  @Override
+  public void attachToImageView(ImageView imageView) {
+    if (this.imageView == imageView) {
+      return;
+    }
+    this.imageView = imageView;
   }
 
   @Override
@@ -183,6 +218,23 @@ public class VideoSurfaceTextureImpl implements VideoSurfaceTexture {
         (surfaceDimensions == null
             ? "(-1 x -1)"
             : (surfaceDimensions.x + " x " + surfaceDimensions.y)));
+  }
+
+  // add for bug 1130479
+  public void changeToSmallSurface(){
+    if (delegate != null) {
+      delegate.onSufaceChangeToSmall(VideoSurfaceTextureImpl.this);
+    } else {
+      LogUtil.e("VideoSurfaceTextureImpl.changeToSmallSurface", "delegate is null");
+    }
+  }
+
+  public void changeToBigSurface(){
+    if (delegate != null) {
+      delegate.onSufaceChangeToBig(VideoSurfaceTextureImpl.this);
+    } else {
+      LogUtil.e("VideoSurfaceTextureImpl.changeToBigSurface", "delegate is null");
+    }
   }
 
   private class SurfaceTextureListener implements TextureView.SurfaceTextureListener {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="voicemail_settings_with_label">语音邮件（%s）</string>
-  <string name="voicemail_settings_title">语音邮件</string>
+  <string name="voicemail_settings_with_label">语音信箱（%s）</string>
+  <string name="voicemail_settings_title">语音信箱</string>
   <string name="voicemail_notifications_preference_title">通知</string>
   <string name="voicemail_change_greeting_preference_title">语音信箱问候语</string>
   <string name="change_greeting_text">点按即可开始录制</string>

@@ -260,10 +260,12 @@ public class CallComposerActivity extends AppCompatActivity
       timeoutHandler.removeCallbacks(placeTelecomCallRunnable);
       setResult(RESULT_OK);
       finish();
-    } else if (sessionId == Session.NO_SESSION_ID) {
+    } /* UNISOC modify for bug1085311 porting for bug915093 */
+    else if (sessionId == Session.NO_SESSION_ID && contact != null) {
       LogUtil.i("CallComposerActivity.onResume", "creating new session");
       sessionId = getEnrichedCallManager().startCallComposerSession(contact.getNumber());
-    } else if (getEnrichedCallManager().getSession(sessionId) == null) {
+    } /* UNISOC modify for bug1085311 porting for bug915093 */
+    else if (getEnrichedCallManager().getSession(sessionId) == null && contact != null) {
       LogUtil.i(
           "CallComposerActivity.onResume", "session closed while activity paused, creating new");
       sessionId = getEnrichedCallManager().startCallComposerSession(contact.getNumber());
@@ -443,11 +445,13 @@ public class CallComposerActivity extends AppCompatActivity
 
     getEnrichedCallManager().sendCallComposerData(sessionId, data);
     maybeShowPrivacyToast(data);
+    /* UNISOC modify for bug1085311 porting for bug915093 */
     if (data.hasImageData()
         && ConfigProviderComponent.get(this)
             .getConfigProvider()
             .getBoolean("enable_delayed_ec_images", true)
-        && !TelecomUtil.isInManagedCall(this)) {
+        && !TelecomUtil.isInManagedCall(this)
+        && contact != null) {
       timeoutHandler.postDelayed(placeTelecomCallRunnable, getRCSTimeoutMillis());
       startActivity(
           CallPendingActivity.getIntent(
@@ -487,12 +491,16 @@ public class CallComposerActivity extends AppCompatActivity
   }
 
   private void placeTelecomCall() {
-    PreCall.start(
-        this,
-        new CallIntentBuilder(contact.getNumber(), CallInitiationType.Type.CALL_COMPOSER)
-            // Call composer is only active if the number is associated with a known contact.
-            .setAllowAssistedDial(true));
-    setResult(RESULT_OK);
+    /* UNISOC modify for bug1085311 porting for bug915093 @{ */
+    if (contact != null) {
+      PreCall.start(
+          this,
+          new CallIntentBuilder(contact.getNumber(), CallInitiationType.Type.CALL_COMPOSER)
+              // Call composer is only active if the number is associated with a known contact.
+              .setAllowAssistedDial(true));
+      setResult(RESULT_OK);
+    }
+    /* @} */
     finish();
   }
 
@@ -570,21 +578,25 @@ public class CallComposerActivity extends AppCompatActivity
    * Copied from {@link com.android.contacts.common.dialog.CallSubjectDialog}.
    */
   private void onHandleIntent(Intent intent) {
-    if (intent.getExtras().containsKey(ARG_CALL_COMPOSER_CONTACT_BASE64)) {
-      // Invoked from launch_call_composer.py. The proto is provided as a base64 encoded string.
-      byte[] bytes =
-          Base64.decode(intent.getStringExtra(ARG_CALL_COMPOSER_CONTACT_BASE64), Base64.DEFAULT);
-      try {
-        contact = DialerContact.parseFrom(bytes);
-      } catch (InvalidProtocolBufferException e) {
-        throw Assert.createAssertionFailException(e.toString());
+    /* UNISOC modify for bug1085311 porting for bug915093 */
+    //UNISOC: Modify for bug1145004
+    if (intent.getExtras() != null) {
+      if (intent.getExtras().containsKey(ARG_CALL_COMPOSER_CONTACT_BASE64)) {
+        // Invoked from launch_call_composer.py. The proto is provided as a base64 encoded string.
+        byte[] bytes =
+                Base64.decode(intent.getStringExtra(ARG_CALL_COMPOSER_CONTACT_BASE64), Base64.DEFAULT);
+        try {
+          contact = DialerContact.parseFrom(bytes);
+        } catch (InvalidProtocolBufferException e) {
+          throw Assert.createAssertionFailException(e.toString());
+        }
+      } else {
+        contact =
+                ProtoParsers.getTrusted(
+                    intent, ARG_CALL_COMPOSER_CONTACT, DialerContact.getDefaultInstance());
       }
-    } else {
-      contact =
-          ProtoParsers.getTrusted(
-              intent, ARG_CALL_COMPOSER_CONTACT, DialerContact.getDefaultInstance());
+      updateContactInfo();
     }
-    updateContactInfo();
   }
 
   @Override
@@ -594,6 +606,11 @@ public class CallComposerActivity extends AppCompatActivity
 
   /** Populates the contact info fields based on the current contact information. */
   private void updateContactInfo() {
+    /* UNISOC modify for bug1085311 porting for bug915093 @{ */
+    if (contact == null) {
+      return;
+    }
+    /* @} */
     ContactPhotoManager.getInstance(this)
         .loadDialerThumbnailOrPhoto(
             contactPhoto,
@@ -790,8 +807,12 @@ public class CallComposerActivity extends AppCompatActivity
   }
 
   private void setFailedResultAndFinish() {
-    setResult(
-        RESULT_FIRST_USER, new Intent().putExtra(KEY_CONTACT_NAME, contact.getNameOrNumber()));
+    /* UNISOC modify for bug1085311 porting for bug915093 @{ */
+    if(contact!=null) {
+      setResult(
+              RESULT_FIRST_USER, new Intent().putExtra(KEY_CONTACT_NAME, contact.getNameOrNumber()));
+    }
+    /* @} */
     finish();
   }
 

@@ -30,6 +30,10 @@ import com.android.dialer.interactions.PhoneNumberInteraction.InteractionErrorLi
 import com.android.dialer.main.MainActivityPeer;
 import com.android.dialer.main.impl.bottomnav.BottomNavBar.TabIndex;
 import com.android.dialer.util.TransactionSafeActivity;
+import com.android.dialer.util.DialerUtils;
+import com.android.dialer.util.PermissionsUtil;
+import static android.Manifest.permission.READ_PHONE_STATE;
+import android.view.KeyEvent;
 
 /** This is the main activity for dialer. It hosts favorites, call log, search, dialpad, etc... */
 // TODO(calderwoodra): Do not extend TransactionSafeActivity after new SpeedDial is launched
@@ -80,6 +84,13 @@ public class MainActivity extends TransactionSafeActivity
 
     showBlockReportSpamDialogReceiver =
         new ShowBlockReportSpamDialogReceiver(getSupportFragmentManager());
+
+    /** UNISOC: bug895150 Card one Unicom card two mobile, dial the number to enter, click on the
+     * * "initiate video call" button above, pop-up card box.@{ */
+    if (PermissionsUtil.hasPermission(this, READ_PHONE_STATE)) {
+      DialerUtils.tryRegisterImsListener(this);
+    }
+    /** @} */
   }
 
   protected MainActivityPeer getNewPeer() {
@@ -127,6 +138,20 @@ public class MainActivity extends TransactionSafeActivity
     activePeer.onActivityStop();
   }
 
+  /* UNISOC: Bug1091930 No clear the previous voiceNumber make number not update. @{ */
+  /** UNISOC: bug895150 Card one Unicom card two mobile, dial the number to enter, click on the
+   * * "initiate video call" button above, pop-up card box.@{ */
+  @Override
+  protected void onDestroy() {
+    super.onDestroy();
+    if (PermissionsUtil.hasPermission(this, READ_PHONE_STATE)) {
+      DialerUtils.unRegisterImsListener(this);
+    }
+    activePeer.onActivityDestroyed();
+  }
+  /** @} */
+  /* @} */
+
   @Override
   protected void onSaveInstanceState(Bundle bundle) {
     super.onSaveInstanceState(bundle);
@@ -146,6 +171,16 @@ public class MainActivity extends TransactionSafeActivity
     }
     super.onBackPressed();
   }
+
+  /* UNISOC: Bug1090190 touch assist search and menu useless. @{ */
+  @Override
+  public boolean dispatchKeyEvent(KeyEvent event) {
+    if (activePeer.dispatchKeyEvent(event)) {
+      return true;
+    }
+    return super.dispatchKeyEvent(event);
+  }
+  /* @} */
 
   @Override
   public void interactionError(@InteractionErrorCode int interactionErrorCode) {
@@ -173,4 +208,5 @@ public class MainActivity extends TransactionSafeActivity
   public MainActivityPeer getPeer() {
     return activePeer;
   }
+
 }

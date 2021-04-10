@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">බිහිරි, ශ්‍රවණ දුර්වලතා, කථන ආබාධයක් හෝ හඬට වඩා වැඩි දෙයක් අවශ්‍ය අමතන්නන්ට RTT සහාය දක්වයි.</string>
   <string name="rtt_button_decline_request">එපා ස්තූතියි</string>
   <string name="rtt_button_accept_request">RTT හා එක් වන්න</string>
+  <string name="notification_action_answer_voice">"හඬ"</string>
+  <string name="notification_action_mute_on">"නිහඬ කරන්න"</string>
+  <string name="notification_action_mute_off">"හඬ සක්‍රීය කිරීම"</string>
+  <string name="notification_action_reject_with_message">"පණිවිඩ ප්‍රතික්ෂේප කරන්න"</string>
+  <string name="card_title_in_call">"ඇමතුමේ"</string>
+  <string name="card_title_conf_call">"සම්මන්ත්‍රණ ඇමතුම"</string>
+  <string name="fail_change_video_due_to_bgcall">"පසුබිම් ඇමතුමක් ඇත, වර්තමාන ඇමතුම වීඩියෝ ඇමතුමකට වෙනස් කිරීමට අසමත් විය."</string>
 </resources>

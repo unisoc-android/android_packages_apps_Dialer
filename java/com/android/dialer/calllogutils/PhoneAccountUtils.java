@@ -17,10 +17,16 @@
 package com.android.dialer.calllogutils;
 
 import android.content.Context;
+import android.content.ComponentName;
 import android.support.annotation.Nullable;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import com.android.dialer.telecom.TelecomUtil;
+import android.telecom.TelecomManager;
+import android.telephony.TelephonyManager;
+import android.text.TextUtils;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Methods to help extract {@code PhoneAccount} information from database and Telecomm sources. */
 public class PhoneAccountUtils {
@@ -64,9 +70,52 @@ public class PhoneAccountUtils {
   @Nullable
   private static PhoneAccount getAccountOrNull(
       Context context, @Nullable PhoneAccountHandle accountHandle) {
-    if (TelecomUtil.getCallCapablePhoneAccounts(context).size() <= 1) {
+    /* UNISOC: Bug 1072694 androidq porting feature for FEATURE_SIM_CARD_IDENTIFICATION_IN_CALLLOG */
+    TelecomManager telecomManager = (TelecomManager) context
+            .getSystemService(Context.TELECOM_SERVICE);
+    TelephonyManager telephonyManager = (TelephonyManager) context
+            .getSystemService(Context.TELEPHONY_SERVICE);
+    final PhoneAccount account = telecomManager.getPhoneAccount(accountHandle);
+
+    if (TelecomUtil.getCallCapablePhoneAccounts(context).size() <= 1
+            && telephonyManager.getPhoneCount() < 2) {
       return null;
     }
+    /* @} */
     return TelecomUtil.getPhoneAccount(context, accountHandle);
   }
+
+  /** UNISOC AndroidQ Feature Porting:bug1072688 Porting CLEAR CALL LOG FEATURE. @{ */
+  /** Compose PhoneAccount object from component name and account id. */
+  @Nullable
+  public static PhoneAccountHandle getAccount(
+          @Nullable String componentString, @Nullable String accountId) {
+    if (TextUtils.isEmpty(componentString) || TextUtils.isEmpty(accountId)) {
+      return null;
+    }
+    final ComponentName componentName = ComponentName.unflattenFromString(componentString);
+    if (componentName == null) {
+      return null;
+    }
+    return new PhoneAccountHandle(componentName, accountId);
+  }
+  /** @} */
+
+    /** UNISOC AndroidQ Feature Porting:bug1072689 Porting PHONE DETAILS FEATURE. @{ */
+    /**
+     * Return a list of phone accounts that are subscription/SIM accounts.
+     */
+    public static List<PhoneAccountHandle> getSubscriptionPhoneAccounts(Context context) {
+      List<PhoneAccountHandle> subscriptionAccountHandles = new ArrayList<PhoneAccountHandle>();
+      final List<PhoneAccountHandle> accountHandles =
+              TelecomUtil.getCallCapablePhoneAccounts(context);
+      for (PhoneAccountHandle accountHandle : accountHandles) {
+        PhoneAccount account = TelecomUtil.getPhoneAccount(context, accountHandle);
+        if (account.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)) {
+          subscriptionAccountHandles.add(accountHandle);
+        }
+      }
+      return subscriptionAccountHandles;
+    }
+    /** @} */
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<string name="videocall_remote_video_off">"ଭିଡିଓ ବନ୍ଦ ଅଛି"</string>
+<string name="videocall_remote_video_on">"ସେମାନଙ୍କ ଭିଡିଓ ଅନ୍‍ ଅଛି"</string>
+<string name="videocall_remotely_held">"କଲ୍‍ ହୋଲ୍ଡରେ ଅଛି"</string>
+<string name="videocall_remotely_resumed">"କଲ୍‍ ରିଜ୍ୟୁମ୍‍ ହେଲା"</string>
+<string name="videocall_charges_alert_dialog_description">"ମୋବାଇଲ ନେଟୱାର୍କରେ କରାଯାଇଥିବା ଵ୍ହିଡିଓ କଲ୍‍ ଉଭୟ ଡାଟା ଓ ଭଏସ୍‍ ମିନିଟ୍‍ ବ୍ୟବହାର କରେ | ଦେୟ ଲାଗୁ ହୋ‍ଇପାରେ |"</string>
+<string name="do_not_show_again">"ପୁଣି ଦେଖାନ୍ତୁ ନାହିଁ"</string>
+</resources>

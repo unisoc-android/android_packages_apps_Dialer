@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT; tam veya kısmi işitme engelli, konuşma engeli olan veya sesten fazlasına ihtiyaç duyan arayanlara yardımcı olur.</string>
   <string name="rtt_button_decline_request">Hayır, teşekkürler</string>
   <string name="rtt_button_accept_request">RTT\'ye katıl</string>
+  <string name="notification_action_answer_voice">"Ses"</string>
+  <string name="notification_action_mute_on">"Sesi Kapat"</string>
+  <string name="notification_action_mute_off">Sesi Aç</string>
+  <string name="notification_action_reject_with_message">"SMS Reddet"</string>
+  <string name="card_title_in_call">"Çağrı halinde"</string>
+  <string name="card_title_conf_call">"Konferans görüşmesi"</string>
+  <string name="fail_change_video_due_to_bgcall">"Arkaplan araması var, geçerli aramayı video aramasına değiştirme başarısız."</string>
 </resources>

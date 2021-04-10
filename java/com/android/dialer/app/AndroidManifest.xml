@@ -58,9 +58,13 @@
     android:minSdkVersion="24"
     android:targetSdkVersion="28"/>
 
-  <application>
+  <!-- UNISOC Add for bug1078704: Porting Bug 951514 set resizeableActivity to false  @{ -->
+  <application
+      android:resizeableActivity="false">
+  <!-- @} -->
 
-  <activity
+    <!-- UNISOC: modify for bug1072695. @{
+    <activity
       android:exported="false"
       android:label="@string/manage_blocked_numbers_label"
       android:name="com.android.dialer.app.filterednumber.BlockedNumbersSettingsActivity"
@@ -71,11 +75,19 @@
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
     </activity>
+    @} -->
 
     <activity
       android:label="@string/call_log_activity_title"
       android:name="com.android.dialer.app.calllog.CallLogActivity"
-      android:theme="@style/DialtactsTheme">
+      android:theme="@style/DialtactsTheme"
+      android:icon="@mipmap/ic_launcher_calllog_ex"
+      android:taskAffinity="android.task.dialer.calllog"
+      android:launchMode="singleTask">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
     </activity>
 
     <receiver android:name="com.android.dialer.app.calllog.CallLogReceiver">
@@ -146,5 +158,127 @@
         android:resource="@xml/file_paths"/>
     </provider>
     <meta-data android:name="supports_per_number_preferred_account" android:value="true" />
+    <!-- UNISOC AndroidQ Feature Porting: bug1072991 check location permission before using it @{-->
+    <activity
+        android:name="com.android.dialer.app.sprd.SecurityAccessLocation"
+        android:configChanges="orientation|screenSize|keyboardHidden"
+        android:label="@string/launcherActivityLabel"
+        android:theme="@style/MainActivityTheme"
+        android:excludeFromRecents="true"
+        android:parentActivityName="com.android.dialer.main.impl.MainActivity"/>
+    <!-- @} -->
+
+    <!-- UNISOC AndroidQ Feature Porting: bug1072989 add for feature to set video call meeting photo @{ -->
+    <activity
+        android:name="com.android.dialer.app.settings.PhotoSettingsActivity"
+        android:configChanges="orientation|screenSize|keyboardHidden">
+    </activity>
+    <!-- @} -->
+
+    <!-- UNISOC AndroidQ Feature Porting:bug1072688 CLEAR CALL LOG FEATURE. @{ -->
+    <activity android:name="com.android.dialer.sprd.calllog.CallLogClearActivity"
+        android:theme="@style/CallLogClearActivityTheme"
+        android:configChanges="orientation|screenSize"
+        android:clearTaskOnLaunch="true"
+        android:label="@string/call_log_delete_all"/>
+    <!-- @} -->
+
+    <!-- UNISOC: Bug 1072694 androidq porting feature for FEATURE_SIM_CARD_IDENTIFICATION_IN_CALLLOG -->
+    <receiver android:name="com.android.dialer.app.sprd.SubinfoUpdateReceiver">
+      <intent-filter>
+        <!-- UNISOC: add for bug909257 977784-->
+        <action android:name="android.intent.action.SIM_STATE_CHANGED" />
+      </intent-filter>
+    </receiver>
+
+    <!-- UNISOC: bug1072676 FEATURE_IP_DIAL @{ -->
+    <activity
+        android:name="com.android.dialer.app.ipdial.IpNumberListActivity"
+        android:configChanges="orientation|keyboard|keyboardHidden|screenSize"
+        android:label="@string/ip_dialing_list_title"
+        android:theme="@style/IpDialActivityTheme" >
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.DEVELOPMENT_PREFERENCE" />
+        </intent-filter>
+    </activity>
+
+    <activity
+        android:name="com.android.dialer.app.ipdial.IpNumberCreateActivity"
+        android:configChanges="orientation|keyboard|keyboardHidden|screenSize"
+        android:label="@string/ip_dialing_list_title"
+        android:theme="@style/IpDialActivityTheme"
+        android:windowSoftInputMode="stateAlwaysVisible" >
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.DEVELOPMENT_PREFERENCE" />
+        </intent-filter>
+    </activity>
+
+    <activity
+        android:name="com.android.dialer.app.ipdial.IpNumberDeleteActivity"
+        android:configChanges="orientation|keyboard|keyboardHidden|screenSize"
+        android:label="@string/remove"
+        android:theme="@style/IpDialActivityTheme" >
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.DEVELOPMENT_PREFERENCE" />
+        </intent-filter>
+    </activity>
+    <!-- @} -->
+
+    <!-- UNISOC:bug1072678 FAST DIAL FEATURE -->
+    <activity
+            android:name="com.android.dialer.app.fastdial.FastDialSettingActivity"
+            android:configChanges="orientation|screenSize"
+            android:theme="@style/CallLogClearActivityTheme"
+            android:parentActivityName="com.android.dialer.app.settings.DialerSettingsActivity"
+            android:label="@string/fast_dial_settings">
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <action android:name="android.intent.action.MAIN" />
+            <action android:name="android.callsettings.action.FASTDIAL" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+    </activity>
+    <receiver android:name="com.android.dialer.app.fastdial.FastDialReceiver">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED" />
+            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            <action android:name="android.intent.action.SIM_STATE_CHANGED" />
+            <action android:name="android.intent.action.LOCALE_CHANGED" />
+        </intent-filter>
+    </receiver>
+    <!-- END -->
+    <!-- UNISOC: Bug 1072692 add for search call log in google search box feature @{ -->
+    <activity
+        android:name="com.android.dialer.sprd.calllog.SearchResultActivity"
+        android:configChanges="orientation|keyboardHidden|keyboard|navigation"
+        android:excludeFromRecents="true"
+        android:icon="@mipmap/ic_launcher_calllog_ex"
+        android:label="@string/callHistoryIconLabel"
+        android:theme="@style/CallLogClearActivityTheme"
+        android:launchMode="singleTop"
+        android:screenOrientation="portrait" >
+      <intent-filter>
+        <action android:name="android.intent.action.SEARCH" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
+
+      <meta-data
+          android:name="android.app.searchable"
+          android:resource="@xml/searchcalllog_searchable_ex" />
+    </activity>
+
+    <!-- UNISOC:bug1072699 new feature-display FDN contact name in calllog  @{ -->
+    <receiver android:name="com.android.dialer.app.sprd.calllog.FdnUpdateReceiver" >
+          <intent-filter>
+              <action android:name="android.callsettings.action.FDN_LIST_CHANGED" />
+          </intent-filter>
+          <intent-filter>
+              <action android:name="android.callsettings.action.FDN_STATUS_CHANGED" />
+          </intent-filter>
+    </receiver>
+    <!-- @} -->
   </application>
 </manifest>

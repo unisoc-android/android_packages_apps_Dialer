@@ -596,4 +596,12 @@ public class RttChatFragment extends Fragment
 
   @Override
   public void onAudioRouteSelectorDismiss() {}
+
+  /* UNISOC Feature Porting: Add for call recorder feature. @{  */
+  @Override
+  public void setRecord(boolean value) {}
+
+  @Override
+  public void setRecordTime(String recordTime){}
+  /* @} */
 }

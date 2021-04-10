@@ -50,6 +50,13 @@ import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.protos.ProtoParsers;
 import com.android.dialer.telecom.TelecomUtil;
 import com.google.common.base.Optional;
+import java.util.List;
+import java.util.ArrayList;
+import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.telephony.TelephonyIntents;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
 
 /**
  * Dialog that allows the user to select a phone accounts for a given action. Optionally provides
@@ -60,6 +67,10 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
   @VisibleForTesting public static final String ARG_OPTIONS = "options";
 
   private static final String ARG_IS_DEFAULT_CHECKED = "is_default_checked";
+  private static final String ARG_TITLE_RES_ID = "title_res_id";
+  private static final String ARG_CAN_SET_DEFAULT = "can_set_default";
+  private static final String ARG_ACCOUNT_HANDLES = "account_handles";
+  private static final String ARG_LISTENER = "listener";
 
   private SelectPhoneAccountDialogOptions options =
       SelectPhoneAccountDialogOptions.getDefaultInstance();
@@ -67,6 +78,55 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
 
   private boolean isDefaultChecked;
   private boolean isSelected;
+
+  private static AlertDialog mDialog;
+
+  // UNISOC: add for bug1167690
+  private boolean isCanceled;
+
+  /** UNISOC:bug1072689 FEATURE_CALL_DETAIL_ACTIONS @{ */
+  /**
+   * Create new fragment instance with default title and no option to set as default.
+   *
+   * @param accountHandles The {@code PhoneAccountHandle}s available to select from.
+   * @param listener The listener for the results of the account selection.
+   */
+  public static SelectPhoneAccountDialogFragment newInstance(
+          List<PhoneAccountHandle> accountHandles, SelectPhoneAccountListener listener) {
+    return newInstance(R.string.select_account_dialog_title, false,
+            accountHandles, listener);
+  }
+
+
+  /**
+   * Create new fragment instance.
+   * This method also allows specifying a custom title and "set default" checkbox.
+   *
+   * @param titleResId The resource ID for the string to use in the title of the dialog.
+   * @param canSetDefault {@code true} if the dialog should include an option to set the selection
+   * as the default. False otherwise.
+   * @param accountHandles The {@code PhoneAccountHandle}s available to select from.
+   * @param listener The listener for the results of the account selection.
+   */
+  public static SelectPhoneAccountDialogFragment newInstance(int titleResId,
+                                                             boolean canSetDefault, List<PhoneAccountHandle> accountHandles,
+                                                             SelectPhoneAccountListener listener) {
+    ArrayList<PhoneAccountHandle> accountHandlesCopy = new ArrayList<PhoneAccountHandle>();
+    if (accountHandles != null) {
+      accountHandlesCopy.addAll(accountHandles);
+    }
+    SelectPhoneAccountDialogFragment fragment = new SelectPhoneAccountDialogFragment();
+    final Bundle args = new Bundle();
+    args.putInt(ARG_TITLE_RES_ID, titleResId);
+    args.putBoolean(ARG_CAN_SET_DEFAULT, canSetDefault);
+    args.putParcelableArrayList(ARG_ACCOUNT_HANDLES, accountHandlesCopy);
+    args.putParcelable(ARG_LISTENER, listener);
+    fragment.setArguments(args);
+    fragment.setListener(listener);
+    return fragment;
+  }
+  /**@}*/
+
 
   /** Create new fragment instance. */
   public static SelectPhoneAccountDialogFragment newInstance(
@@ -102,6 +162,7 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
 
   @Override
   public Dialog onCreateDialog(Bundle savedInstanceState) {
+    isCanceled = false;// UNISOC: add for bug1167690
     options =
         ProtoParsers.getTrusted(
             getArguments(), ARG_OPTIONS, SelectPhoneAccountDialogOptions.getDefaultInstance());
@@ -142,7 +203,7 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
         new SelectAccountListAdapter(
             builder.getContext(), R.layout.select_account_list_item, options);
 
-    AlertDialog dialog =
+    mDialog =
         builder
             .setTitle(
                 options.hasTitle() ? options.getTitle() : R.string.select_account_dialog_title)
@@ -170,14 +231,15 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
       textView.setOnClickListener((view) -> checkBox.performClick());
       checkboxLayout.setOnClickListener((view) -> checkBox.performClick());
       checkboxLayout.setContentDescription(getString(setDefaultResId));
-      dialog.getListView().addFooterView(checkboxLayout);
+      mDialog.getListView().addFooterView(checkboxLayout);
     }
 
-    return dialog;
+    return mDialog;
   }
 
   @Override
   public void onCancel(DialogInterface dialog) {
+    isCanceled = true;// UNISOC: add for bug1167690
     if (!isSelected && listener != null) {
       Bundle result = new Bundle();
       result.putString(SelectPhoneAccountListener.EXTRA_CALL_ID, getCallId());
@@ -185,6 +247,18 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
     }
     super.onCancel(dialog);
   }
+
+  /** UNISOC: add for bug1167690 @{ */
+  @Override
+  public void onDismiss(DialogInterface dialog) {
+    if (!isCanceled && !isSelected && listener != null) {
+      Bundle result = new Bundle();
+      result.putString(SelectPhoneAccountListener.EXTRA_CALL_ID, getCallId());
+      listener.onReceiveResult(SelectPhoneAccountListener.RESULT_DISMISSED, result);
+    }
+    super.onDismiss(dialog);
+  }
+  /** @} */
 
   @Nullable
   private String getCallId() {
@@ -310,6 +384,11 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
       if (!info.isPresent()) {
         return GeoUtil.getCurrentCountryIso(context);
       }
+      /**UNISOC: modify for the bug 1164600 @{*/
+      if (info.get().getCountryIso() == null) {
+        return null;
+      }
+      /* @} */
       return info.get().getCountryIso().toUpperCase();
     }
 
@@ -321,4 +400,43 @@ public class SelectPhoneAccountDialogFragment extends DialogFragment {
       ImageView imageView;
     }
   }
+
+  /* UNISOC: add to receive sim state to fix bug 732940 @{ */
+  private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      final String action = intent.getAction();
+      if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)) {
+        String stateExtra = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
+        /* UNISOC: modify for bug 1171969  @{ */
+        if (stateExtra != null
+                && IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(stateExtra)
+                && mDialog != null) {
+          isCanceled = true;// UNISOC: add for bug1167690 && 1180236
+          /**UNISOC:Add for bug for 1042884/1068938/1069083 @{*/
+          mDialog.dismiss();
+          /**@}*/
+          if (listener != null) {
+            listener.onDialogDismissed(getCallId());
+          }
+          /**@}*/
+        }
+      }
+    }
+  };
+
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    final IntentFilter intentFilter = new IntentFilter(
+            TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+    getActivity().registerReceiver(mReceiver, intentFilter);
+  }
+
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    getActivity().unregisterReceiver(mReceiver);
+  }
+  /* @} */
 }

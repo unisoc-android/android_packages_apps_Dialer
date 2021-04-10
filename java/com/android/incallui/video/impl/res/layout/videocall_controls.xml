@@ -82,11 +82,30 @@
       app:contentDescriptionChecked="@string/incall_content_description_video_off"
       app:contentDescriptionUnchecked="@string/incall_content_description_video_on"
       />
+    <!--UNISOC: Add for change video type feature@{ -->
+    <ImageButton
+        android:id="@+id/videocall_change_type"
+        style="@style/Incall.Button.VideoCall"
+        android:layout_width="@dimen/videocall_button_size"
+        android:layout_height="@dimen/videocall_button_size"
+        android:layout_marginBottom="@dimen/videocall_button_spacing"
+        android:contentDescription="@string/incall_content_description_change_video_type"
+        android:src="@drawable/quantum_ic_videocam_white_36"/>
+    <!--@} -->
     <include
       layout="@layout/switch_camera_button"
       android:layout_width="@dimen/videocall_button_size"
       android:layout_height="@dimen/videocall_button_size"
       android:layout_marginBottom="@dimen/videocall_button_spacing"/>
+    <!--UNISOC: Add video call option menu@{ -->
+    <ImageButton
+      android:id="@+id/videocall_overflow_button"
+      style="@style/Incall.Button.VideoCall"
+      android:layout_width="@dimen/videocall_button_size"
+      android:layout_height="@dimen/videocall_button_size"
+      android:contentDescription="@string/incall_content_description_overflow"
+      android:src="@drawable/quantum_ic_option_menu_white_36_ex"/>
+    <!--@} -->
   </LinearLayout>
 
   <FrameLayout
@@ -106,6 +125,17 @@
       tools:visibility="visible"
       />
   </FrameLayout>
+
+  <FrameLayout
+      android:id="@+id/videocall_dialpad_container"
+      style="@style/DialpadContainer"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentBottom="true"
+      android:clipChildren="false"
+      android:clipToPadding="false"
+      tools:background="@android:color/white"
+      tools:visibility="gone"/>
 
   <ImageButton
     android:id="@+id/videocall_end_call"

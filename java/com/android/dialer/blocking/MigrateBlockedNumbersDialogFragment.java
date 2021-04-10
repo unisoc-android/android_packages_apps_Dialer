@@ -72,9 +72,12 @@ public class MigrateBlockedNumbersDialogFragment extends DialogFragment {
           @Override
           public void onShow(DialogInterface dialog) {
             final AlertDialog alertDialog = (AlertDialog) dialog;
-            alertDialog
-                .getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(newPositiveButtonOnClickListener(alertDialog));
+            // UNISOC: modify for bug1096241, add protection before call getButton function
+            if(alertDialog != null) {
+                alertDialog
+                    .getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setOnClickListener(newPositiveButtonOnClickListener(alertDialog));
+            }
           }
         });
     return dialog;
@@ -106,7 +109,9 @@ public class MigrateBlockedNumbersDialogFragment extends DialogFragment {
   @Override
   public void onPause() {
     // The dialog is dismissed and state is cleaned up onPause, i.e. rotation.
-    dismiss();
+    /**UNISOC:Add for bug for 1096119 @{*/
+    dismissAllowingStateLoss();
+    /**@}*/
     blockedNumbersMigrator = null;
     migrationListener = null;
     super.onPause();

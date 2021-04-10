@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<string name="content_description_rtt_check_button">"ଆଗେଇ ଯାଆନ୍ତୁ"</string>
+<string name="rtt_input_hint">"ଗୋଟେ ବାର୍ତ୍ତା ଲେଖନ୍ତୁ"</string>
+<string name="content_description_rtt_chat_avatar">"ଅବତାର"</string>
+<string name="rtt_button_back">"ପଛ"</string>
+<string name="rtt_status_banner_text">"RTT ଯୋଗ କରିବାକୁ <xliff:g id="name">%s</xliff:g>  ପାଇଁ ଅପେକ୍ଷାରତ..."</string>
+<string name="rtt_transcript_advisory">"ଅନ୍ୟ ପକ୍ଷ୍ୟ ଆପଣ ଟାଇପ କରୁଥିବା ଦେଖିପାରିବେ | କଲ୍‍ ଇତିହାସରେ ଟ୍ରାନ୍ସସ୍କ୍ରିପ୍‍ଟ ଗୁଡ଼ିକ ସଂରକ୍ଷିତ ହୁଏ |"</string>
+</resources>

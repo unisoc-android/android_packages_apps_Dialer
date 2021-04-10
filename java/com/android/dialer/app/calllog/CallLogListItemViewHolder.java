@@ -89,6 +89,7 @@ import com.android.dialer.phonenumbercache.CachedNumberLookupService;
 import com.android.dialer.phonenumbercache.ContactInfo;
 import com.android.dialer.phonenumbercache.PhoneNumberCache;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
+import com.android.dialer.sprd.calllog.CallLogSpeificNumberClearDialog;
 import com.android.dialer.telecom.TelecomUtil;
 import com.android.dialer.util.CallUtil;
 import com.android.dialer.util.DialerUtils;
@@ -108,6 +109,9 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
     implements View.OnClickListener,
         MenuItem.OnMenuItemClickListener,
         View.OnCreateContextMenuListener {
+
+  // UNISOC: Bug 1073017 androidq porting feature for delete all call of number from this call history
+  private final String TAG = "CallLogListItemViewHolder";
 
   private static final String TASK_DELETE = "task_delete";
 
@@ -437,7 +441,13 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
       Logger.get(context).logImpression(DialerImpression.Type.USER_DELETED_CALL_LOG_ITEM);
       AsyncTaskExecutors.createAsyncTaskExecutor()
           .submit(TASK_DELETE, new DeleteCallTask(context, callIds));
+    /* UNISOC: Bug 1073017 androidq porting feature for delete all call of number from this call history @{ */
+    } else if (resId == R.id.context_menu_delete_all_calls_of_specified_number) {
+        CallLogSpeificNumberClearDialog dialog = new CallLogSpeificNumberClearDialog();
+        dialog.show(context, number);
+        return true;
     }
+    /* @} */
     return false;
   }
 
@@ -560,7 +570,9 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
       case CallbackAction.VOICE:
         if (callLogCache.isVoicemailNumber(accountHandle, number)) {
           // Call to generic voicemail number, in case there are multiple accounts
-          primaryActionButtonView.setTag(IntentProvider.getReturnVoicemailCallIntentProvider(null));
+          /*UNISOC: Add for Bug990212*/
+          primaryActionButtonView.setTag(
+                  IntentProvider.getReturnCallIntentProvider(number + postDialDigits));
         } else if (canSupportAssistedDialing()) {
           primaryActionButtonView.setTag(
               IntentProvider.getAssistedDialIntentProvider(
@@ -691,13 +703,14 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
         Duo duo = DuoComponent.get(context).getDuo();
         // For a voice call, set the secondary callback action to be an IMS video call if it is
         // available. Otherwise try to set it as a Duo call.
-        if (CallUtil.isVideoEnabled(context)
-            && (hasPlacedCarrierVideoCall() || canSupportCarrierVideoCall())) {
+        /* UNISOC: add for bug905207@{ */
+        if (CallUtil.isVideoEnabled(context) && canPlaceCallToNumber) {
+          //&& (hasPlacedCarrierVideoCall() || canSupportCarrierVideoCall())) {
           videoCallButtonView.setTag(IntentProvider.getReturnVideoCallIntentProvider(number));
           videoCallButtonView.setVisibility(View.VISIBLE);
           break;
         }
-
+        /* @} */
         if (isVoicemailNumber) {
           break;
         }
@@ -769,6 +782,9 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
     if (callType == Calls.VOICEMAIL_TYPE) {
       detailsButtonView.setVisibility(View.GONE);
     } else {
+      /** UNISOC: add for bug709708、900405
+       * Voicemail call details display option to add to contacts, send messages @{ */
+      boolean isVoicemail = callLogCache.isVoicemailNumber(accountHandle, number);
       detailsButtonView.setVisibility(View.VISIBLE);
       boolean canReportCallerId =
           cachedNumberLookupService != null
@@ -776,6 +792,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
       detailsButtonView.setTag(
           IntentProvider.getCallDetailIntentProvider(
               callDetailsEntries, buildContact(), canReportCallerId, canSupportAssistedDialing()));
+      /** @} */
     }
 
     boolean isBlockedOrSpam = blockId != null || (isSpamFeatureEnabled && isSpam);
@@ -1082,13 +1099,17 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
 
   private DialerContact buildContact() {
     DialerContact.Builder contact = DialerContact.newBuilder();
-    contact.setPhotoId(info.photoId);
-    if (info.photoUri != null) {
-      contact.setPhotoUri(info.photoUri.toString());
+    /* UNISOC modify for bug1102421 @{ */
+    if (info != null) {
+        contact.setPhotoId(info.photoId);
+        if (info.photoUri != null) {
+          contact.setPhotoUri(info.photoUri.toString());
+        }
+        if (info.lookupUri != null) {
+          contact.setContactUri(info.lookupUri.toString());
+        }
     }
-    if (info.lookupUri != null) {
-      contact.setContactUri(info.lookupUri.toString());
-    }
+    /* @} */
     if (nameOrNumber != null) {
       contact.setNameOrNumber((String) nameOrNumber);
     }
@@ -1102,11 +1123,17 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
     }
 
     /* second line of contact view. */
-    if (!TextUtils.isEmpty(info.name)) {
+    /* UNISOC modify for bug 1103256 @{ */
+    if (info != null && !TextUtils.isEmpty(info.name)) {
       contact.setDisplayNumber(displayNumber);
     }
+    /* @} */
     /* phone number type (e.g. mobile) in second line of contact view */
-    contact.setNumberLabel(numberType);
+    /* UNISOC: modify for bug1173303 @{ */
+    if (!TextUtils.isEmpty(numberType)) {
+      contact.setNumberLabel(numberType);
+    }
+    /* @} */
 
     /* third line of contact view. */
     String accountLabel = callLogCache.getAccountLabel(accountHandle);
@@ -1250,7 +1277,11 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
               R.string.copy_transcript_text)
           .setOnMenuItemClickListener(this);
     }
-
+      /* UNISOC: Bug 1073017 androidq porting feature for delete all call of number from this call history @{ */
+      menu.add(ContextMenu.NONE, R.id.context_menu_delete_all_calls_of_specified_number,
+              ContextMenu.NONE, R.string.action_delete_all_call_of_this_number)
+              .setOnMenuItemClickListener(this);
+      /* @} */
     String e164Number = PhoneNumberUtils.formatNumberToE164(number, countryIso);
     boolean isVoicemailNumber = callLogCache.isVoicemailNumber(accountHandle, number);
     boolean canPlaceCallToNumber = PhoneNumberHelper.canPlaceCallsTo(number, numberPresentation);

@@ -27,12 +27,15 @@ import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Chronometer;
 import android.widget.ImageView;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.ViewAnimator;
+import android.view.ViewGroup.LayoutParams;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.configprovider.ConfigProviderComponent;
@@ -40,12 +43,18 @@ import com.android.dialer.glidephotomanager.GlidePhotoManagerComponent;
 import com.android.dialer.glidephotomanager.PhotoInfo;
 import com.android.dialer.lettertile.LetterTileDrawable;
 import com.android.dialer.util.DrawableConverter;
+import com.android.incallui.call.CallList;
+import com.android.incallui.call.DialerCall;
+import com.android.incallui.call.state.DialerCallState;
 import com.android.dialer.widget.BidiTextView;
 import com.android.incallui.incall.protocol.ContactPhotoType;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
+import com.android.incallui.sprd.InCallUiUtils;
+import com.android.incallui.sprd.plugin.hdaudio.InCallUIHdAudioHelper;
 import java.util.List;
-
+import com.android.incallui.call.CallList;
+import com.android.incallui.call.DialerCall;
 /** Utility to manage the Contact grid */
 public class ContactGridManager {
 
@@ -65,6 +74,8 @@ public class ContactGridManager {
   // Row 1: +1 (650) 253-0000
   private final TextView contactNameTextView;
   @Nullable private ImageView avatarImageView;
+  // UNISOC Feature: mt conference call support
+  private final TextView contactNumberTextView;
 
   // Row 2: Mobile +1 (650) 253-0000
   // Row 2: [HD attempting icon]/[HD icon] 00:15
@@ -74,6 +85,7 @@ public class ContactGridManager {
   // Row 2: Your emergency callback number: +1 (650) 253-0000
   private final ImageView workIconImageView;
   private final ImageView hdIconImageView;
+  private final ImageView vowifiIconImageView;//UNISOC:add for bug1174104
   private final ImageView forwardIconImageView;
   private final TextView forwardedNumberView;
   private final ImageView spamIconImageView;
@@ -81,6 +93,8 @@ public class ContactGridManager {
   private final BidiTextView bottomTextView;
   private final Chronometer bottomTimerView;
   private final Space topRowSpace;
+  // UNISOC: add for bug1146550
+  private final TextView conferenceCallTextView;
   private int avatarSize;
   private boolean hideAvatar;
   private boolean showAnonymousAvatar;
@@ -95,7 +109,10 @@ public class ContactGridManager {
   private PrimaryCallState primaryCallState = PrimaryCallState.empty();
   private final LetterTileDrawable letterTile;
   private boolean isInMultiWindowMode;
-
+  // UNISOC Feature Porting: Show call elapsed time feature.
+  private boolean mIsTimerStart = false;
+  // UNISOC: add for bug1173199
+  private boolean hdVoiceState = false;
   public ContactGridManager(
       View view, @Nullable ImageView avatarImageView, int avatarSize, boolean showAnonymousAvatar) {
     context = view.getContext();
@@ -107,8 +124,11 @@ public class ContactGridManager {
     connectionIconImageView = view.findViewById(R.id.contactgrid_connection_icon);
     statusTextView = view.findViewById(R.id.contactgrid_status_text);
     contactNameTextView = view.findViewById(R.id.contactgrid_contact_name);
+    // UNISOC Feature: mt conference call support
+    contactNumberTextView = view.findViewById(R.id.contactgrid_contact_number);
     workIconImageView = view.findViewById(R.id.contactgrid_workIcon);
     hdIconImageView = view.findViewById(R.id.contactgrid_hdIcon);
+    vowifiIconImageView = view.findViewById(R.id.contactgrid_vowifiIcon);//UNISOC:add for bug1174104
     forwardIconImageView = view.findViewById(R.id.contactgrid_forwardIcon);
     forwardedNumberView = view.findViewById(R.id.contactgrid_forwardNumber);
     spamIconImageView = view.findViewById(R.id.contactgrid_spamIcon);
@@ -116,6 +136,7 @@ public class ContactGridManager {
     bottomTextView = view.findViewById(R.id.contactgrid_bottom_text);
     bottomTimerView = view.findViewById(R.id.contactgrid_bottom_timer);
     topRowSpace = view.findViewById(R.id.contactgrid_top_row_space);
+    conferenceCallTextView = view.findViewById(R.id.conference_call); //UNISOC: add for bug1146550
 
     contactGridLayout = (View) contactNameTextView.getParent();
     letterTile = new LetterTileDrawable(context.getResources());
@@ -123,6 +144,17 @@ public class ContactGridManager {
 
     deviceNumberTextView = view.findViewById(R.id.contactgrid_device_number_text);
     deviceNumberDivider = view.findViewById(R.id.contactgrid_location_divider);
+
+    /* UNISOC: add for bug1173199 @{*/
+    InCallUIHdAudioHelper.getInstance(context).setListener(new InCallUIHdAudioHelper.HDStatusListener() {
+      public void onHDstatusUpdated(boolean hdVoiceState) {
+        if (ContactGridManager.this.hdVoiceState != hdVoiceState) {
+          ContactGridManager.this.hdVoiceState = hdVoiceState;
+          updateHDIcon();
+        }
+      }
+    });
+    /*@}*/
   }
 
   public void show() {
@@ -163,6 +195,8 @@ public class ContactGridManager {
     updatePrimaryNameAndPhoto();
     updateBottomRow();
     updateDeviceNumberRow();
+    // UNISOC Feature: mt conference call support
+    updatePrimaryNumber();
   }
 
   public void setCallState(PrimaryCallState primaryCallState) {
@@ -171,11 +205,17 @@ public class ContactGridManager {
     updateBottomRow();
     updateTopRow();
     updateDeviceNumberRow();
+    // UNISOC Feature: mt conference call support
+    updatePrimaryNumber();
   }
 
   public void dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
     dispatchPopulateAccessibilityEvent(event, statusTextView);
     dispatchPopulateAccessibilityEvent(event, contactNameTextView);
+    // UNISOC Feature: mt conference call support
+    if (contactNumberTextView != null) {
+      dispatchPopulateAccessibilityEvent(event, contactNumberTextView);
+    }
     BottomRow.Info info = BottomRow.getInfo(context, primaryCallState, primaryInfo);
     if (info.shouldPopulateAccessibilityEvent) {
       dispatchPopulateAccessibilityEvent(event, bottomTextView);
@@ -285,17 +325,32 @@ public class ContactGridManager {
     if (TextUtils.isEmpty(primaryInfo.name())) {
       contactNameTextView.setText(null);
     } else {
-      contactNameTextView.setText(
-          primaryInfo.nameIsNumber()
-              ? PhoneNumberUtils.createTtsSpannable(primaryInfo.name())
-              : primaryInfo.name());
+      //UNISOC:add for bug1147442
+      DialerCall call = CallList.getInstance().getFirstCall();
+      if (call != null && call.isEmergencyCall()) {
+        String textE = context.getString(com.android.incallui.R.string.emergency_number);
+        contactNameTextView.setText(textE);
+      } else {
+        if(isShowNameAndNumber(call)){  //UNISOC:add for bug1166735,1233120,1242389
+          contactNameTextView.setText(
+                  primaryInfo.nameIsNumber()
+                          ? PhoneNumberUtils.createTtsSpannable(primaryInfo.name())
+                          : primaryInfo.name()+" "+PhoneNumberUtils.createTtsSpannable(primaryInfo.number()));
+        }else{
+          contactNameTextView.setText(
+                  primaryInfo.nameIsNumber()
+                          ? PhoneNumberUtils.createTtsSpannable(primaryInfo.name())
+                          : primaryInfo.name());
+        }
 
-      // Set direction of the name field
-      int nameDirection = View.TEXT_DIRECTION_INHERIT;
-      if (primaryInfo.nameIsNumber()) {
-        nameDirection = View.TEXT_DIRECTION_LTR;
+        // Set direction of the name field
+        int nameDirection = View.TEXT_DIRECTION_INHERIT;
+        if (primaryInfo.nameIsNumber()) {
+          nameDirection = View.TEXT_DIRECTION_LTR;
+        }
+        //UNISOC:modify for bug1164751
+        contactNameTextView.setTextDirection(View.TEXT_DIRECTION_LTR);
       }
-      contactNameTextView.setTextDirection(nameDirection);
     }
 
     if (avatarImageView != null) {
@@ -311,6 +366,13 @@ public class ContactGridManager {
         }
       }
     }
+  }
+
+  /*UNISOC: add for bug1242389*/
+  private boolean isShowNameAndNumber(DialerCall call) {
+    return InCallUiUtils.ShowShowNumberAndName(context, call)
+           && !call.isConferenceCall()
+           && primaryInfo.number() != null; //UNISOC:add for bug1166735,1233120;
   }
 
   private void loadPhotoWithGlide() {
@@ -359,11 +421,11 @@ public class ContactGridManager {
           primaryInfo.contactInfoLookupKey(),
           LetterTileDrawable.SHAPE_CIRCLE,
           LetterTileDrawable.getContactTypeFromPrimitives(
-              primaryCallState.isVoiceMailNumber(),
+              primaryInfo.isVoiceMailNumber(),
               primaryInfo.isSpam(),
               primaryCallState.isBusinessNumber(),
               primaryInfo.numberPresentation(),
-              primaryCallState.isConference()));
+              primaryInfo.isConference())); // UNISOC: add for bug1105277
       // By invalidating the avatarImageView we force a redraw of the letter tile.
       // This is required to properly display the updated letter tile iconography based on the
       // contact type, because the background drawable reference cached in the view, and the
@@ -383,30 +445,41 @@ public class ContactGridManager {
    * </ul>
    */
   private void updateBottomRow() {
+    // UNISOC: add for bug1146550
+    boolean mIsVideoCall = false;
     BottomRow.Info info = BottomRow.getInfo(context, primaryCallState, primaryInfo);
 
-    bottomTextView.setText(info.label);
+     /* UNISOC Feature Porting: Show call elapsed time feature. @{
+     * @orig*/
+
+    DialerCall call = CallList.getInstance().getFirstCall();
+    /* UNISOC:add for bug1174104 */
+    if (InCallUiUtils.isShouldshowVowifiIcon(context, call)) {
+      LogUtil.i("ContactGridManager.updateBottomRow:","This will show wifi icon.");
+      hdIconImageView.setVisibility(View.GONE);
+      vowifiIconImageView.setVisibility(View.VISIBLE);
+    } else {
+      vowifiIconImageView.setVisibility(View.GONE);
+    }
+    /* @} */
+    if (InCallUiUtils.isShowCallElapsedTime(context) && mIsTimerStart) {
+      if (TextUtils.isEmpty(info.label)) {
+        bottomTextView.setText(info.label);
+      } else if(call != null && !call.isEmergencyCall()){ //SPRD: Add for bug1003452
+        bottomTextView.setText(info.label.toString() + bottomTimerView.getText());
+        LogUtil.i("ContactGridManager.updateBottomRow:", info.label.toString() + bottomTimerView.getText());
+      } else {
+        bottomTextView.setText(info.label);
+      }
+    } else {
+      bottomTextView.setText(info.label);
+    }
+    /* @} */
     bottomTextView.setAllCaps(info.isSpamIconVisible);
     workIconImageView.setVisibility(info.isWorkIconVisible ? View.VISIBLE : View.GONE);
-    if (hdIconImageView.getVisibility() == View.GONE) {
-      if (info.isHdAttemptingIconVisible) {
-        hdIconImageView.setImageResource(R.drawable.asd_hd_icon);
-        hdIconImageView.setVisibility(View.VISIBLE);
-        hdIconImageView.setActivated(false);
-        Drawable drawableCurrent = hdIconImageView.getDrawable().getCurrent();
-        if (drawableCurrent instanceof Animatable && !((Animatable) drawableCurrent).isRunning()) {
-          ((Animatable) drawableCurrent).start();
-        }
-      } else if (info.isHdIconVisible) {
-        hdIconImageView.setImageResource(R.drawable.asd_hd_icon);
-        hdIconImageView.setVisibility(View.VISIBLE);
-        hdIconImageView.setActivated(true);
-      }
-    } else if (info.isHdIconVisible) {
-      hdIconImageView.setActivated(true);
-    } else if (!info.isHdAttemptingIconVisible) {
-      hdIconImageView.setVisibility(View.GONE);
-    }
+    // UNISOC: Add incallui Hd Voice 1173199
+    updateHDIcon();
+
     spamIconImageView.setVisibility(info.isSpamIconVisible ? View.VISIBLE : View.GONE);
 
     if (info.isForwardIconVisible) {
@@ -428,13 +501,29 @@ public class ContactGridManager {
       forwardedNumberView.setVisibility(View.GONE);
       bottomTextSwitcher.setVisibility(View.VISIBLE);
     }
+    /* UNISOC: add for bug1146550 @{*/
+
+    if(call != null && primaryCallState.isConference()) {
+      mIsVideoCall = call.isVideoCall();
+    }
+
+    if(primaryCallState.isConference() && primaryCallState.state() == DialerCallState.ACTIVE && mIsVideoCall) {
+      conferenceCallTextView.setVisibility(View.VISIBLE);
+      LogUtil.i("ContactGridManager.updateBottomRow","show conference call");
+    } else {
+      conferenceCallTextView.setVisibility(View.GONE);
+    }
+    /* @} */
 
     if (info.isTimerVisible) {
       bottomTextSwitcher.setDisplayedChild(1);
+      /* UNISOC: add for feature FL0108020006, use cpu time instead of system time @{
       bottomTimerView.setBase(
           primaryCallState.connectTimeMillis()
               - System.currentTimeMillis()
-              + SystemClock.elapsedRealtime());
+              + SystemClock.elapsedRealtime());  */
+      bottomTimerView.setBase(primaryCallState.connectTimeMillis());
+      /* @} */
       if (!isTimerStarted) {
         LogUtil.i(
             "ContactGridManager.updateBottomRow",
@@ -443,6 +532,8 @@ public class ContactGridManager {
         bottomTimerView.start();
         isTimerStarted = true;
       }
+      // UNISOC Feature Porting: Show call elapsed time feature.
+      mIsTimerStart = true;
     } else {
       bottomTextSwitcher.setDisplayedChild(0);
       bottomTimerView.stop();
@@ -450,12 +541,63 @@ public class ContactGridManager {
     }
   }
 
+  /* UNISOC: add for bug1173199 @{*/
+  private void updateHDIcon() {
+    BottomRow.Info info = BottomRow.getInfo(context, primaryCallState, primaryInfo);
+    //add for bug1245581
+    DialerCall call = CallList.getInstance().getFirstCall();
+    if (call != null && InCallUiUtils.HideHDVoiceIcon(context, call)) {
+      hdIconImageView.setVisibility(View.GONE);
+      return;
+    }
+    /* UNISOC add for bug900292 963878 1245581*/
+    if (hdIconImageView.getVisibility() != View.VISIBLE) {
+      if (info.isHdAttemptingIconVisible) {
+        hdIconImageView.setImageResource(R.drawable.asd_hd_icon);
+        hdIconImageView.setVisibility(View.VISIBLE);
+        hdIconImageView.setActivated(false);
+        Drawable drawableCurrent = hdIconImageView.getDrawable().getCurrent();
+        if (drawableCurrent instanceof Animatable
+                && !((Animatable) drawableCurrent).isRunning()) {
+          ((Animatable) drawableCurrent).start();
+        }
+      } else if (info.isHdIconVisible || hdVoiceState) {
+        if (hdVoiceState) {
+          hdIconImageView.setImageResource(R.drawable.ic_hd_voice_audio);
+        } else {
+          hdIconImageView.setImageResource(R.drawable.quantum_ic_hd_vd_theme_24);
+        }
+        hdIconImageView.setVisibility(View.VISIBLE);
+        hdIconImageView.setActivated(true);
+      }
+    } else if (info.isHdIconVisible || hdVoiceState) {
+      hdIconImageView.setActivated(true);
+    } else if (!info.isHdAttemptingIconVisible) {
+      /* UNISOC add for bug900292 */
+      hdIconImageView.setVisibility(View.INVISIBLE);
+    }
+    // UNISOC Feature Porting: FL1000062465 Telcelshows HD icon during call using AMR-WB .
+    /* UNISOC: add for bug979817 1188442 @{*/
+    ViewGroup.LayoutParams para;
+    para = hdIconImageView.getLayoutParams();
+    if (hdIconImageView.getVisibility() == View.VISIBLE) {
+      para.width = WindowManager.LayoutParams.WRAP_CONTENT;
+    } else {
+      para.width = 0;
+    }
+    hdIconImageView.setLayoutParams(para);
+    hdIconImageView.requestLayout();
+    /* @} */
+  }
+  /*@}*/
+
   private void updateDeviceNumberRow() {
     // It might not be available, e.g. in video call.
     if (deviceNumberTextView == null) {
       return;
     }
-    if (isInMultiWindowMode || TextUtils.isEmpty(primaryCallState.callbackNumber())) {
+    DialerCall call = CallList.getInstance().getFirstCall(); //UNISOC:add for bug1139197
+    if (isInMultiWindowMode || TextUtils.isEmpty(primaryCallState.callbackNumber()) || (call != null && call.isEmergencyCall())) {
       deviceNumberTextView.setVisibility(View.GONE);
       deviceNumberDivider.setVisibility(View.GONE);
       return;
@@ -471,4 +613,25 @@ public class ContactGridManager {
       deviceNumberDivider.setVisibility(View.VISIBLE);
     }
   }
+
+
+  /* UNISOC Feature: mt conference call support @{ */
+  private void updatePrimaryNumber() {
+    if (context == null || primaryInfo == null || contactNumberTextView == null) {
+      return;
+    }
+    if (primaryCallState.isConference()) {
+      if (primaryInfo.contactName() != null
+              && !TextUtils.isEmpty(primaryInfo.contactName())
+              && !primaryInfo.contactName().equals(context.getString(R.string.unknown))) {
+        contactNumberTextView.setVisibility(View.VISIBLE);
+        contactNumberTextView.setText(primaryInfo.contactName());
+      } else {
+        contactNumberTextView.setVisibility(View.GONE);
+      }
+    } else {
+      contactNumberTextView.setVisibility(View.GONE);
+    }
+  }
+  /* @} */
 }

@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ഒരു ഓഡിയോ കോളായി മറുപടി നൽകാൻ ഐക്കണിൽ നിന്ന് സ്വൈപ്പുചെയ്യുക</string>
   <string name="call_incoming_default_label_answer_and_release_second">നിലവിലുള്ള കോളിന് മറുപടി നൽകാനും അത് ഹോൾഡുചെയ്യാനും മുകളിലേക്ക് സ്വൈപ്പുചെയ്യുക</string>
   <string name="call_incoming_default_label_answer_and_release_third">മറുപടി നൽകാനും ഹോൾഡിലുള്ള കോൾ അവസാനിപ്പിക്കാനും മുകളിലേക്ക് സ്വൈപ്പുചെയ്യുക</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"മറുപടി നൽകുന്നതിനും നടന്നുകൊണ്ടിരിക്കുന്ന കോൾ അവസാനിപ്പിക്കുന്നതിനും മുകളിലേക്ക് സ്വയ്പ്പ് ചെയ്യുക"</string>
   <string name="call_incoming_swipe_to_answer_and_release">മറുപടി നൽകാനും നിലവിലുള്ള കോൾ അവസാനിപ്പിക്കാനും ഐക്കണിൽ നിന്ന് സ്വൈപ്പുചെയ്യുക</string>
   <string name="call_incoming_message_custom">നിങ്ങളുടേതായത് എഴുതുക…</string>
   <string name="call_incoming_respond_via_sms_custom_message">നിങ്ങളുടേതായത് എഴുതുക…</string>

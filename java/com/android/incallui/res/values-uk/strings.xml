@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT допомагає користувачам із вадами слуху, мовлення та іншим користувачам, для яких голосового спілкування недостатньо.</string>
   <string name="rtt_button_decline_request">Ні, дякую</string>
   <string name="rtt_button_accept_request">Приєднатися до RTT</string>
+  <string name="notification_action_answer_voice">"Голос"</string>
+  <string name="notification_action_mute_on">Німий режим</string>
+  <string name="notification_action_mute_off">Включити звук</string>
+  <string name="notification_action_reject_with_message">"Відхилити SMS"</string>
+  <string name="card_title_in_call">"Вхід. викл."</string>
+  <string name="card_title_conf_call">Конференц-зв\'язок</string>
+  <string name="fail_change_video_due_to_bgcall">"У фоновому режимі є ще один виклик. Неможливо перевести поточний виклик в режим відеовиклику."</string>
 </resources>

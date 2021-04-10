@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">El RTT brinda asistencia a las personas sordas o hipoacúsicas, que tienen algún trastorno del habla o necesitan una transcripción además de la voz.</string>
   <string name="rtt_button_decline_request">No, gracias</string>
   <string name="rtt_button_accept_request">Unirse a RTT</string>
+  <string name="notification_action_answer_voice">"Voz"</string>
+  <string name="notification_action_mute_on">"SILENC"</string>
+  <string name="notification_action_mute_off">"Desactivar el silenciado"</string>
+  <string name="notification_action_reject_with_message">"Rechazar SMS"</string>
+  <string name="card_title_in_call">"En llamada"</string>
+  <string name="card_title_conf_call">"Conferencia"</string>
+  <string name="fail_change_video_due_to_bgcall">"Hay una llamada de fondo; no se pudo cambiar la llamada actual a videollamada."</string>
 </resources>

@@ -18,6 +18,7 @@ package com.android.dialer.main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.KeyEvent;
 
 /** Interface for peers of MainActivity. */
 public interface MainActivityPeer {
@@ -41,6 +42,10 @@ public interface MainActivityPeer {
   void onSaveInstanceState(Bundle bundle);
 
   boolean onBackPressed();
+
+  /* UNISOC: Bug1090190 touch assist search and menu useless. @{ */
+  boolean dispatchKeyEvent(KeyEvent event);
+  /* @} */
 
   /** Supplies the MainActivityPeer */
   interface PeerSupplier {

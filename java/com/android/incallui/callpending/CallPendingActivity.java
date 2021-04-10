@@ -291,6 +291,39 @@ public class CallPendingActivity extends FragmentActivity
           public Context getContext() {
             return CallPendingActivity.this;
           }
+
+          /* UNISOC Feature Porting: Add for call record feature. @{ */
+          @Override
+          public void recordClick(boolean isChecked){}
+          /* @} */
+
+          /* UNISOC Feature Porting: Enable send sms in incallui feature. */
+          @Override
+          public void sendSMSClicked(){}
+          /* @} */
+
+          /* UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case. */
+          @Override
+          public void hangupAllClicked(){}
+          /* @} */
+
+          /* UNISOC Feature Porting: ect. */
+          @Override
+          public void transferCall(){}
+          /* @} */
+
+          /* UNISOC Feature Porting: Add for call invite feature */
+          @Override
+          public void inviteClicked(){}
+          /* @} */
+
+          /* UNISOC: Add video call option menu@{ */
+          @Override
+          public void changeToVoiceClicked(){}
+          /* @} */
+          // UNISOC Feature Porting: Add for change video type Feature.
+          @Override
+          public void changeVideoTypeClicked(){}
         };
   }
 

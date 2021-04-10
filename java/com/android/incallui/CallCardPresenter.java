@@ -38,6 +38,7 @@ import android.telecom.StatusHints;
 import android.telecom.TelecomManager;
 import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.view.Display;
 import android.view.View;
@@ -75,6 +76,8 @@ import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryCallState.ButtonState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.incallui.incall.protocol.SecondaryInfo;
+import com.android.incallui.sprd.InCallUiUtils;
+import com.android.incallui.sprd.plugin.displayfdn.DisplayFdnHelper;
 import com.android.incallui.videotech.utils.SessionModificationState;
 import java.lang.ref.WeakReference;
 
@@ -126,6 +129,9 @@ public class CallCardPresenter
   private InCallScreen inCallScreen;
   private boolean isInCallScreenReady;
   private boolean shouldSendAccessibilityEvent;
+  //UNISOC: add for bug900276
+  private boolean isConference;
+  private boolean isEmergency;
 
   @NonNull private final CallLocation callLocation;
   private final Runnable sendAccessibilityEventRunnable =
@@ -160,6 +166,10 @@ public class CallCardPresenter
 
     // Call may be null if disconnect happened already.
     DialerCall call = CallList.getInstance().getFirstCall();
+    //UNISOC: add for bug900276
+    if (primary != null) {
+      isConference = primary.isConferenceCall();
+    }
     if (call != null) {
       primary = call;
       if (shouldShowNoteSentToast(primary)) {
@@ -167,7 +177,8 @@ public class CallCardPresenter
       }
       call.addListener(this);
       // start processing lookups right away.
-      if (!call.isConferenceCall()) {
+      if (!call.isConferenceCall()
+              ||(call.isConferenceCall() && call.getChildCallIds().size() < 1)) {
         startContactInfoSearch(call, true, call.getState() == DialerCallState.INCOMING);
       } else {
         updateContactEntry(null, true);
@@ -231,6 +242,10 @@ public class CallCardPresenter
       primary.removeListener(this);
     }
 
+    if(primary != null && !primary.isVideoCall()){// add for bug1139447
+      InCallPresenter.getInstance().enableScreenTimeout(true);
+    }
+
     callLocation.close();
 
     primary = null;
@@ -277,11 +292,22 @@ public class CallCardPresenter
     LogUtil.v("CallCardPresenter.onStateChange", "secondary call: " + secondary);
     String primaryNumber = null;
     String secondaryNumber = null;
+    //UNISOC: add for bug900276
+    boolean isConference = false;
     if (primary != null) {
       primaryNumber = primary.getNumber();
+      isConference = primary.isConferenceCall()
+              // UNISOC: add for bug941546
+              && !(InCallUiUtils.shouldUpdateConferenceUIWithOneParticipant(context) &&
+              primary.getChildCallIds() != null && primary.getChildCallIds().size() == 1);
     }
     if (secondary != null) {
       secondaryNumber = secondary.getNumber();
+    }
+
+    // UNISOC: add for bug Bug 887066
+    if (this.primary != null && this.primaryNumber == null && primaryNumber == null) {//UNISOC:modify for bug1166735
+      this.primaryNumber = this.primary.getNumber();
     }
 
     final boolean primaryChanged =
@@ -305,10 +331,24 @@ public class CallCardPresenter
       inCallScreen.showNoteSentToast();
     }
 
+    /* UNISOC: add for feature FL0108020006, use cpu time instead of system time @{ */
+    if (isPrimaryCallActive()) {
+        this.primary.updateConnectRealTimeMillis();
+    }
+    /* @} */
+
+    boolean isEmergencyChanged = false;
+    if (primary != null && this.isEmergency != primary.isEmergencyCall()) {
+        this.isEmergency = primary.isEmergencyCall();
+        isEmergencyChanged = true;
+      }
+    LogUtil.i("CallCardPresenter.onStateChange", "isEmergencyChanged " + isEmergencyChanged);
+
     // Refresh primary call information if either:
     // 1. Primary call changed.
     // 2. The call's ability to manage conference has changed.
-    if (shouldRefreshPrimaryInfo(primaryChanged)) {
+    if (shouldRefreshPrimaryInfo(primaryChanged)
+            || isEmergencyChanged) {
       // primary call has changed
       if (previousPrimary != null) {
         previousPrimary.removeListener(this);
@@ -316,8 +356,15 @@ public class CallCardPresenter
       this.primary.addListener(this);
 
       primaryContactInfo = ContactInfoCache.buildCacheEntryFromCall(context, this.primary);
+      // UNISOC: add for bug954922
+      this.isConference = isConference;
       updatePrimaryDisplayInfo();
       maybeStartSearch(this.primary, true);
+      //UNISOC: add for bug900276 903500
+    } else if (this.isConference != isConference) {
+      //UNISOC: add for bug900276
+      this.isConference = isConference;
+      updatePrimaryDisplayInfo();
     }
 
     if (previousPrimary != null && this.primary == null) {
@@ -355,6 +402,15 @@ public class CallCardPresenter
             callState != DialerCallState.INCOMING /* animate */);
 
     maybeSendAccessibilityEvent(oldState, newState, primaryChanged);
+    /* UNISOC Feature Porting: FL0108020021 Vibrate when call connected or disconnected feature. @{ */
+
+    if (oldState == InCallState.OUTGOING
+            && newState == InCallState.INCALL) {
+      InCallUiUtils.vibrateForCallStateChange(context.getApplicationContext(),
+              primary,
+              InCallUiUtils.VIBRATION_FEEDBACK_FOR_CONNECT_PREFERENCES_NAME);
+    }
+    /* @} */
     Trace.endSection();
   }
 
@@ -489,7 +545,7 @@ public class CallCardPresenter
                       !TextUtils.isEmpty(primary.getLastForwardedNumber())
                           || primary.isCallForwarded())
                   .setShouldShowContactPhoto(shouldShowContactPhoto)
-                  .setConnectTimeMillis(primary.getConnectTimeMillis())
+                  .setConnectTimeMillis(primary.getConnectRealTimeMillis()) //modify for feature FL0108020006, use cpu time instead of system time
                   .setIsVoiceMailNumber(primary.isVoiceMailNumber())
                   .setIsRemotelyHeld(primary.isRemotelyHeld())
                   .setIsBusinessNumber(isBusiness)
@@ -534,6 +590,17 @@ public class CallCardPresenter
       return false;
     }
 
+    /*UNISOC: add for feature FL1000060357 {@*/
+    if (!InCallUiUtils.shouldShowConferenceWithOneParticipant(context)
+            &&(primary.can(android.telecom.Call.Details.CAPABILITY_MANAGE_CONFERENCE)
+            && primary.getChildCallIds() != null
+            && primary.getChildCallIds().size() ==1
+            || primary.getState() == DialerCallState.DISCONNECTING
+            || primary.getState() == DialerCallState.DISCONNECTED)) {
+      return false;
+    }
+    /*@}*/
+
     return primary.can(android.telecom.Call.Details.CAPABILITY_MANAGE_CONFERENCE) && !isFullscreen;
   }
 
@@ -571,7 +638,9 @@ public class CallCardPresenter
 
   private void maybeStartSearch(DialerCall call, boolean isPrimary) {
     // no need to start search for conference calls which show generic info.
-    if (call != null && !call.isConferenceCall()) {
+    //UNISOC:add for bug1072975,1147007
+    if (call != null && (!call.isConferenceCall()
+            || (call.isConferenceCall() && call.getChildCallIds() != null && call.getChildCallIds().size() < 1))) {
       startContactInfoSearch(call, isPrimary, call.getState() == DialerCallState.INCOMING);
     }
   }
@@ -658,34 +727,150 @@ public class CallCardPresenter
       multimediaData = primary.getEnrichedCallSession().getMultimediaData();
     }
 
-    if (primary.isConferenceCall()) {
+    /* UNISOC Feature Porting: Show fdn list name in incallui feature. @{ */
+    int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    if (primary.getAccountHandle() != null) {
+      subId = InCallUiUtils.getSubIdForPhoneAccountHandle(context, primary.getAccountHandle());
+    }
+    /* @} */
+
+    /*UNISOC: add for feature FL1000062299 {@*/
+    if (InCallUiUtils.shouldUpdateConferenceUIWithOneParticipant(context)
+            && primary.isConferenceCall() && primary.getState() != DialerCallState.INCOMING
+            && primaryContactInfo != null) {
+      LogUtil.v(
+              "CallCardPresenter.updatePrimaryDisplayInfo",
+              "update primary display info for conference call when there is only one child.");
+      if (primary.getChildCallIds() != null && primary.getChildCallIds().size() == 1
+              && getCallerInfo(CallList.getInstance()) != null) {
+        primaryContactInfo = getCallerInfo(CallList.getInstance());
+        String name = getNameForCall(primaryContactInfo, subId);
+        String number = getNumberForCall(primaryContactInfo);
+
+        boolean isChildNumberShown = !TextUtils.isEmpty(primary.getChildNumber());
+        boolean isForwardedNumberShown = !TextUtils.isEmpty(primary.getLastForwardedNumber());
+        boolean isCallSubjectShown = shouldShowCallSubject(primary);
+
+        boolean nameIsNumber = (name != null && name.equals(primaryContactInfo.number));
+        //UNISOC: add for bug1142453
+        String[] callerIds = (String[]) CallList.getInstance().getAllConferenceCall().getChildCallIds().toArray(new String[0]);
+        DialerCall participantCall = CallList.getInstance().getCallById(callerIds[0]);
+        // DialerCall with caller that is a work contact.
+        boolean isWorkContact = (primaryContactInfo.userType == ContactsUtils.USER_TYPE_WORK);
+        inCallScreen.setPrimary(
+                PrimaryInfo.builder()
+                        .setNumber(number)
+                        .setName(name)
+                        .setNameIsNumber(nameIsNumber)
+                        .setLocation(shouldShowLocationAsLabel(nameIsNumber, primaryContactInfo.shouldShowLocation)
+                                        ? primaryContactInfo.location
+                                        : null)
+                        .setLabel(isChildNumberShown || isCallSubjectShown ? null : primaryContactInfo.label)
+                        .setPhoto(primaryContactInfo.photo)
+                        .setPhotoType(primaryContactInfo.photoType)
+                        .setIsSipCall(primaryContactInfo.isSipCall)
+                        .setIsContactPhotoShown(showContactPhoto)
+                        .setIsConference(false) // UNISOC: add for bug 1105277
+                        .setIsWorkCall(hasWorkCallProperty || isWorkContact)
+                        .setIsSpam(primary.isSpam())
+                        .setIsLocalContact(false)
+                        //UNISOC: add for bug1142453
+                        .setIsVoiceMailNumber(participantCall != null ? participantCall.isVoiceMailNumber() : primary.isVoiceMailNumber())
+                        .setAnsweringDisconnectsOngoingCall(primary.answeringDisconnectsForegroundVideoCall())
+                        .setShouldShowLocation(shouldShowLocation())
+                        .setShowInCallButtonGrid(true)
+                        .setContactInfoLookupKey(primaryContactInfo.lookupKey)
+                        .setMultimediaData(multimediaData)
+                        .setNumberPresentation(primary.getNumberPresentation())
+                        .setSubId(subId)
+                        .build());
+      } else {
+        if (CallerInfoUtils.getConferenceString(
+                context, primary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE)).equals(context.getString(R.string.unknown))
+                || primary.getState() == DialerCallState.DISCONNECTING
+                || primary.getState() == DialerCallState.DISCONNECTED) {
+          return;
+        }
+        inCallScreen.setPrimary(
+                PrimaryInfo.builder()
+                        .setNumber(null) /* number */
+                        .setName(CallerInfoUtils.getConferenceString(
+                                context, primary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE)))
+                        .setNameIsNumber(false) /* nameIsNumber */
+                        .setLocation(null) /* location */
+                        .setLabel(null) /* label */
+                        .setPhoto(null) /* photo */
+                        .setPhotoType(ContactPhotoType.DEFAULT_PLACEHOLDER)
+                        .setIsSipCall(false) /* isSipCall */
+                        .setIsContactPhotoShown(showContactPhoto)
+                        .setIsConference(true) // UNISOC: add for bug 1105277
+                        .setIsWorkCall(hasWorkCallProperty)
+                        .setIsSpam(false) /* isSpam */
+                        .setIsLocalContact(false)
+                        //UNISOC: add for bug1142453
+                        .setIsVoiceMailNumber(false)
+                        .setAnsweringDisconnectsOngoingCall(false) /* answeringDisconnectsOngoingCall */
+                        .setShouldShowLocation(shouldShowLocation())
+                        .setShowInCallButtonGrid(true)
+                        .setContactInfoLookupKey(null) /* contactInfoLookupKey */
+                        .setMultimediaData(null) /* enrichedCallMultimediaData */
+                        .setNumberPresentation(primary.getNumberPresentation())
+                        .setSubId(subId)
+                        .build());
+      }
+    }
+    /* @} */
+    else if (primary.isConferenceCall()) {
       LogUtil.v(
           "CallCardPresenter.updatePrimaryDisplayInfo",
           "update primary display info for conference call.");
 
+      String number = null;
+      String contactName = "";
+      boolean nameIsNumber = false;
+      String location = null;
+      int numberPresentation = primary.getNumberPresentation();//UNISOC:add for bug1146282
+      // UNISOC: add for bug867870, show contactName or number for conference participant
+      if (primaryContactInfo != null
+                   && primary.getChildCallIds().size() < 1) {
+        number = primary.getNumber();
+        contactName = getNameForCall(primaryContactInfo, subId);
+        nameIsNumber = contactName != null
+                && contactName.equals(primaryContactInfo.number);
+        location = shouldShowLocationAsLabel(nameIsNumber, primaryContactInfo.shouldShowLocation)
+                ? primaryContactInfo.location: null;
+        numberPresentation = TelecomManager.PRESENTATION_ALLOWED;//UNISOC:add for bug1146282
+      }
       inCallScreen.setPrimary(
           PrimaryInfo.builder()
+              .setNumber(number)
               .setName(
                   CallerInfoUtils.getConferenceString(
                       context, primary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE)))
+              .setContactName(contactName)
               .setNameIsNumber(false)
+              .setLocation(location)
               .setPhotoType(ContactPhotoType.DEFAULT_PLACEHOLDER)
               .setIsSipCall(false)
               .setIsContactPhotoShown(showContactPhoto)
+              .setIsConference(true) // UNISOC: add for bug 1105277
               .setIsWorkCall(hasWorkCallProperty)
               .setIsSpam(false)
               .setIsLocalContact(false)
+                  //UNISOC: add for bug1142453
+              .setIsVoiceMailNumber(false)
               .setAnsweringDisconnectsOngoingCall(false)
               .setShouldShowLocation(shouldShowLocation())
               .setShowInCallButtonGrid(true)
-              .setNumberPresentation(primary.getNumberPresentation())
+              .setNumberPresentation(numberPresentation)//UNISOC:add for bug1146282
+              .setSubId(subId) // UNISOC Feature Porting: Show fdn list name in incallui feature.
               .build());
     } else if (primaryContactInfo != null) {
       LogUtil.v(
           "CallCardPresenter.updatePrimaryDisplayInfo",
           "update primary display info for " + primaryContactInfo);
 
-      String name = getNameForCall(primaryContactInfo);
+      String name = getNameForCall(primaryContactInfo, subId);
       String number;
 
       boolean isChildNumberShown = !TextUtils.isEmpty(primary.getChildNumber());
@@ -722,15 +907,19 @@ public class CallCardPresenter
               .setPhotoType(primaryContactInfo.photoType)
               .setIsSipCall(primaryContactInfo.isSipCall)
               .setIsContactPhotoShown(showContactPhoto)
+              .setIsConference(false) // UNISOC: add for bug 1105277
               .setIsWorkCall(hasWorkCallProperty || isWorkContact)
               .setIsSpam(primary.isSpam())
               .setIsLocalContact(primaryContactInfo.isLocalContact())
+              //UNISOC: add for bug1142453
+              .setIsVoiceMailNumber(primary.isVoiceMailNumber())
               .setAnsweringDisconnectsOngoingCall(primary.answeringDisconnectsForegroundVideoCall())
               .setShouldShowLocation(shouldShowLocation())
               .setContactInfoLookupKey(primaryContactInfo.lookupKey)
               .setMultimediaData(multimediaData)
               .setShowInCallButtonGrid(true)
               .setNumberPresentation(primary.getNumberPresentation())
+              .setSubId(subId) // UNISOC Feature Porting: Show fdn list name in incallui feature.
               .build());
     } else {
       // Clear the primary display info.
@@ -866,14 +1055,46 @@ public class CallCardPresenter
       inCallScreen.setSecondary(SecondaryInfo.builder().setIsFullscreen(isFullscreen).build());
       return;
     }
+    //UNISOC: add for bug1152381
+    int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    if (secondary.getAccountHandle() != null) {
+      subId = InCallUiUtils.getSubIdForPhoneAccountHandle(context, secondary.getAccountHandle());
+    }
 
-    if (secondary.isConferenceCall()) {
+    /*UNISOC: add for feature FL1000062299 {@*/
+    if (InCallUiUtils.shouldUpdateConferenceUIWithOneParticipant(context)
+            && secondary.isConferenceCall() && secondaryContactInfo != null) {
+      final String name;
+      if (secondary.getChildCallIds() != null && secondary.getChildCallIds().size() == 1
+              && getCallerInfo(CallList.getInstance()) != null) {
+        secondaryContactInfo = getCallerInfo(CallList.getInstance());
+        name = getNameForCall(secondaryContactInfo, subId);
+      } else {
+        name = CallerInfoUtils.getConferenceString(
+                context, secondary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE));
+      }
+      boolean nameIsNumber = name != null && name.equals(secondaryContactInfo.number);
+      SecondaryInfo secondaryInfo =
+              SecondaryInfo.builder()
+                      .setShouldShow(true)
+                      .setName(name)
+                      .setNameIsNumber(nameIsNumber)
+                      .setLabel(secondaryContactInfo.label)
+                      .setProviderLabel(secondary.getCallProviderLabel())
+                      .setIsConference(false)
+                      .setIsVideoCall(secondary.isVideoCall())
+                      .setIsFullscreen(isFullscreen)
+                      .build();
+      inCallScreen.setSecondary(secondaryInfo);
+    }
+    /* @} */
+    else if (secondary.isConferenceCall()) {
       inCallScreen.setSecondary(
           SecondaryInfo.builder()
               .setShouldShow(true)
               .setName(
                   CallerInfoUtils.getConferenceString(
-                      context, secondary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE)))
+                      context, secondary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE))) // UNISOC: modify for bug1139424
               .setProviderLabel(secondary.getCallProviderLabel())
               .setIsConference(true)
               .setIsVideoCall(secondary.isVideoCall())
@@ -881,7 +1102,7 @@ public class CallCardPresenter
               .build());
     } else if (secondaryContactInfo != null) {
       LogUtil.v("CallCardPresenter.updateSecondaryDisplayInfo", "" + secondaryContactInfo);
-      String name = getNameForCall(secondaryContactInfo);
+      String name = getNameForCall(secondaryContactInfo, subId);
       boolean nameIsNumber = name != null && name.equals(secondaryContactInfo.number);
       inCallScreen.setSecondary(
           SecondaryInfo.builder()
@@ -979,11 +1200,20 @@ public class CallCardPresenter
   }
 
   /** Gets the name to display for the call. */
-  private String getNameForCall(ContactCacheEntry contactInfo) {
+  private String getNameForCall(ContactCacheEntry contactInfo, int subId) {
     String preferredName =
         ContactsComponent.get(context)
             .contactDisplayPreferences()
             .getDisplayName(contactInfo.namePrimary, contactInfo.nameAlternative);
+    //UNISOC: add for bug1152381
+    boolean isSupportFdnListName = DisplayFdnHelper.getInstance(context).isSupportFdnListName(subId);
+    if (isSupportFdnListName) {
+      String preferredFdnName =  DisplayFdnHelper.getInstance(context).getFDNListName(contactInfo.number, subId);
+      if (!TextUtils.isEmpty(preferredFdnName)) {
+        preferredName = preferredFdnName;
+      }
+    }
+
     if (TextUtils.isEmpty(preferredName)) {
       return TextUtils.isEmpty(contactInfo.number)
           ? null
@@ -1190,4 +1420,39 @@ public class CallCardPresenter
       }
     }
   }
+
+  /*UNISOC: add for feature FL1000062299 {@*/
+  private ContactInfoCache.ContactCacheEntry getCallerInfo(CallList callList) {
+    if (getUi() == null || callList == null || callList.getAllConferenceCall() == null
+            || callList.getAllConferenceCall().getChildCallIds() == null) {
+      Log.w(this, "There is an error when update!");
+      return null;
+    }
+    String[] callerIds = null;
+    callerIds = (String[]) callList.getAllConferenceCall().getChildCallIds().toArray(new String[0]);
+    final ContactCacheEntry contactCache = ContactInfoCache.getInstance(context).
+            getInfo(callerIds[0]);
+    if (contactCache != null) {
+      return contactCache;
+    }
+    return null;
+  }
+
+  /**
+   * Gets the number to display for a call.
+   */
+  String getNumberForCall(ContactCacheEntry contactInfo) {
+    // If the name is empty, we use the number for the name...so don't show a second
+    // number in the number field
+    String preferredName =
+            ContactsComponent.get(context)
+                    .contactDisplayPreferences()
+                    .getDisplayName(contactInfo.namePrimary, contactInfo.nameAlternative);
+    if (TextUtils.isEmpty(preferredName)) {
+      return contactInfo.location;
+    }
+    return contactInfo.number;
+  }
+  /* @} */
+
 }

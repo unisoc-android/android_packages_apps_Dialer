@@ -35,6 +35,8 @@ import com.android.dialer.calllogutils.CallbackActionHelper.CallbackAction;
 import com.android.dialer.common.Assert;
 import com.android.dialer.duo.DuoComponent;
 import com.android.dialer.glidephotomanager.PhotoInfo;
+import com.android.dialer.calldetails.CallOperationsViewHolder;
+import com.android.dialer.dialercontact.DialerContact;
 
 /**
  * Contains common logic shared between {@link OldCallDetailsAdapter} and {@link
@@ -43,8 +45,9 @@ import com.android.dialer.glidephotomanager.PhotoInfo;
 abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
   private static final int HEADER_VIEW_TYPE = 1;
-  private static final int CALL_ENTRY_VIEW_TYPE = 2;
-  private static final int FOOTER_VIEW_TYPE = 3;
+  private static final int OPERATIONS_VIEW_TYPE = 2;
+  private static final int CALL_ENTRY_VIEW_TYPE = 3;
+  private static final int FOOTER_VIEW_TYPE = 4;
 
   private final CallDetailsEntryListener callDetailsEntryListener;
   private final CallDetailsHeaderListener callDetailsHeaderListener;
@@ -69,13 +72,37 @@ abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerVie
   /** Returns {@link PhotoInfo} of the contact. */
   protected abstract PhotoInfo getPhotoInfo();
 
+  /** UNISOC:bug1072689 Add contact @{*/
+  private DialerContact contact;
+  /**@}*/
+
+  CallDetailsAdapterCommon(
+          Context context,
+          CallDetailsEntries callDetailsEntries,
+          CallDetailsEntryListener callDetailsEntryListener,
+          CallDetailsHeaderListener callDetailsHeaderListener,
+          ReportCallIdListener reportCallIdListener,
+          DeleteCallDetailsListener deleteCallDetailsListener) {
+    this.contact = contact;
+    this.callDetailsEntries = callDetailsEntries;
+    this.callDetailsEntryListener = callDetailsEntryListener;
+    this.callDetailsHeaderListener = callDetailsHeaderListener;
+    this.reportCallIdListener = reportCallIdListener;
+    this.deleteCallDetailsListener = deleteCallDetailsListener;
+    this.callTypeHelper =
+            new CallTypeHelper(context.getResources(), DuoComponent.get(context).getDuo());
+  }
+
+  /** UNISOC:bug1072689 Add contact @{*/
   CallDetailsAdapterCommon(
       Context context,
+      DialerContact contact,
       CallDetailsEntries callDetailsEntries,
       CallDetailsEntryListener callDetailsEntryListener,
       CallDetailsHeaderListener callDetailsHeaderListener,
       ReportCallIdListener reportCallIdListener,
       DeleteCallDetailsListener deleteCallDetailsListener) {
+    this.contact = contact;
     this.callDetailsEntries = callDetailsEntries;
     this.callDetailsEntryListener = callDetailsEntryListener;
     this.callDetailsHeaderListener = callDetailsHeaderListener;
@@ -84,6 +111,7 @@ abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerVie
     this.callTypeHelper =
         new CallTypeHelper(context.getResources(), DuoComponent.get(context).getDuo());
   }
+  /**@}*/
 
   @Override
   @CallSuper
@@ -93,6 +121,9 @@ abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerVie
       case HEADER_VIEW_TYPE:
         return createCallDetailsHeaderViewHolder(
             inflater.inflate(R.layout.contact_container, parent, false), callDetailsHeaderListener);
+      case OPERATIONS_VIEW_TYPE:
+        return new CallOperationsViewHolder(
+                inflater.inflate(R.layout.call_detail_action_ex, parent, false));
       case CALL_ENTRY_VIEW_TYPE:
         return new CallDetailsEntryViewHolder(
             inflater.inflate(R.layout.call_details_entry, parent, false), callDetailsEntryListener);
@@ -112,11 +143,15 @@ abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerVie
   public void onBindViewHolder(ViewHolder holder, int position) {
     if (position == 0) { // Header
       bindCallDetailsHeaderViewHolder((CallDetailsHeaderViewHolder) holder, position);
-    } else if (position == getItemCount() - 1) {
+    } else if (position == 1) {
+      ((CallOperationsViewHolder) holder).updateContactInfo(contact);
+    }  else if (position == getItemCount() - 1) {
       ((CallDetailsFooterViewHolder) holder).setPhoneNumber(getNumber());
     } else {
       CallDetailsEntryViewHolder viewHolder = (CallDetailsEntryViewHolder) holder;
-      CallDetailsEntry entry = callDetailsEntries.getEntries(position - 1);
+      /** UNISOC: AndroidQ feature porting for bug1072689 @{*/
+      CallDetailsEntry entry = callDetailsEntries.getEntries(position - 2);
+      /**@}*/
       viewHolder.setCallDetails(
           getNumber(),
           getPrimaryText(),
@@ -132,6 +167,8 @@ abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerVie
   public int getItemViewType(int position) {
     if (position == 0) { // Header
       return HEADER_VIEW_TYPE;
+    }else if (position == 1) {
+      return OPERATIONS_VIEW_TYPE;
     } else if (position == getItemCount() - 1) {
       return FOOTER_VIEW_TYPE;
     } else {
@@ -144,7 +181,7 @@ abstract class CallDetailsAdapterCommon extends RecyclerView.Adapter<RecyclerVie
   public int getItemCount() {
     return callDetailsEntries.getEntriesCount() == 0
         ? 0
-        : callDetailsEntries.getEntriesCount() + 2; // plus header and footer
+        : callDetailsEntries.getEntriesCount() + 3; // UNISOC: AndroidQ feature porting for bug1072689
   }
 
   final CallDetailsEntries getCallDetailsEntries() {

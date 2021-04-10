@@ -81,11 +81,30 @@
       app:contentDescriptionChecked="@string/incall_content_description_video_off"
       app:contentDescriptionUnchecked="@string/incall_content_description_video_on"
       />
+    <!--UNISOC: Add for change video type feature@{ -->
+    <ImageButton
+        android:id="@+id/videocall_change_type"
+        style="@style/Incall.Button.VideoCall"
+        android:layout_width="@dimen/videocall_button_size"
+        android:layout_height="@dimen/videocall_button_size"
+        android:layout_marginEnd="@dimen/videocall_button_spacing"
+        android:contentDescription="@string/incall_content_description_change_video_type"
+        android:src="@drawable/quantum_ic_videocam_white_36"/>
+    <!--@} -->
     <include
       layout="@layout/switch_camera_button"
       android:layout_width="@dimen/videocall_button_size"
       android:layout_height="@dimen/videocall_button_size"
       android:layout_marginEnd="24dp"/>
+    <!--UNISOC: Add video call option menu@{ -->
+    <ImageButton
+      android:id="@+id/videocall_overflow_button"
+      style="@style/Incall.Button.VideoCall"
+      android:layout_width="@dimen/videocall_button_size"
+      android:layout_height="@dimen/videocall_button_size"
+      android:contentDescription="@string/incall_content_description_overflow"
+      android:src="@drawable/quantum_ic_option_menu_white_36_ex"/>
+    <!--@} -->
   </LinearLayout>
 
   <FrameLayout
@@ -105,7 +124,19 @@
       tools:visibility="visible"
       />
   </FrameLayout>
-
+  <FrameLayout
+      android:id="@+id/videocall_dialpad_container"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentBottom="true"
+      android:layout_below="@+id/incall_contact_grid"
+      android:layout_toStartOf="@+id/videocall_video_preview_placeholder"
+      android:layout_alignLeft="@+id/videocall_video_controls"
+      android:layout_marginRight="5dp"
+      android:clipChildren="false"
+      android:clipToPadding="false"
+      tools:background="@android:color/white"
+      tools:visibility="gone"/>
   <ImageButton
     android:id="@+id/videocall_end_call"
     style="@style/Incall.Button.End"

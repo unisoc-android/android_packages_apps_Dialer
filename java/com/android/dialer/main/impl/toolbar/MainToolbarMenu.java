@@ -46,4 +46,13 @@ public final class MainToolbarMenu extends PopupMenu {
       simulatorMenuItem.setVisible(false);
     }
   }
+
+  /* UNISOC: Add for bug1072695. @{ */
+  public void showBlockedNumbers(boolean show) {
+    MenuItem  BlockedNumbersMenuItem = getMenu().findItem(R.id.menu_call_blocked);
+    if (BlockedNumbersMenuItem != null) {
+        BlockedNumbersMenuItem.setVisible(show);
+    }
+  }
+  /* @} */
 }

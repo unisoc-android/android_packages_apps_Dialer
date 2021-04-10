@@ -29,10 +29,12 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.UserManager;
 import android.provider.CallLog.Calls;
 import android.provider.VoicemailContract.Status;
 import android.provider.VoicemailContract.Voicemails;
 import com.android.contacts.common.database.NoNullCursorAsyncQueryHandler;
+import com.android.dialer.app.calllog.CallLogFilterFragment;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.phonenumbercache.CallLogQuery;
 import com.android.dialer.telecom.TelecomUtil;
@@ -42,6 +44,8 @@ import com.android.voicemail.VoicemailComponent;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 
 /** Handles asynchronous queries to the call log. */
 public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
@@ -51,6 +55,8 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
    * type. Exception: excludes Calls.VOICEMAIL_TYPE.
    */
   public static final int CALL_TYPE_ALL = -1;
+
+  private static final String CALLS_USERS_ID = "users_id";
 
   private static final int NUM_LOGS_TO_DISPLAY = 1000;
   /** The token for the query to fetch the old entries from the call log. */
@@ -68,6 +74,9 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
   private final WeakReference<Listener> listener;
 
   private final Context context;
+
+  // UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE
+  private int mShowType = CallLogFilterFragment.TYPE_ALL;
 
   public CallLogQueryHandler(Context context, ContentResolver contentResolver, Listener listener) {
     this(context, contentResolver, listener, -1);
@@ -165,6 +174,23 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
       where.append(" AND (").append(Calls.NEW).append(" = 1)");
     }
 
+   /* UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE @{ */
+    if (mShowType > CallLogFilterFragment.TYPE_ALL) {
+      // Translate slot ID to account ID
+      final SubscriptionManager subscriptionManager = SubscriptionManager.from(context);
+      SubscriptionInfo subscriptionInfo =
+              subscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(mShowType);
+      if (subscriptionInfo != null) {
+        String subscription_id = subscriptionInfo.getIccId();
+        if (where.length() > 0) {
+          where.append(" AND ");
+        }
+        where.append(String.format("(%s = ?)", Calls.PHONE_ACCOUNT_ID));
+        selectionArgs.add(String.valueOf(subscription_id));
+      }
+    }
+    /* @} */
+
     if (callType > CALL_TYPE_ALL) {
       where.append(" AND (").append(Calls.TYPE).append(" = ?)");
       selectionArgs.add(Integer.toString(callType));
@@ -197,6 +223,17 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
           .append(Calls.FEATURES_VIDEO)
           .append(")");
     }
+
+    /** UNISOC AndroidQ Feature Porting: bug1072693 distinguish guest and owner in callLog @{ */
+    UserManager userManager = (UserManager) context
+            .getSystemService(Context.USER_SERVICE);
+    if (!userManager.isSystemUser()) {
+      where.append(" AND ");
+      where.append(String.format("(%s = ?)", CALLS_USERS_ID));
+      selectionArgs.add(Integer.toString(android.os.Process.myUserHandle()
+              .hashCode()));
+    }
+    /** @} */
 
     final int limit = (logLimit == -1) ? NUM_LOGS_TO_DISPLAY : logLimit;
     final String selection = where.length() > 0 ? where.toString() : null;
@@ -293,14 +330,33 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
 
   /** @return Query string to get all unread missed calls. */
   private String getUnreadMissedCallsQuery() {
-    return Calls.IS_READ
-        + " = 0 OR "
-        + Calls.IS_READ
-        + " IS NULL"
-        + " AND "
-        + Calls.TYPE
-        + " = "
-        + Calls.MISSED_TYPE;
+      /* UNISOC: add for bug1047715: distinguish guest and owner in callLog @{ */
+      UserManager userManager = (UserManager) context
+              .getSystemService(Context.USER_SERVICE);
+      if (!userManager.isSystemUser()) {
+          return Calls.IS_READ
+                  + " = 0 OR "
+                  + Calls.IS_READ
+                  + " IS NULL"
+                  + " AND "
+                  + Calls.TYPE
+                  + " = "
+                  + Calls.MISSED_TYPE
+                  + " AND "
+                  + Calls.USERS_ID
+                  + " = "
+                  + Integer.toString(android.os.Process.myUserHandle().hashCode());
+      } else {
+          return Calls.IS_READ
+                  + " = 0 OR "
+                  + Calls.IS_READ
+                  + " IS NULL"
+                  + " AND "
+                  + Calls.TYPE
+                  + " = "
+                  + Calls.MISSED_TYPE;
+      }
+      /* @} */
   }
 
   private void updateVoicemailStatus(Cursor statusCursor) {
@@ -370,4 +426,10 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
       }
     }
   }
+
+  /* UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE @{ */
+  public void setShowType(int showType) {
+    mShowType = showType;
+  }
+  /* @} */
 }

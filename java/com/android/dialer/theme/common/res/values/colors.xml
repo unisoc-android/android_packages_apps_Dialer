@@ -23,7 +23,8 @@
   <color name="dialer_snackbar_action_text_color">#4285F4</color>
 
   <!-- Colors for the notification actions -->
-  <color name="notification_action_accept">#097138</color>
+  <!-- unisoc: modify for bug1162779 -->
+  <color name="notification_action_accept">#26bf4d</color>
   <color name="notification_action_dismiss">#A52714</color>
   <color name="notification_action_answer_video">#097138</color>
 

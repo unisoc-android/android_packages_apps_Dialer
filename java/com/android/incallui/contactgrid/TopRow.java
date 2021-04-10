@@ -20,6 +20,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.Nullable;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SubscriptionManager;
 import android.text.BidiFormatter;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -29,9 +30,12 @@ import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
+import com.android.incallui.call.CallList;
+import com.android.incallui.call.DialerCall;
 import com.android.incallui.call.state.DialerCallState;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
+import com.android.incallui.sprd.InCallUiUtils;
 import com.android.incallui.videotech.utils.SessionModificationState;
 import com.android.incallui.videotech.utils.VideoUtils;
 
@@ -85,10 +89,21 @@ public class TopRow {
         label = getLabelForIncoming(context, state);
         // Show phone number if it's not displayed in name (center row) or location field (bottom
         // row).
-        if (shouldShowNumber(primaryInfo, true /* isIncoming */)) {
+        if (shouldShowNumber(primaryInfo, true /* isIncoming */) && !state.isConference()) { // UNISOC: mt conference
           label = TextUtils.concat(label, " ", spanDisplayNumber(primaryInfo.number()));
         }
       }
+      /* UNISOC Feature Porting: show main/vice card feature. @{ */
+      DialerCall firstCall = CallList.getInstance().getFirstCall();
+      String accountlabel = InCallUiUtils.getPhoneAccountLabel(firstCall, context);
+      if(primaryInfo.subId() > 0) { //UNISOC:add for bug1153357
+        label = context.getString(R.string.contact_grid_incoming_via_template,
+                InCallUiUtils.getSlotInfoBySubId(context, primaryInfo.subId()) + accountlabel);
+      } else if(firstCall != null){
+        label = context.getString(R.string.contact_grid_incoming_via_template,
+                InCallUiUtils.getSlotInfoBySubId(context, firstCall.getSubId()) + accountlabel);
+      }
+      /* @} */
     } else if (VideoUtils.hasSentVideoUpgradeRequest(state.sessionModificationState())
         || VideoUtils.hasReceivedVideoUpgradeRequest(state.sessionModificationState())) {
       label = getLabelForVideoRequest(context, state);
@@ -98,19 +113,67 @@ public class TopRow {
         || state.state() == DialerCallState.CONNECTING) {
       // [Wi-Fi icon] Calling via Google Guest
       // Calling...
-      label = getLabelForDialing(context, state);
+      /* UNISOC Feature Porting: show main/vice card feature.
+       * @orig
+      label = getLabelForDialing(context, state); */
+      DialerCall firstCall = CallList.getInstance().getFirstCall();
+      // UNISOC: modify for bug1174567
+      if (firstCall != null && !firstCall.isEmergencyCall() && (primaryInfo.subId() != -1)) {
+        String accountLabel = InCallUiUtils.getPhoneAccountLabel(firstCall, context);
+        label = context.getString(R.string.incall_calling_via_template,
+                InCallUiUtils.getSlotInfoBySubId(context, primaryInfo.subId()) + accountLabel);
+      } else {
+        // UNISOC: add for bug1105276
+        label = getLabelForDialing(context, state, (firstCall != null && firstCall.isEmergencyCall()));
+      }
+      /* @} */
     } else if (state.state() == DialerCallState.ACTIVE && state.isRemotelyHeld()) {
       label = context.getString(R.string.incall_remotely_held);
+      //UNISOC Feature Porting: show main/vice card feature.
+      DialerCall firstCall = CallList.getInstance().getFirstCall();
+      if (firstCall != null && !firstCall.isEmergencyCall()) {
+        if(primaryInfo.subId() > 0) {//UNISOC:add for bug1153357
+          label = InCallUiUtils.getSlotInfoBySubId(context, primaryInfo.subId()) + label;
+        } else {
+          label = InCallUiUtils.getSlotInfoBySubId(context, firstCall.getSubId()) + label;
+        }
+      }
     } else if (state.state() == DialerCallState.ACTIVE
-        && shouldShowNumber(primaryInfo, false /* isIncoming */)) {
+        && shouldShowNumber(primaryInfo, false /* isIncoming */) && !state.isConference()) { // UNISOC Bug 1112375: mt conference
       label = spanDisplayNumber(primaryInfo.number());
     } else if (state.state() == DialerCallState.CALL_PENDING
         && !TextUtils.isEmpty(state.customLabel())) {
       label = state.customLabel();
+    } else if (state.state() == DialerCallState.ACTIVE) {
+      // UNISOC Feature Porting: show main/vice card feature.
+      DialerCall firstCall = CallList.getInstance().getFirstCall();
+      if (firstCall != null && !firstCall.isEmergencyCall()) {
+        String accountLabel = InCallUiUtils.getPhoneAccountLabel(
+                CallList.getInstance().getFirstCall(), context);
+        if(primaryInfo.subId() > 0) {//UNISOC:add for bug1153357
+          label = InCallUiUtils.getSlotInfoBySubId(context, primaryInfo.subId()) + accountLabel;
+        } else {
+          label = InCallUiUtils.getSlotInfoBySubId(context, firstCall.getSubId()) + accountLabel;
+        }
+      }
+    } else if (state.state() == DialerCallState.ONHOLD) { //UNISOC:add for bug1131802
+      DialerCall firstCall = CallList.getInstance().getActiveOrBackgroundCall();
+      if (firstCall != null && !firstCall.isEmergencyCall()) {
+        label = InCallUiUtils.getPhoneAccountLabel(firstCall, context);
+        if (primaryInfo.subId() > 0) {
+          label = InCallUiUtils.getSlotInfoBySubId(context, primaryInfo.subId()) + label;
+        } else {
+          label = InCallUiUtils.getSlotInfoByCall(context, firstCall) + label;
+        }
+      }
     } else {
       // Video calling...
       // [Wi-Fi icon] Starbucks Wi-Fi
-      label = getConnectionLabel(state);
+      //add for bug1111464
+      DialerCall firstCall = CallList.getInstance().getFirstCall();
+      if(firstCall != null && !firstCall.isEmergencyCall()) {
+        label = getConnectionLabel(state);
+      }
     }
 
     return new Info(label, icon, labelIsSingleLine);
@@ -186,8 +249,9 @@ public class TopRow {
     }
   }
 
-  private static CharSequence getLabelForDialing(Context context, PrimaryCallState state) {
-    if (!TextUtils.isEmpty(state.connectionLabel()) && !state.isWifi()) {
+  private static CharSequence getLabelForDialing(Context context, PrimaryCallState state,
+          boolean isEmergency) { // UNISOC: add for bug1105276
+    if (!TextUtils.isEmpty(state.connectionLabel()) && !state.isWifi() && !isEmergency) {
       CharSequence label = getCallingViaLabel(context, state);
 
       if (state.isAssistedDialed() && state.assistedDialingExtras() != null) {

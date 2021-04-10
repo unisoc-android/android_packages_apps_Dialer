@@ -22,6 +22,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.telecom.Call;
 import android.telecom.Call.Details;
+import android.telecom.InCallService;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.VideoProfile;
 import com.android.dialer.common.Assert;
@@ -29,6 +30,7 @@ import com.android.dialer.common.LogUtil;
 import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.LoggingBindings;
 import com.android.dialer.util.CallUtil;
+import com.android.incallui.InCallPresenter;//UNISOC:add for bug1156570
 import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
 import com.android.incallui.videotech.VideoTech;
@@ -45,6 +47,8 @@ public class ImsVideoTech implements VideoTech {
   private int previousVideoState = VideoProfile.STATE_AUDIO_ONLY;
   private boolean paused = false;
   private String savedCameraId;
+  // UNISOC: add for bug1147153
+  private InCallService.VideoCall videoCall;
 
   // Hold onto a flag of whether or not stopTransmission was called but resumeTransmission has not
   // been. This is needed because there is time between calling stopTransmission and
@@ -61,7 +65,7 @@ public class ImsVideoTech implements VideoTech {
   @Override
   public boolean isAvailable(Context context, PhoneAccountHandle phoneAccountHandle) {
     if (call.getVideoCall() == null) {
-      LogUtil.i("ImsVideoCall.isAvailable", "null video call");
+      LogUtil.d("ImsVideoCall.isAvailable", "null video call");
       return false;
     }
 
@@ -72,20 +76,20 @@ public class ImsVideoTech implements VideoTech {
     }
 
     // The user has disabled IMS video calling in system settings
-    if (!CallUtil.isVideoEnabled(context)) {
+    if (!InCallPresenter.getInstance().isVideoEnabled()) {//UNISOC:modify for bug1156570
       LogUtil.i("ImsVideoCall.isAvailable", "disabled in settings");
       return false;
     }
 
     // The current call doesn't support transmitting video
     if (!call.getDetails().can(Call.Details.CAPABILITY_SUPPORTS_VT_LOCAL_TX)) {
-      LogUtil.i("ImsVideoCall.isAvailable", "no TX");
+      LogUtil.d("ImsVideoCall.isAvailable", "no TX");
       return false;
     }
 
     // The current call remote device doesn't support receiving video
     if (!call.getDetails().can(Call.Details.CAPABILITY_SUPPORTS_VT_REMOTE_RX)) {
-      LogUtil.i("ImsVideoCall.isAvailable", "no RX");
+      LogUtil.d("ImsVideoCall.isAvailable", "no RX");
       return false;
     }
     LogUtil.i("ImsVideoCall.isAvailable", "available");
@@ -111,6 +115,7 @@ public class ImsVideoTech implements VideoTech {
 
   @Override
   public boolean isPaused() {
+    LogUtil.i("ImsVideoTech.pause", "isPaused:"+paused);
     return paused;
   }
 
@@ -131,7 +136,18 @@ public class ImsVideoTech implements VideoTech {
     if (callback == null) {
       callback = new ImsVideoCallCallback(logger, call, this, listener, context);
       call.getVideoCall().registerCallback(callback);
+      //UNISOC: add for bug1147201
+      if(listener != null){
+        listener.onVideoCallCallbackRegistered(true);
+      }
     }
+    /* UNISOC: add for bug1147153 @{*/
+    if (videoCall != null && videoCall != call.getVideoCall()) {
+      LogUtil.i("ImsVideoTech.onCallStateChanged", "videoCall changed");
+      call.getVideoCall().registerCallback(callback);
+    }
+    videoCall = call.getVideoCall();
+    /*@}*/
 
     if (getSessionModificationState()
             == SessionModificationState.WAITING_FOR_UPGRADE_TO_VIDEO_RESPONSE
@@ -239,7 +255,9 @@ public class ImsVideoTech implements VideoTech {
     call.getVideoCall()
         .sendSessionModifyRequest(
             new VideoProfile(unpausedVideoState | VideoProfile.STATE_TX_ENABLED));
-    setSessionModificationState(SessionModificationState.WAITING_FOR_RESPONSE);
+    if(!VideoProfile.isVideo(call.getDetails().getVideoState())){
+    setSessionModificationState(SessionModificationState.WAITING_FOR_UPGRADE_TO_VIDEO_RESPONSE);
+    }
   }
 
   @Override
@@ -260,6 +278,7 @@ public class ImsVideoTech implements VideoTech {
     }
 
     paused = true;
+    LogUtil.i("ImsVideoTech.pause", "paused is true");
 
     if (canPause()) {
       LogUtil.i("ImsVideoTech.pause", "sending pause request");
@@ -344,4 +363,43 @@ public class ImsVideoTech implements VideoTech {
   static int getUnpausedVideoState(int videoState) {
     return videoState & (~VideoProfile.STATE_PAUSED);
   }
+  /* UNISOC: Add video call option menu@{ */
+  @Override
+  public void degradeToVoice() {
+    // TODO: degrade to a voice call
+    LogUtil.enterBlock("ImsVideoTech.degradeToAudio");
+    LogUtil.i("ImsVideoTech.degradeToAudio", "");
+
+    call.getVideoCall()
+            .sendSessionModifyRequest(
+                    new VideoProfile(VideoProfile.STATE_AUDIO_ONLY));
+  }
+  /*@}*/
+  /*UNISOC: add for received/broadcast video call only@{ */
+  @Override
+  public void changeToRxVideo() {
+    LogUtil.enterBlock("ImsVideoTech.changeToRxVideo");
+    call.getVideoCall()
+            .sendSessionModifyRequest(
+                    new VideoProfile(VideoProfile.STATE_RX_ENABLED));
+    if(!VideoProfile.isVideo(call.getDetails().getVideoState())){
+      setSessionModificationState(SessionModificationState.WAITING_FOR_UPGRADE_TO_VIDEO_RESPONSE);
+    }
+  }
+
+  /* UNISOC: Add for bug 1137831 @{ */
+  @Override
+  public void changeToTxVideo() {
+    LogUtil.enterBlock("ImsVideoTech.changeToTxVideo");
+
+    transmissionStopped = false;
+
+    call.getVideoCall()
+            .sendSessionModifyRequest(
+                    new VideoProfile(VideoProfile.STATE_TX_ENABLED));
+    if(!VideoProfile.isVideo(call.getDetails().getVideoState())){
+      setSessionModificationState(SessionModificationState.WAITING_FOR_UPGRADE_TO_VIDEO_RESPONSE);
+    }
+  }
+  /*@}*/
 }

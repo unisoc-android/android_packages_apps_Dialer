@@ -16,6 +16,8 @@
 
 package com.android.incallui;
 
+import android.app.ActivityManager;
+import android.app.LowmemoryUtils;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -28,6 +30,7 @@ import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.DialerExecutorComponent;
 import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.Logger;
+import com.android.dialer.util.CallUtil;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
 import com.android.incallui.call.TelecomAdapter;
@@ -65,6 +68,15 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
       "com.android.incallui.ACTION_TURN_OFF_SPEAKER";
   public static final String ACTION_ANSWER_SPEAKEASY_CALL =
       "com.android.incallui.ACTION_ANSWER_SPEAKEASY_CALL";
+  /* UNISOC: Add Mute action for feature FL1000060393 @{ */
+  public static final String ACTION_TURN_ON_MUTE = "com.android.incallui.ACTION_TURN_ON_MUTE";
+  public static final String ACTION_TURN_OFF_MUTE =
+          "com.android.incallui.ACTION_TURN_OFF_MUTE";
+  /* }@ */
+  /* UNISOC: add rejectmessage action in the notification. @{ */
+  public static final String ACTION_REJECT_MESSAGE_INCOMING_CALL =
+          "com.android.incallui.ACTION_REJECT_MESSAGE_INCOMING_CALL";
+  /* @} */
 
   @RequiresApi(VERSION_CODES.N_MR1)
   public static final String ACTION_PULL_EXTERNAL_CALL =
@@ -104,7 +116,21 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
       TelecomAdapter.getInstance().setAudioRoute(CallAudioState.ROUTE_SPEAKER);
     } else if (action.equals(ACTION_TURN_OFF_SPEAKER)) {
       TelecomAdapter.getInstance().setAudioRoute(CallAudioState.ROUTE_WIRED_OR_EARPIECE);
+    /* UNISOC: Add Mute action for feature FL1000060393 @{ */
+    } else if (action.equals(ACTION_TURN_ON_MUTE)) {
+      // UNISOC: add for bug1110240
+      InCallPresenter.getInstance().setPreviousMuteState(true);
+      TelecomAdapter.getInstance().mute(true);
+    } else if (action.equals(ACTION_TURN_OFF_MUTE)) {
+      // UNISOC: add for bug1110240
+      InCallPresenter.getInstance().setPreviousMuteState(false);
+      TelecomAdapter.getInstance().mute(false);
+    /* @} */
+    /* UNISOC: add rejectmessage action in the notification. @{ */
+    } else if (action.equals(ACTION_REJECT_MESSAGE_INCOMING_CALL)) {
+      InCallPresenter.getInstance().rejectCallWithStartSms(true);
     }
+    /* @} */
   }
 
   private void acceptUpgradeRequest(Context context) {
@@ -172,7 +198,15 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
     } else {
       DialerCall call = callList.getIncomingCall();
       if (call != null) {
-
+        /* SPRD: Kill font app when lowMemory. @{ */
+        ActivityManager activityManager = context.getSystemService(ActivityManager.class);
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        activityManager.getMemoryInfo(memoryInfo);
+        if (memoryInfo != null && memoryInfo.lowMemory) {
+          LowmemoryUtils.killStopFrontApp(LowmemoryUtils.KILL_STOP_FRONT_APP);
+          LogUtil.i("NotificationBroadcastReceiver.answerIncomingCall", "killStopFrontApp : KILL_STOP_FRONT_APP");
+        }
+        /* @} */
         SpeakEasyCallManager speakEasyCallManager =
             InCallPresenter.getInstance().getSpeakEasyCallManager();
         ListenableFuture<Void> answerPrecondition;
@@ -188,12 +222,12 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
             new FutureCallback<Void>() {
               @Override
               public void onSuccess(Void result) {
-                answerIncomingCallCallback(call, videoState);
+                answerIncomingCallCallback(call, videoState, context);
               }
 
               @Override
               public void onFailure(Throwable t) {
-                answerIncomingCallCallback(call, videoState);
+                answerIncomingCallCallback(call, videoState, context);
                 // TODO(erfanian): Enumerate all error states and specify recovery strategies.
                 throw new RuntimeException("Failed to successfully complete pre call tasks.", t);
               }
@@ -203,9 +237,17 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
     }
   }
 
-  private void answerIncomingCallCallback(@NonNull DialerCall call, int videoState) {
-    call.answer(videoState);
-    InCallPresenter.getInstance().showInCall(false /* showDialpad */, false /* newOutgoingCall */);
+  private void answerIncomingCallCallback(@NonNull DialerCall call, int videoState, Context context) {
+    // call.answer(videoState);
+    /* UNISOC FL0108020020: Add feature of low battery for Reliance @{ */
+    if (CallUtil.isBatteryLow(context) && VideoProfile.isBidirectional(videoState)) {
+      CallUtil.showLowBatteryInCallDialog(context, call.getTelecomCall());
+    } else {
+      call.answer(videoState);
+    }
+      /* @} */
+    // UNISOC: delete for bug1100706
+    // InCallPresenter.getInstance().showInCall(false /* showDialpad */, false /* newOutgoingCall */);
   }
 
   private void declineIncomingCall() {

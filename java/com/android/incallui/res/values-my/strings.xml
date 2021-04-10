@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT သည် နားမကြားသူ၊ နားလေးသူ၊ စကားချို့ယွင်းသူ (သို့) အသံတစ်မျိုးတည်းထက် ပိုမို၍ လိုအပ်သူများကို ကူညီပေးပါသည်။</string>
   <string name="rtt_button_decline_request">မလိုပါ</string>
   <string name="rtt_button_accept_request">RTT ကို ချိတ်ဆက်ရန်</string>
+  <string name="notification_action_answer_voice">"အသံ"</string>
+  <string name="notification_action_mute_on">"အသံတိတ်"</string>
+  <string name="notification_action_mute_off">"အသံဖွင့်ရန်"</string>
+  <string name="notification_action_reject_with_message">"SMS ဖြင့် ငြင်းရန်"</string>
+  <string name="card_title_in_call">"ဖုန်းပြောနေသည်"</string>
+  <string name="card_title_conf_call">"ကွန်ဖရင့် ဖုန်း"</string>
+  <string name="fail_change_video_due_to_bgcall">"နောက်ခံတွင် ဖုန်းခေါ်ဆိုမှု ရှိသည်၊ လက်ရှိ ဖုန်းခေါ်ဆိုမှုကို ဗီဒီယိုဖုန်းသို့ ပြောင်း၍ မရပါ။"</string>
 </resources>

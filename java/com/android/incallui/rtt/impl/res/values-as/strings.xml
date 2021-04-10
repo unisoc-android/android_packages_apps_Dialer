@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<string name="content_description_rtt_check_button">"আগুৱাই যাওক"</string>
+<string name="rtt_input_hint">"এটা বাৰ্তা টাইপ কৰক"</string>
+<string name="content_description_rtt_chat_avatar">"অৱতাৰ"</string>
+<string name="rtt_button_back">"পিছলৈ"</string>
+<string name="rtt_status_banner_text">"RTT কলক সংযুক্ত কৰিবলৈ <xliff:g id="name">%s</xliff:g> অপেক্ষা কৰি আছে…"</string>
+<string name="rtt_transcript_advisory">"আনটো পক্ষই আপুনি টাইপ কৰি থকা দেখিব। আপোনাৰ ডিভাইচৰ কল ইতিহাসৰ ভিতৰত ট্ৰান্সক্ৰিপ্টসমূহ মজুত কৰা হয়।"</string>
+</resources>

@@ -39,10 +39,13 @@
   <string name="notification_action_answer">接聽</string>
   <string name="notification_action_end_call">掛斷</string>
   <string name="notification_action_answer_video">視訊</string>
+  <!--add for bug1131107-->
+  <string name="notification_action_answer_voice">語音</string>
   <string name="notification_action_accept">接受</string>
   <string name="notification_action_dismiss">拒絕</string>
-  <string name="notification_action_speaker_on">開啟喇叭</string>
-  <string name="notification_action_speaker_off">關閉喇叭</string>
+  <!--  UNISOC add for 1143784 -->
+  <string name="notification_action_speaker_on">免提</string>
+  <string name="notification_action_speaker_off">取消免提</string>
   <string name="notification_external_call">其他裝置上有進行中的通話</string>
   <string name="notification_external_video_call">其他裝置上有進行中的視訊通話</string>
   <string name="notification_take_call">接聽通話</string>
@@ -65,4 +68,14 @@
   <string name="rtt_request_dialog_more_information">即時文字訊息功能可為以下類型的來電者提供協助：聽障人士、聽力受損者、語言障礙者，或需要語音服務以外的使用者。</string>
   <string name="rtt_button_decline_request">不用了，謝謝</string>
   <string name="rtt_button_accept_request">加入即時文字訊息</string>
+  <!--  UNISOC: Add Mute action for feature FL1000060393 -->
+  <string name="notification_action_mute_on">"靜音"</string>
+  <string name="notification_action_mute_off">"關閉靜音"</string>
+  <!-- UNISOC: feature FL1000062139 add rejectmessage action in the notification @{ -->
+  <string name="notification_action_reject_with_message">"簡訊拒接"</string>
+  <!-- @} -->
+  <!-- UNISOC:modify for feature FL1000062299 @{ -->
+  <string name="card_title_in_call" msgid="5029165346952099302">"通話中"</string>
+  <string name="card_title_conf_call" msgid="1747835072739982104">"電話會議"</string>
+  <!-- @} -->
 </resources>

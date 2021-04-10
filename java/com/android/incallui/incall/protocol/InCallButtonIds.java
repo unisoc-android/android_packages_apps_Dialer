@@ -38,7 +38,13 @@ import java.lang.annotation.RetentionPolicy;
   InCallButtonIds.BUTTON_MANAGE_VOICE_CONFERENCE,
   InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY,
   InCallButtonIds.BUTTON_SWAP_SIM,
+  InCallButtonIds.BUTTON_RECORD,
+  InCallButtonIds.BUTTON_SEND_MESSAGE,
+  InCallButtonIds.BUTTON_HANGUP_ALL,
+  InCallButtonIds.BUTTON_ECT,
+  InCallButtonIds.BUTTON_INVITE,
   InCallButtonIds.BUTTON_COUNT,
+  InCallButtonIds.BUTTON_CHANGE_VIDEO_TYPE,
   InCallButtonIds.BUTTON_UPGRADE_TO_RTT
 })
 public @interface InCallButtonIds {
@@ -58,6 +64,12 @@ public @interface InCallButtonIds {
   int BUTTON_MANAGE_VOICE_CONFERENCE = 12;
   int BUTTON_SWITCH_TO_SECONDARY = 13;
   int BUTTON_SWAP_SIM = 14;
-  int BUTTON_COUNT = 15;
-  int BUTTON_UPGRADE_TO_RTT = 16;
+  int BUTTON_RECORD = 15; // UNISOC Feature Porting: Add for call recorder feature
+  int BUTTON_SEND_MESSAGE = 16; // UNISOC Feature Porting:: Add for send message feature.
+  int BUTTON_HANGUP_ALL = 17; // UNISOC Feature Porting: Add for hangup all feature
+  int BUTTON_UPGRADE_TO_RTT = 18;
+  int BUTTON_ECT = 19; // UNISOC Feature Porting: Add for Explicit Call Transfer.
+  int BUTTON_INVITE = 20; // UNISOC Feature Porting: Add for call invite feature
+  int BUTTON_COUNT = 21;
+  int BUTTON_CHANGE_VIDEO_TYPE = 22; //UNISOC Feature Porting: Add for change video type feature.
 }

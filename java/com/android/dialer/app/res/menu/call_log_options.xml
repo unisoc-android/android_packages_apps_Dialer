@@ -19,4 +19,12 @@
     android:orderInCategory="1"
     android:showAsAction="never"
     android:title="@string/call_log_delete_all"/>
+
+  <!-- UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE. @{ -->
+  <item
+      android:id="@+id/view_setting"
+      android:title="@string/view_setting"
+      android:showAsAction="never"
+      android:orderInCategory="1" />
+  <!-- @} -->
 </menu>

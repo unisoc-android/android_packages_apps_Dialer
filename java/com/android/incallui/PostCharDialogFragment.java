@@ -34,12 +34,14 @@ public class PostCharDialogFragment extends DialogFragment {
 
   private String callId;
   private String postDialStr;
+  private Boolean isFinishActivity; //UNISOC: add for bug1181509
 
   public PostCharDialogFragment() {}
 
-  public PostCharDialogFragment(String callId, String postDialStr) {
+  public PostCharDialogFragment(String callId, String postDialStr, Boolean isFinishActivity) {
     this.callId = callId;
     this.postDialStr = postDialStr;
+    this.isFinishActivity = isFinishActivity;//UNISOC: add for bug1181509
   }
 
   @Override
@@ -84,6 +86,10 @@ public class PostCharDialogFragment extends DialogFragment {
     super.onCancel(dialog);
 
     TelecomAdapter.getInstance().postDialContinue(callId, false);
+
+    if (isFinishActivity && getActivity() != null) {//UNISOC: add for bug1181509
+        getActivity().finish();
+    }
   }
 
   @Override

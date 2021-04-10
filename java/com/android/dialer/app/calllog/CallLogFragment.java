@@ -23,12 +23,15 @@ import android.app.Fragment;
 import android.app.KeyguardManager;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.provider.CallLog;
 import android.provider.CallLog.Calls;
 import android.provider.ContactsContract;
@@ -39,7 +42,11 @@ import android.support.v13.app.FragmentCompat.OnRequestPermissionsResultCallback
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
@@ -70,10 +77,21 @@ import com.android.dialer.metrics.jank.RecyclerViewJankLogger;
 import com.android.dialer.oem.CequintCallerIdManager;
 import com.android.dialer.performancereport.PerformanceReport;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
+import com.android.dialer.sprd.calllog.CallLogClearActivity;
+import com.android.dialer.sprd.calllog.SourceUtils;
 import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.widget.EmptyContentView;
 import com.android.dialer.widget.EmptyContentView.OnEmptyViewActionButtonClickedListener;
 import java.util.Arrays;
+import java.util.List;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import static android.Manifest.permission.READ_PHONE_STATE;
+import android.content.Intent;
+import com.android.dialer.main.impl.MainActivity;
+import com.android.dialer.contactphoto.ContactPhotoManager;
 
 /**
  * Displays a list of call log entries. To filter for a particular kind of call (all, missed or
@@ -119,6 +137,11 @@ public class CallLogFragment extends Fragment
   private boolean scrollToTop;
   private EmptyContentView emptyListView;
   private ContactInfoCache contactInfoCache;
+  /* UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE  @{ */
+  private int mShowType = CallLogFilterFragment.TYPE_ALL;
+  private boolean mStateSaved;
+  private static final String TAG = "CallLogFragment";
+  /* @} */
   private final OnContactInfoChangedListener onContactInfoChangedListener =
       new OnContactInfoChangedListener() {
         @Override
@@ -204,6 +227,13 @@ public class CallLogFragment extends Fragment
     this.dateLimit = dateLimit;
   }
 
+  /* UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE  @{ */
+  private SimStateChangedReceiver mSimStateChangedReceiver;
+  private boolean mIsMultiSimActive = false;
+  private boolean mHasReadPhoneStatePermission = false;
+  public static final String ACTION_SIM_STATE_CHANGED = Intent.ACTION_SIM_STATE_CHANGED;
+  /* @} */
+
   @Override
   public void onCreate(Bundle state) {
     LogUtil.enterBlock("CallLogFragment.onCreate");
@@ -222,7 +252,37 @@ public class CallLogFragment extends Fragment
     final Activity activity = getActivity();
     final ContentResolver resolver = activity.getContentResolver();
     callLogQueryHandler = new CallLogQueryHandler(activity, resolver, this, logLimit);
-    setHasOptionsMenu(true);
+    /** UNISOC: Bug1098401 DUT Does not update call log entry with contact name and image
+     * once contact is saved from call logs and moved back to call log screen. @{ */
+    if (PermissionsUtil.hasCallLogReadPermissions(getContext())) {
+      resolver.registerContentObserver(CallLog.CONTENT_URI, true, callLogObserver);
+    } else {
+      LogUtil.w("CallLogFragment.onCreate", "call log permission not available");
+    }
+    if (PermissionsUtil.hasContactsReadPermissions(getContext())) {
+      resolver.registerContentObserver(
+              ContactsContract.Contacts.CONTENT_URI, true, contactsObserver);
+    } else {
+      LogUtil.w("CallLogFragment.onCreate", "contacts permission not available.");
+    }
+    /** @} */
+    /* UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE  @{ */
+    if (getActivity() instanceof MainActivity) {
+      setHasOptionsMenu(false);
+    } else {
+      setHasOptionsMenu(true);
+    }
+    mShowType = CallLogFilterFragment.getCallLogShowType(getActivity());
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+    prefs.registerOnSharedPreferenceChangeListener(mShowCalllogListener);
+    /* @} */
+
+    /* UNISOC: add for bug734598,894027 @{ */
+    IntentFilter intentFilter
+            = new IntentFilter(ACTION_SIM_STATE_CHANGED);
+    mSimStateChangedReceiver = new SimStateChangedReceiver();
+    getActivity().registerReceiver(mSimStateChangedReceiver, intentFilter);
+    /* @} */
   }
 
   /** Called by the CallLogQueryHandler when the list of calls has been fetched or updated. */
@@ -297,9 +357,10 @@ public class CallLogFragment extends Fragment
 
   protected void setupView(View view) {
     recyclerView = (RecyclerView) view.findViewById(R.id.recycler_view);
+    //  UNISOC: add for bug1095113  setItemAnimator cause IllegalArgumentException
     if (ConfigProviderComponent.get(getContext())
         .getConfigProvider()
-        .getBoolean("is_call_log_item_anim_null", false)) {
+        .getBoolean("is_call_log_item_anim_null", true)) {
       recyclerView.setItemAnimator(null);
     }
     recyclerView.setHasFixedSize(true);
@@ -394,6 +455,11 @@ public class CallLogFragment extends Fragment
     super.onResume();
     final boolean hasReadCallLogPermission =
         PermissionsUtil.hasPermission(getActivity(), READ_CALL_LOG);
+    /* UNISOC: add for bug734598,894027 @{ */
+    final boolean hasReadPhoneStatePermission =
+            PermissionsUtil.hasPermission(getActivity(), READ_PHONE_STATE);
+    mHasReadPhoneStatePermission = hasReadPhoneStatePermission;
+    /* @} */
     if (!this.hasReadCallLogPermission && hasReadCallLogPermission) {
       // We didn't have the permission before, and now we do. Force a refresh of the call log.
       // Note that this code path always happens on a fresh start, but mRefreshDataRequired
@@ -403,20 +469,25 @@ public class CallLogFragment extends Fragment
     }
 
     ContentResolver resolver = getActivity().getContentResolver();
-    if (PermissionsUtil.hasCallLogReadPermissions(getContext())) {
-      resolver.registerContentObserver(CallLog.CONTENT_URI, true, callLogObserver);
-    } else {
-      LogUtil.w("CallLogFragment.onCreate", "call log permission not available");
-    }
-    if (PermissionsUtil.hasContactsReadPermissions(getContext())) {
-      resolver.registerContentObserver(
-          ContactsContract.Contacts.CONTENT_URI, true, contactsObserver);
-    } else {
-      LogUtil.w("CallLogFragment.onCreate", "contacts permission not available.");
-    }
 
     this.hasReadCallLogPermission = hasReadCallLogPermission;
 
+    /* UNISOC: add for bug734598,894027 @{ */
+    if (hasReadCallLogPermission && hasReadPhoneStatePermission) {
+      final SubscriptionManager subScriptionManager = SubscriptionManager.from(getActivity());
+      List<SubscriptionInfo> subInfos = subScriptionManager.getActiveSubscriptionInfoList();
+      if (subInfos != null && subInfos.size() > 1) {
+        mIsMultiSimActive = true;
+      } else {
+        mIsMultiSimActive = false;
+      }
+      if (mShowType > CallLogFilterFragment.TYPE_ALL && !mIsMultiSimActive) {
+        Log.i(TAG, "Reset callLog filterType to TYPE_ALL");
+        CallLogFilterFragment.setCallLogShowType(getActivity(),
+                CallLogFilterFragment.TYPE_ALL);
+      }
+    }
+    /* @} */
     /*
      * Always clear the filtered numbers cache since users could have blocked/unblocked numbers
      * from the settings page
@@ -435,8 +506,6 @@ public class CallLogFragment extends Fragment
   @Override
   public void onPause() {
     LogUtil.enterBlock("CallLogFragment.onPause");
-    getActivity().getContentResolver().unregisterContentObserver(callLogObserver);
-    getActivity().getContentResolver().unregisterContentObserver(contactsObserver);
     if (getUserVisibleHint()) {
       onNotVisible();
     }
@@ -470,6 +539,21 @@ public class CallLogFragment extends Fragment
     if (adapter != null) {
       adapter.changeCursor(null);
     }
+    /** UNISOC: Bug1098401 DUT Does not update call log entry with contact name and image
+     * once contact is saved from call logs and moved back to call log screen. @{ */
+    getActivity().getContentResolver().unregisterContentObserver(callLogObserver);
+    getActivity().getContentResolver().unregisterContentObserver(contactsObserver);
+    /** @} */
+    /* UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE  @{ */
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+    prefs.unregisterOnSharedPreferenceChangeListener(mShowCalllogListener);
+    /* @} */
+    /* UNISOC: add for bug734598,894027 @{ */
+    if (mSimStateChangedReceiver != null) {
+      getActivity().unregisterReceiver(mSimStateChangedReceiver);
+      mSimStateChangedReceiver = null;
+    }
+    /* @} */
     super.onDestroy();
   }
 
@@ -490,6 +574,8 @@ public class CallLogFragment extends Fragment
 
   @Override
   public void fetchCalls() {
+    // UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE
+    callLogQueryHandler.setShowType(mShowType);
     callLogQueryHandler.fetchCalls(callTypeFilter, dateLimit);
     if (!isCallLogActivity
         && getActivity() != null
@@ -522,6 +608,14 @@ public class CallLogFragment extends Fragment
       case CallLogQueryHandler.CALL_TYPE_ALL:
         messageId = R.string.call_log_all_empty;
         break;
+      /** UNISOC: Bug 1072686 androidq porting feature for filter call log by type feature @{ */
+      case Calls.OUTGOING_TYPE:
+        messageId = R.string.call_log_outgoing_empty;
+        break;
+      case Calls.INCOMING_TYPE:
+        messageId = R.string.call_log_incoming_empty;
+        break;
+      /** @} */
       default:
         throw new IllegalArgumentException(
             "Unexpected filter type in CallLogFragment: " + filterType);
@@ -627,6 +721,67 @@ public class CallLogFragment extends Fragment
       CallLogNotificationsService.cancelAllMissedCalls(getContext());
     }
   }
+
+  /**
+   * UNISOC: Bug 1072687 androidq porting feature for FILTER CALL LOGS BY SIM FEATURE
+   * Override this method here, moved from CallLogActivity. @{
+   */
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+      case android.R.id.home:
+        /* UNISOC: add for bug615468 @{ */
+        if (!mStateSaved) {
+          getActivity().onBackPressed();
+        }
+        /* @} */
+        return true;
+      case R.id.delete_all:
+        /** UNISOC AndroidQ Feature Porting:bug1072688 Porting CLEAR CALL LOG FEATURE.
+         * @orig
+         * ClearCallLogDialog.show(getFragmentManager()); @{ */
+        Intent clearIntent = new Intent();
+        clearIntent.putExtra(SourceUtils.CALL_LOG_TYPE_EXTRA, callTypeFilter);
+        clearIntent.setClass(this.getActivity(), CallLogClearActivity.class);
+        startActivity(clearIntent);
+        /** @} */
+        return true;
+      case R.id.view_setting:
+        CallLogFilterFragment.show(getFragmentManager());
+        return true;
+    }
+    return super.onOptionsItemSelected(item);
+  }
+
+  @Override
+  public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    super.onCreateOptionsMenu(menu, inflater);
+    inflater.inflate(R.menu.call_log_options, menu);
+    // UNISOC: add for bug734598,894027
+    menu.findItem(R.id.view_setting).setVisible(mIsMultiSimActive);
+  }
+
+  public void onPrepareOptionsMenu(Menu menu) {
+    final MenuItem itemDeleteAll = menu.findItem(R.id.delete_all);
+    if (itemDeleteAll != null && adapter != null) {
+      itemDeleteAll.setVisible(!adapter.isEmpty());
+    }
+    // UNISOC: add for bug734598,894027
+    menu.findItem(R.id.view_setting).setVisible(mIsMultiSimActive);
+    return;
+  }
+
+  SharedPreferences.OnSharedPreferenceChangeListener mShowCalllogListener =
+          new SharedPreferences.OnSharedPreferenceChangeListener() {
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+              if (CallLogFilterFragment.SHOW_TYPE.equals(key)) {
+                mShowType = sharedPreferences.getInt(key, CallLogFilterFragment.TYPE_ALL);
+                Log.d(TAG, "Preference changed type = " + mShowType);
+                fetchCalls();
+              }
+            }
+          };
+  /* @} */
 
   @CallSuper
   public void onVisible() {
@@ -743,6 +898,14 @@ public class CallLogFragment extends Fragment
 
     @Override
     public void onChange(boolean selfChange) {
+      /** UNISOC: Bug1098401 DUT Does not update call log entry with contact name and image
+       * once contact is saved from call logs and moved back to call log screen. @{ */
+      /** UNISOC: Modify for bug1155789 @{ */
+      if (getActivity() != null) {
+        ContactPhotoManager.getInstance(getActivity()).refreshCache();
+      }
+      /** @} */
+      /** @} */
       refreshDataRequired = true;
     }
   }
@@ -758,4 +921,27 @@ public class CallLogFragment extends Fragment
 
     void showMultiSelectRemoveView(boolean show);
   }
+
+  /* UNISOC: add for bug615468 @{ */
+  private class SimStateChangedReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      String action = intent.getAction();
+      if (ACTION_SIM_STATE_CHANGED.equals(action)
+              && mHasReadPhoneStatePermission) {
+        List<SubscriptionInfo> subscriptionInfos = SubscriptionManager.from(
+                getActivity()).getActiveSubscriptionInfoList();
+        if ((subscriptionInfos == null)
+                || ((subscriptionInfos != null) && (subscriptionInfos.size() < 2))) {
+          mIsMultiSimActive = false;
+          if (getFragmentManager() != null) {
+            CallLogFilterFragment.dismissDialog();
+          }
+        } else {
+          mIsMultiSimActive = true;
+        }
+      }
+    }
+  }
+  /* @} */
 }

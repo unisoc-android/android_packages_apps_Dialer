@@ -45,6 +45,11 @@ public final class TranssionUtils {
    * </ul>
    */
   public static boolean isTranssionSecretCode(String input) {
+    /** UNISOC: Bug1145033 CTCC feature: modify the logic for cipher code @{*/
+    if ("*#0000#".equals(input)) {
+      return true;
+    }
+    /**@}*/
     return TRANSSION_DEVICE_MANUFACTURERS.contains(Build.MANUFACTURER)
         && TRANSSION_SECRET_CODES.contains(input);
   }

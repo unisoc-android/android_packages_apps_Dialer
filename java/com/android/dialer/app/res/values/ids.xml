@@ -26,4 +26,11 @@
   <item name="context_menu_delete" type="id"/>
   <item name="settings_header_sounds_and_vibration" type="id"/>
   <item name="block_id" type="id"/>
+
+  <!-- UNISOC AndroidQ Feature Porting: bug1072989 add for feature to set video call meeting photo @{ -->
+  <item name="settings_video_photo_select" type="id"/>
+
+  <!--UNISOC: Bug 1073017 androidq porting feature for delete all call of number from this call history@{-->
+  <item name="context_menu_delete_all_calls_of_specified_number" type="id"/>
+  <!--@}-->
 </resources>

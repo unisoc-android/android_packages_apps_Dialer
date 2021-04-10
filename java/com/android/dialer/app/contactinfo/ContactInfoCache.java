@@ -32,6 +32,7 @@ import java.lang.ref.WeakReference;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This is a cache of contact details for the phone numbers in the call log. The key is the phone
@@ -50,6 +51,8 @@ public class ContactInfoCache {
   private static final int REDRAW = 1;
   private static final int START_THREAD = 2;
   private static final int START_PROCESSING_REQUESTS_DELAY_MS = 1000;
+  //UNISOC: modify for bug1085021
+  private static final int WAITING_FOR_POLL_REQUEST_TIME_MS = 2000;
 
   private final ExpirableCache<NumberWithCountryIso, ContactInfo> cache;
   private final ContactInfoHelper contactInfoHelper;
@@ -357,7 +360,14 @@ public class ContactInfoCache {
         }
 
         try {
-          ContactInfoRequest request = updateRequests.take();
+          //UNISOC: modify for bug1085021
+          ContactInfoRequest request = updateRequests.poll(WAITING_FOR_POLL_REQUEST_TIME_MS,
+                  TimeUnit.MILLISECONDS);
+          /* UNISOC: add for bug913996 @{ */
+          if (request == null) {
+            return;
+          }
+          /* @} */
           shouldRedraw |= queryContactInfo(request);
           if (shouldRedraw
               && (updateRequests.isEmpty()
@@ -367,7 +377,11 @@ public class ContactInfoCache {
           }
         } catch (InterruptedException e) {
           // Ignore and attempt to continue processing requests
+        }/* UNISOC modify for bug1102455 @{ */
+        catch (NullPointerException npe) {
+          // Ignore and attempt to continue processing requests
         }
+        /* @} */
       }
     }
   }

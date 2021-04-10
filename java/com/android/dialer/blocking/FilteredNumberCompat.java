@@ -53,6 +53,12 @@ public class FilteredNumberCompat {
 
   private static Boolean canAttemptBlockOperationsForTest;
 
+  private static final int BLOCK_ALL = 7;
+
+  private static final String BLOCK_TYPE = "block_type";
+
+  private static final String MIN_MATCH = "min_match";
+
   @VisibleForTesting
   public static final String HAS_MIGRATED_TO_NEW_BLOCKING_KEY = "migratedToNewBlocking";
 
@@ -202,6 +208,14 @@ public class FilteredNumberCompat {
       Context context, String number, @Nullable String e164Number, @Nullable String countryIso) {
     ContentValues contentValues = new ContentValues();
     contentValues.put(getOriginalNumberColumnName(context), Objects.requireNonNull(number));
+    /* UNISOC: Add for bug1072695. @{ */
+    if (useNewFiltering(context)) {
+      int defaultBlockType = BLOCK_ALL;
+      contentValues.put(BLOCK_TYPE, defaultBlockType);
+      String normalizeNumber = PhoneNumberUtils.normalizeNumber(number);
+      contentValues.put(MIN_MATCH, PhoneNumberUtils.toCallerIDMinMatch(normalizeNumber));
+    }
+    /* @} */
     if (!useNewFiltering(context)) {
       if (e164Number == null) {
         e164Number = PhoneNumberUtils.formatNumberToE164(number, countryIso);
@@ -227,8 +241,10 @@ public class FilteredNumberCompat {
       LogUtil.i(
           "FilteredNumberCompat.maybeShowBlockNumberMigrationDialog",
           "maybeShowBlockNumberMigrationDialog - showing migration dialog");
+      /**UNISOC:Add for bug for 1096119 @{*/
       MigrateBlockedNumbersDialogFragment.newInstance(new BlockedNumbersMigrator(context), listener)
-          .show(fragmentManager, "MigrateBlockedNumbers");
+          .showAllowingStateLoss(fragmentManager, "MigrateBlockedNumbers");
+      /**@}*/
       return true;
     }
     return false;

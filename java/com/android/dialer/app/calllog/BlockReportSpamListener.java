@@ -166,13 +166,19 @@ public class BlockReportSpamListener implements CallLogListItemViewHolder.OnClic
                     ReportingLocation.Type.CALL_LOG_HISTORY,
                     contactSourceType);
               }
-              filteredNumberAsyncQueryHandler.unblock(
-                  (rows, values) -> {
-                    Logger.get(context)
-                        .logImpression(DialerImpression.Type.USER_ACTION_UNBLOCKED_NUMBER);
-                    adapter.notifyDataSetChanged();
-                  },
-                  blockId);
+              /*unisoc:Add for bug for 1100489 @{*/
+              try {
+                  filteredNumberAsyncQueryHandler.unblock(
+                      (rows, values) -> {
+                        Logger.get(context).logImpression(DialerImpression.Type.USER_ACTION_UNBLOCKED_NUMBER);
+                        adapter.notifyDataSetChanged();
+                      },
+                      blockId);
+              }
+              catch(IllegalArgumentException e) {
+                  e.printStackTrace();
+              }
+              /*@}*/
             },
             null)
         .show(fragmentManager, BlockReportSpamDialogs.UNBLOCK_DIALOG_TAG);

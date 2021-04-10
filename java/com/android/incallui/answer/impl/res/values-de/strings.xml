@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Zum Annehmen als Sprachanruf vom Symbol wegwischen</string>
   <string name="call_incoming_default_label_answer_and_release_second">Wische nach oben, um den Anruf anzunehmen und den aktuellen Anruf zu halten</string>
   <string name="call_incoming_default_label_answer_and_release_third">Wische nach oben, um den Anruf anzunehmen und den gehaltenen Anruf zu beenden</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Zum Antworten und Beenden des laufenden Gesprächs nach oben wischen"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Wische vom Symbol weg, um den Anruf anzunehmen und den aktuellen Anruf zu beenden</string>
   <string name="call_incoming_message_custom">Eigene Antwort schreiben…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Eigene Antwort schreiben…</string>

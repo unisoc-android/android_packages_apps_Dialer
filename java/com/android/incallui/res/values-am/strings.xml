@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">አርቲቲ መስማት የተሳናቸው፣ የመስማት ችግር ያለባቸው እና የንግግር አካል ጉዳት ያለባቸው ወይም ከድምጽ ብቻ በላይ የሚያስፈልጋቸውን ደዋዮች ያግዛል።</string>
   <string name="rtt_button_decline_request">አይ አመሰግናለሁ</string>
   <string name="rtt_button_accept_request">አርቲቲን ይቀላቀሉ</string>
+  <string name="notification_action_answer_voice">"ድምጽ"</string>
+  <string name="notification_action_mute_on">ጸጥታ </string>
+  <string name="notification_action_mute_off">ጸጥ አታድርግ </string>
+  <string name="notification_action_reject_with_message">"ኤስኤምኤስን አትቀበል"</string>
+  <string name="card_title_in_call">መሙሉ ማያ</string>
+  <string name="card_title_conf_call">"የስብሰባ ጥሪ"</string>
+  <string name="fail_change_video_due_to_bgcall">"በስተጀርባ ላይ ያለ ጥሪ አለ፣ የአሁኑን ጥሪ ወደ የቪዲዮ ጥሪ መቀየር አልተሳካም።"</string>
 </resources>

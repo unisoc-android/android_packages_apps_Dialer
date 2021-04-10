@@ -28,9 +28,11 @@ public class TelephonyManagerUtils {
    * @return Voicemail tag, the alphabetic identifier associated with the voice mail number.
    */
   public static String getVoiceMailAlphaTag(Context context) {
+    /* UNISOC: modify for bug1105305
     final TelephonyManager telephonyManager =
         (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-    final String voiceMailLabel = telephonyManager.getVoiceMailAlphaTag();
+    */
+    final String voiceMailLabel = context.getString(com.android.internal.R.string.defaultVoiceMailAlphaTag);//telephonyManager.getVoiceMailAlphaTag();
     return voiceMailLabel;
   }
 }

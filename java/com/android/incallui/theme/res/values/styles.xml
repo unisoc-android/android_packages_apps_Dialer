@@ -34,6 +34,7 @@
   </style>
 
   <style name="Theme.InCallScreen" parent="@style/Dialer.Dark.ThemeBase.NoActionBar">
+    <item name="android:forceDarkAllowed">true</item>
     <item name="android:textColorPrimary">@android:color/white</item>
     <item name="android:textColorSecondary">#DDFFFFFF</item>
     <item name="android:statusBarColor">@android:color/transparent</item>
@@ -51,6 +52,7 @@
   </style>
 
   <style name="Theme.InCallScreen.ManageConference" parent="Dialer.ThemeBase.ActionBar">
+    <item name="android:forceDarkAllowed">true</item>
   </style>
 
   <style name="InCallDialpad" parent="Dialpad.Themed">

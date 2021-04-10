@@ -39,10 +39,12 @@
   <string name="notification_action_answer">接听</string>
   <string name="notification_action_end_call">挂断</string>
   <string name="notification_action_answer_video">视频</string>
+  <!--add for bug1131107-->
+  <string name="notification_action_answer_voice">语音</string>
   <string name="notification_action_accept">接受</string>
   <string name="notification_action_dismiss">拒绝</string>
-  <string name="notification_action_speaker_on">打开扬声器</string>
-  <string name="notification_action_speaker_off">关闭扬声器</string>
+  <string name="notification_action_speaker_on">免提</string>
+  <string name="notification_action_speaker_off">取消免提</string>
   <string name="notification_external_call">其他设备上有正在进行的通话</string>
   <string name="notification_external_video_call">其他设备上有正在进行的视频通话</string>
   <string name="notification_take_call">接通通话</string>
@@ -65,4 +67,15 @@
   <string name="rtt_request_dialog_more_information">RTT 可为以下类型的来电者提供协助：失聪者、听力障碍人士、语言障碍人士或需要语音以外服务的人。</string>
   <string name="rtt_button_decline_request">不用了</string>
   <string name="rtt_button_accept_request">加入 RTT</string>
+  <!--  UNISOC: Add Mute action for feature FL1000060393 -->
+  <string name="notification_action_mute_on">"静音"</string>
+  <string name="notification_action_mute_off">"关闭静音"</string>
+  <!-- UNISOC: feature FL1000062139 add rejectmessage action in the notification @{ -->
+  <string name="notification_action_reject_with_message">"短信拒接"</string>
+  <!-- @} -->
+  <!-- UNISOC:modify for feature FL1000062299 @{ -->
+  <string name="card_title_in_call" msgid="5029165346952099302">"正在通话"</string>
+  <string name="card_title_conf_call" msgid="1747835072739982104">"电话会议"</string>
+  <!-- @} -->
+  <string name="fail_change_video_due_to_bgcall">"后台有电话，无法将目前电话改变为视频电话。"</string>
 </resources>

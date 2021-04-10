@@ -331,6 +331,14 @@ public class PhoneNumberInteraction implements OnLoadCompleteListener<Cursor> {
       } else if (phoneList.size() == 1) {
         PhoneItem item = phoneList.get(0);
         performAction(item.phoneNumber);
+
+        /** Modify for Unisoc: Bug1112346,porting bug954919 In the case of a dual SIM card, make a call through the "Direct Call"
+         * * * widget -> Select SIM card -> Back, the phone is fixed @{ */
+        Activity activity = (Activity) context;
+        if (activity != null) {
+            ((DisambigDialogDismissedListener) activity).onDisambigDialogDismissed();
+        }
+        /** @} */
       } else {
         // There are multiple candidates. Let the user choose one.
         showDisambiguationDialog(phoneList);

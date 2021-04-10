@@ -145,6 +145,12 @@ public class SwapSimWorker implements Worker<Void, Void>, DialerCallListener, Ca
     disconnectLatch.countDown();
   }
 
+  //UNISOC: add for bug1221260
+  public void setDisconnectLatch() {
+    LogUtil.i("SwapSimWorker.setDisconnectLatch", "enter");
+    disconnectLatch.countDown();
+  }
+
   @Override
   public void onCallListChange(CallList callList) {
     if (callList.getOutgoingCall() != null) {

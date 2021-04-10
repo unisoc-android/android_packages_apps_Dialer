@@ -29,6 +29,11 @@ import android.content.SyncAdapterType;
 import android.content.SyncStatusObserver;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -38,11 +43,15 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.provider.ContactsContract;
 import android.support.annotation.VisibleForTesting;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.TimingLogger;
+
 import com.android.contacts.common.MoreContactUtils;
+import com.android.contacts.common.R;
 import com.android.contacts.common.list.ContactListFilterController;
 import com.android.contacts.common.model.account.AccountType;
 import com.android.contacts.common.model.account.AccountTypeWithDataSet;
@@ -53,7 +62,9 @@ import com.android.contacts.common.model.account.FallbackAccountType;
 import com.android.contacts.common.model.account.GoogleAccountType;
 import com.android.contacts.common.model.account.SamsungAccountType;
 import com.android.contacts.common.model.dataitem.DataKind;
+import com.android.contacts.common.sprd.utils.ActiveDataManager;
 import com.android.contacts.common.util.Constants;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -77,6 +88,32 @@ public abstract class AccountTypeManager {
 
   private static final Object mInitializationLock = new Object();
   private static AccountTypeManager mAccountTypeManager;
+
+  /**
+   * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+   * @{
+   */
+  public static final String ACCOUNT_SIM = "sprd.com.android.account.sim";
+  public static final String ACCOUNT_USIM = "sprd.com.android.account.usim";
+  public static final String NAME_SIM = "SIM";
+  protected int[] simIconRes = {
+          R.drawable.ic_sim_card_multi_sim1, R.drawable.ic_sim_card_multi_sim2,
+          R.drawable.ic_sim_card_multi_sim3, R.drawable.ic_sim_card_multi_sim4,
+          R.drawable.ic_sim_card_multi_sim5
+  };
+  protected int[] simFdnIconRes = {
+          R.drawable.ic_sim_card_multi_sim1_fdn, R.drawable.ic_sim_card_multi_sim2_fdn,
+          R.drawable.ic_sim_card_multi_sim3_fdn, R.drawable.ic_sim_card_multi_sim4_fdn,
+          R.drawable.ic_sim_card_multi_sim5_fdn
+  };
+  protected int[] simSdnIconRes = {
+          R.drawable.ic_sim_card_multi_sim1_sdn, R.drawable.ic_sim_card_multi_sim2_sdn,
+          R.drawable.ic_sim_card_multi_sim3_sdn, R.drawable.ic_sim_card_multi_sim4_sdn,
+          R.drawable.ic_sim_card_multi_sim5_sdn
+  };
+  /**
+   * @}
+   */
 
   /**
    * Requests the singleton instance of {@link AccountTypeManager} with data bound from the
@@ -120,6 +157,19 @@ public abstract class AccountTypeManager {
   public final AccountType getAccountType(String accountType, String dataSet) {
     return getAccountType(AccountTypeWithDataSet.get(accountType, dataSet));
   }
+
+  /**
+   * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+   * @{
+   */
+  public abstract boolean isSimAccount(AccountWithDataSet account);
+  public abstract Drawable getListSimIcon(String accountType, String accountName, boolean isSdn);
+  public abstract Drawable getAccountIcon(AccountWithDataSet account, boolean isSdn);
+  //UNISOC: add for bug617830, add fdn feature
+  public abstract Drawable getListFdnIcon(int phoneId);
+  /**
+   * @}
+   * */
 
   public final AccountType getAccountTypeForAccount(AccountWithDataSet account) {
     if (account != null) {
@@ -810,4 +860,167 @@ class AccountTypeManagerImpl extends AccountTypeManager
       mInvitablesTaskIsRunning.set(false);
     }
   }
+
+
+
+  /**
+   * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+   * @{
+   */
+  @Override
+  public Drawable getListSimIcon(String accountType, String accountName, boolean isSdn) {
+    Log.d(TAG, "getSimIcon isSdn = " + isSdn);
+    if (accountType == null || accountName == null) {
+      Log.e(TAG, "getSimIcon,set default icon because null point!");
+      return mContext.getResources().getDrawable(R.drawable.icon);
+    }
+
+    if (accountType.equalsIgnoreCase(ACCOUNT_SIM) || accountType.equalsIgnoreCase(ACCOUNT_USIM)) {
+      int simNum;
+      if(!ActiveDataManager.self().isExist("getListSimIcon/simNum")){
+        TelephonyManager mTelphonyManagerInstance =
+                (TelephonyManager)(mContext.getSystemService(Context.TELEPHONY_SERVICE));
+        ActiveDataManager.self()
+                .setUrl("getListSimIcon/simNum",new Integer(mTelphonyManagerInstance.getPhoneCount()));
+      }
+      simNum = ((Integer)ActiveDataManager.self().getObj("getListSimIcon/simNum")).intValue();
+      Drawable iconDrawable = null;
+      Log.d(TAG, "AccountTypeManager simNum is " + simNum);
+      if (simNum == 1) {
+        if (isSdn) {
+          iconDrawable =  mContext.getResources().getDrawable(R.drawable.ic_sim_card_sdn);
+        } else {
+          iconDrawable = mContext.getResources().getDrawable(R.drawable.ic_sim_card);
+        }
+        return iconDrawable;
+      }
+
+      int phoneId = Integer.parseInt(accountName.substring(3)) - 1;
+      try {
+        if ((ActiveDataManager.self()
+                .isExist("getListSimIcon/SubscriptionManager/phoneId=" + phoneId + "/SimIconTint"))
+                || (SubscriptionManager.from(mContext) != null && SubscriptionManager.from(mContext)
+                        .getActiveSubscriptionInfoForSimSlotIndex(phoneId) != null)) {
+          int SimIconTint;
+          if (!ActiveDataManager.self()
+                  .isExist("getListSimIcon/SubscriptionManager/phoneId="
+                          + phoneId + "/SimIconTint")) {
+            ActiveDataManager.self()
+                    .setUrl("getListSimIcon/SubscriptionManager/phoneId="
+                            + phoneId + "/SimIconTint", new Integer(SubscriptionManager.from(mContext)
+                    .getActiveSubscriptionInfoForSimSlotIndex(phoneId)
+                    .getIconTint()));
+          }
+          SimIconTint = ((Integer) ActiveDataManager.self()
+                  .getObj("getListSimIcon/SubscriptionManager/phoneId="
+                          + phoneId + "/SimIconTint")).intValue();
+          Log.d(TAG, "AccountTypeManager SimIconTint is "
+                  + SimIconTint);
+          for (int i = 0; i < simNum; i++) {
+            if ((i < simIconRes.length)
+                    && accountName.equalsIgnoreCase(NAME_SIM
+                    + (i + 1))) {
+              if (isSdn) {
+                iconDrawable = mContext.getResources()
+                        .getDrawable(simSdnIconRes[i]);
+              } else {
+                iconDrawable = mContext.getResources()
+                        .getDrawable(simIconRes[i]);
+              }
+              iconDrawable.setTint(SimIconTint);
+              return iconDrawable;
+            }
+          }
+        }
+      } catch (NullPointerException e) {
+        Log.e(TAG, "NullPointerException when load sim icon : " + e.getMessage());
+      }
+    }
+    Log.e(TAG, "getSimIcon,set default icon because accountType or accountName not match!");
+    return mContext.getResources().getDrawable(R.drawable.icon);
+  }
+
+  @Override
+  public Drawable getAccountIcon(AccountWithDataSet account, boolean isSdn) {
+
+    if (account == null) {
+      return null;
+    }
+    AccountType accountType = getAccountType(account.type, null);
+    Drawable ret = accountType.getDisplayIcon(mContext);
+
+    if (!isSimAccount(account)) {
+      Log.d(TAG, "is not a sim account");
+      return ret;
+    }
+
+    Bitmap origBmp = ((BitmapDrawable) ret).getBitmap();
+    Bitmap newBmp = Bitmap.createBitmap(origBmp.getWidth(), origBmp.getHeight(),
+            origBmp.getConfig());
+    Canvas canvas = new Canvas(newBmp);
+    Paint paint = new Paint();
+    // paint.setColorFilter(new
+    // PorterDuffColorFilter(0xff00ffff,PorterDuff.Mode.SRC_ATOP));
+    canvas.drawBitmap(origBmp, 0f, 0f, paint);
+
+    String slot = AccountManager.get(mContext).getUserData(
+            new Account(account.name, account.type), "identifier");
+    if (slot == null) {
+      return ret;
+    }
+    paint.setTextAlign(Paint.Align.RIGHT);
+    paint.setTextSize(20);
+    paint.setColor(0xFF32b4e4);
+
+    canvas.drawText(slot, origBmp.getWidth(), 20, paint);
+    return new BitmapDrawable(newBmp);
+  }
+
+  @Override
+  public boolean isSimAccount(AccountWithDataSet account) {
+    //ensureAccountsLoaded();
+    if (account == null) {
+      return false;
+    }
+    if (account.type.matches("^sprd.*sim$")) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public Drawable getListFdnIcon(int phoneId) {
+    Log.d(TAG, "phoneId = " + phoneId);
+    TelephonyManager mTelphonyManagerInstance = (TelephonyManager)(mContext.getSystemService(Context.TELEPHONY_SERVICE));
+    int simNum = mTelphonyManagerInstance.getPhoneCount();
+    Drawable iconDrawable = null;
+    Log.d(TAG, "AccountTypeManager simNum is " + simNum);
+    if (simNum == 1) {
+      iconDrawable =  mContext.getResources().getDrawable(R.drawable.ic_sim_card_fdn);
+      return iconDrawable;
+    } else {
+      try {
+        if (SubscriptionManager.from(mContext) != null && SubscriptionManager.from(mContext)
+                .getActiveSubscriptionInfoForSimSlotIndex(phoneId) != null) {
+          int SimIconTint = SubscriptionManager.from(mContext)
+                  .getActiveSubscriptionInfoForSimSlotIndex(phoneId)
+                  .getIconTint();
+          Log.d(TAG, "AccountTypeManager SimIconTint is "
+                  + SimIconTint);
+          iconDrawable = mContext.getResources()
+                  .getDrawable(simFdnIconRes[phoneId]);
+          iconDrawable.setTint(SimIconTint);
+          return iconDrawable;
+        }
+      } catch (NullPointerException e) {
+        Log.e(TAG, "NullPointerException when load sim icon : " + e.getMessage());
+      }
+    }
+    return null;
+  }
+  /**
+   * @}
+   * */
+
 }

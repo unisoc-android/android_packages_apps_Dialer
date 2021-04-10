@@ -72,23 +72,28 @@ public class LaunchPreCallActivity extends Activity {
     ConfigProvider configProvider =
         ConfigProviderComponent.get(getApplicationContext()).getConfigProvider();
     Intent intent = getIntent();
-    CallIntentBuilder builder = new CallIntentBuilder(intent.getData(), Type.EXTERNAL_INITIATION);
 
-    PhoneAccountHandle phoneAccountHandle = intent.getParcelableExtra(EXTRA_PHONE_ACCOUNT_HANDLE);
-    if (phoneAccountHandle == null) {
-      phoneAccountHandle = intent.getParcelableExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE);
+    /* UNISOC modify for bug1079284: porting for bug917656 Add for null pointer protection @{ */
+    if (intent.getData() != null){
+    /* @} */
+      CallIntentBuilder builder = new CallIntentBuilder(intent.getData(), Type.EXTERNAL_INITIATION);
+
+      PhoneAccountHandle phoneAccountHandle = intent.getParcelableExtra(EXTRA_PHONE_ACCOUNT_HANDLE);
+      if (phoneAccountHandle == null) {
+        phoneAccountHandle = intent.getParcelableExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE);
+      }
+
+      builder
+          .setPhoneAccountHandle(phoneAccountHandle)
+          .setIsVideoCall(intent.getBooleanExtra(EXTRA_IS_VIDEO_CALL, false))
+          .setCallSubject(intent.getStringExtra(EXTRA_CALL_SUBJECT))
+          .setAllowAssistedDial(
+              intent.getBooleanExtra(
+                  EXTRA_ALLOW_ASSISTED_DIAL,
+                  configProvider.getBoolean("assisted_dialing_default_precall_state", false)));
+      filterExtras(intent.getExtras(), builder);
+      PreCall.start(this, builder);
     }
-
-    builder
-        .setPhoneAccountHandle(phoneAccountHandle)
-        .setIsVideoCall(intent.getBooleanExtra(EXTRA_IS_VIDEO_CALL, false))
-        .setCallSubject(intent.getStringExtra(EXTRA_CALL_SUBJECT))
-        .setAllowAssistedDial(
-            intent.getBooleanExtra(
-                EXTRA_ALLOW_ASSISTED_DIAL,
-                configProvider.getBoolean("assisted_dialing_default_precall_state", false)));
-    filterExtras(intent.getExtras(), builder);
-    PreCall.start(this, builder);
     finish();
   }
 

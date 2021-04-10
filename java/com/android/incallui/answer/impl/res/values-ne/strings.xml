@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">अडियो कलका रूपमा जवाफ फर्काउन आइकनबाट स्वाइप गर्नुहोस्</string>
   <string name="call_incoming_default_label_answer_and_release_second">जारी कलको जवाफ दिन र होल्ड गर्न माथितिर स्वाइप गर्नुहोस्</string>
   <string name="call_incoming_default_label_answer_and_release_third">जवाफ दिन र होल्डमा रहेको कल अन्त्य गर्न माथितिर स्वाइप गर्नुहोस्</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"उत्तर दिन र जारी कल समाप्त गर्न स्वाइप गर्नुहोस्"</string>
   <string name="call_incoming_swipe_to_answer_and_release">जवाफ फर्काउन र जारी कललाई अन्त्य गर्न आइकनबाट स्वाइप गर्नुहोस्</string>
   <string name="call_incoming_message_custom">तपाईँको आफ्नै लेख्नुहोस्…</string>
   <string name="call_incoming_respond_via_sms_custom_message">तपाईँको आफ्नै लेख्नुहोस्…</string>

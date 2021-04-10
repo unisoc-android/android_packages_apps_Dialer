@@ -28,7 +28,11 @@ import android.support.annotation.VisibleForTesting;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
+import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionInfo;
 import java.util.List;
+import com.android.dialer.util.PermissionsUtil;
+import static android.Manifest.permission.READ_PHONE_STATE;
 
 /**
  * Preference screen that lists SIM phone accounts to select from, and forwards the selected account
@@ -61,6 +65,8 @@ public class PhoneAccountSelectionFragment extends PreferenceFragment {
   private Bundle arguments;
   private String phoneAccountHandleKey;
   private int titleRes;
+  // UNISOC: add for bug1162990(bug719145)
+  private SubscriptionManager mSubscriptionManager;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -70,6 +76,8 @@ public class PhoneAccountSelectionFragment extends PreferenceFragment {
     arguments.putAll(getArguments().getBundle(PARAM_ARGUMENTS));
     phoneAccountHandleKey = getArguments().getString(PARAM_PHONE_ACCOUNT_HANDLE_KEY);
     titleRes = getArguments().getInt(PARAM_TARGET_TITLE_RES, 0);
+    // UNISOC: add for bug1162990(bug719145)
+    mSubscriptionManager = SubscriptionManager.from(getActivity());
   }
 
   final class AccountPreference extends Preference {
@@ -104,23 +112,62 @@ public class PhoneAccountSelectionFragment extends PreferenceFragment {
   @Override
   public void onResume() {
     super.onResume();
+    /* UNISOC: add for bug1162990(bug738400) @{ */
+    if (!PermissionsUtil.hasPermission(getContext(), READ_PHONE_STATE)) {
+      return;
+    }
+    /* @} */
     setPreferenceScreen(getPreferenceManager().createPreferenceScreen(getContext()));
+    /* UNISOC: add for bug1162990(bug719145) @{ */
+    mSubscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
+    refreshAccount();
+    /* @} */
+  }
+
+  /* UNISOC: add for bug1162990(bug719145) @{ */
+  private void refreshAccount() {
     PreferenceScreen screen = getPreferenceScreen();
-
-    TelecomManager telecomManager = getContext().getSystemService(TelecomManager.class);
-
-    List<PhoneAccountHandle> accountHandles = telecomManager.getCallCapablePhoneAccounts();
-
-    Context context = getActivity();
-    for (PhoneAccountHandle handle : accountHandles) {
-      PhoneAccount account = telecomManager.getPhoneAccount(handle);
-      if (account != null) {
-        final boolean isSimAccount =
-            0 != (account.getCapabilities() & PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION);
-        if (isSimAccount) {
-          screen.addPreference(new AccountPreference(context, handle, account));
+    if (screen != null) {
+        /*UNISOC:modify for bug1162990(bug1036614) & bug1167589 @{*/
+        List<SubscriptionInfo> subscriptionInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
+        if (subscriptionInfos == null || subscriptionInfos.isEmpty()) {
+          if (getActivity() != null) {
+            getActivity().onBackPressed();
+          }
+          return;
         }
-      }
+        /* @} */
+        screen.removeAll();
+        TelecomManager telecomManager = getContext().getSystemService(TelecomManager.class);
+
+        List<PhoneAccountHandle> accountHandles = telecomManager.getCallCapablePhoneAccounts();
+
+        Context context = getActivity();
+        for (PhoneAccountHandle handle : accountHandles) {
+          PhoneAccount account = telecomManager.getPhoneAccount(handle);
+          if (account != null) {
+            final boolean isSimAccount =
+                0 != (account.getCapabilities() & PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION);
+            if (isSimAccount) {
+              screen.addPreference(new AccountPreference(context, handle, account));
+            }
+          }
+        }
     }
   }
+
+  @Override
+  public void onPause() {
+    mSubscriptionManager.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
+    super.onPause();
+  }
+
+  private final SubscriptionManager.OnSubscriptionsChangedListener mOnSubscriptionsChangeListener
+          = new SubscriptionManager.OnSubscriptionsChangedListener() {
+    @Override
+    public void onSubscriptionsChanged() {
+      refreshAccount();
+    }
+  };
+  /* @} */
 }

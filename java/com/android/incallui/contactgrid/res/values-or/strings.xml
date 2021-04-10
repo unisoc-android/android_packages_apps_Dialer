@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<string name="incall_calling_via_template">"<xliff:g id="provider_name">%s</xliff:g> ଜରିଆରେ କଲ୍ କରୁଛି"</string>
+<string name="incall_calling_on_same_carrier_template">"ସେହି ଏକ କ୍ୟାରିୟରରେ କଲ୍‍ କରାଯାଉଛି <xliff:g id="provider_name">%s</xliff:g>"</string>
+<string name="incall_calling_on_recent_choice_template">"ଆପଣଙ୍କ ସାମ୍ପ୍ରତିକ ପସନ୍ଦରେ କଲ୍‍ କରାଯାଉଛି  <xliff:g id="provider_name">%s</xliff:g>"</string>
+<string name="incall_connecting">"କଲିଂ"</string>
+<string name="incall_connecting_assited_dialed">"+<xliff:g example="1" id="ad_country_code">%1$s</xliff:g> (<xliff:g example="1" id="ad_user_home_locale">%2$s</xliff:g>) ବ୍ୟବହାର କରି କଲ୍‍ କରାଯାଉଛି..."</string>
+<string name="incall_connecting_assited_dialed_component">" +<xliff:g example="1" id="ad_country_code">%1$s</xliff:g> (<xliff:g example="1" id="ad_user_home_locale">%2$s</xliff:g>) ବ୍ୟବହାର କରାଯାଉଛି..."</string>
+<string name="incall_transferring">"ଟ୍ରାନ୍ସଫର..."</string>
+<string name="incall_video_call_requesting">"କ୍ୟାରିୟର ଭିଡିଓ କଲିଂ..."</string>
+<string name="incall_wifi_video_call_requesting">"Wi-Fi କ୍ୟାରିୟର ଭିଡିଓ କଲିଂ..."</string>
+<string name="incall_video_call_upgrade_request">"କ୍ୟାରିୟର ଭିଡିଓକୁ ବଦଳା ଯାଉଛି..."</string>
+<string name="incall_video_call_request_failed">"ସଂଯୁକ୍ତ ହେବା ପାଇଁ ଅସମର୍ଥ"</string>
+<string name="incall_video_call_request_rejected">"କଲ୍‍ ଅସ୍ୱୀକୃତ"</string>
+<string name="incall_video_call_request_timed_out">"କଲ୍‍ ଟାଇମ୍‍ ସରିଗଲା"</string>
+<string name="incall_hanging_up">"ହ୍ୟାଙ୍ଗ୍ ହୋଇଛି"</string>
+<string name="incall_call_ended">"କଲ୍ ସରିଗଲା"</string>
+<string name="incall_remotely_held">"ସ୍ଥଗିତ ରହିଛି"</string>
+<string name="contact_grid_incoming_video_call">"ଠାରୁ କ୍ୟାରିୟର ଭିଡିଓ କଲ୍‍"</string>
+<string name="contact_grid_incoming_wifi_video_call">"ଠାରୁ Wi-Fi କ୍ୟାରିୟର ଭିଡିଓ କଲିଂ"</string>
+<string name="contact_grid_incoming_voice_call">"ଠାରୁ କଲ"</string>
+<string name="contact_grid_incoming_work_call">"ଠାରୁ କାର୍ଯ୍ୟ କଲ୍‍"</string>
+<string name="contact_grid_incoming_via_template">"ଠାରୁ <xliff:g id="provider_name">%s</xliff:g> କଲ୍‍ କରନ୍ତୁ"</string>
+<string name="contact_grid_incoming_suspected_spam">"ସଂଦିଗ୍ଧ ସ୍ପାମ କଲର"</string>
+<string name="contact_grid_callback_number">"ଏହି ଫୋନ୍‍ର ନମ୍ବର: <xliff:g id="light_number">%1$s</xliff:g>"</string>
+</resources>

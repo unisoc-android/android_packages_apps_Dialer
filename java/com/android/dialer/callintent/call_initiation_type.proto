@@ -65,5 +65,8 @@ message CallInitiationType {
     LEGACY_VOICEMAIL_NOTIFICATION = 18;
 
     VOICEMAIL_ERROR_MESSAGE = 19;
+
+   //UNISOC: add for bug 900273
+    CALL_LOG_DETAILS_VIDEO =21;
   }
 }

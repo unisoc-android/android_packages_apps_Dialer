@@ -48,4 +48,10 @@ public interface VideoCallScreenDelegate {
   void setSurfaceViews(SurfaceView preview, SurfaceView remote);
 
   int getDeviceOrientation();
+
+  boolean isRingToneOnAudioCall(); //UNISOC:add for bug1155897
+
+  void onVideoCallIsFront();//UNISOC:add for bug1166982(bug903996)
+
+  void onVideoCallIsBack();
 }

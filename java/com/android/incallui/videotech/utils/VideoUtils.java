@@ -21,6 +21,8 @@ import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import com.android.dialer.util.PermissionsUtil;
+import com.android.incallui.call.DialerCall;
+import android.telecom.VideoProfile;
 
 public class VideoUtils {
 
@@ -42,5 +44,21 @@ public class VideoUtils {
   public static boolean hasCameraPermission(@NonNull Context context) {
     return ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
         == PackageManager.PERMISSION_GRANTED;
+  }
+ public static boolean isRxOnlyVideoCall(DialerCall call) {
+    if (call == null) {
+      return false;
+    }
+    return VideoProfile.isReceptionEnabled(call.getVideoState()) && !VideoProfile.isTransmissionEnabled(call.getVideoState());
+  }
+  public static boolean isTxOnlyVideoCall(DialerCall call) {
+    if (call == null) {
+      return false;
+    }
+    return !VideoProfile.isReceptionEnabled(call.getVideoState()) && VideoProfile.isTransmissionEnabled(call.getVideoState());
+
+  }
+  public static int getUnPausedVideoState(int videoState) {
+    return videoState & (~VideoProfile.STATE_PAUSED);
   }
 }

@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Deslize rapidamente a partir do ícone para atender como uma chamada de voz</string>
   <string name="call_incoming_default_label_answer_and_release_second">Deslize rapidamente para cima para atender e colocar em espera uma chamada em curso</string>
   <string name="call_incoming_default_label_answer_and_release_third">Deslize rapidamente para cima para atender e terminar uma chamada em espera</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Percorra o ecrã para cima para atender ou terminar uma chamada"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Deslizar rapidamente a partir do ícone para atender e terminar uma chamada em curso</string>
   <string name="call_incoming_message_custom">Escreva a sua própria…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Escreva a sua própria…</string>

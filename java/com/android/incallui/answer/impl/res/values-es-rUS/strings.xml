@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Desliza desde el ícono para responder como una llamada de audio</string>
   <string name="call_incoming_default_label_answer_and_release_second">Desliza el dedo hacia arriba para responder y poner en espera la llamada en curso</string>
   <string name="call_incoming_default_label_answer_and_release_third">Desliza el dedo hacia arriba para responder y finalizar la llamada en espera</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Deslice hacia arriba para contestar y finalizar una llamada en curso"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Desliza el dedo desde el ícono para responder y finalizar la llamada en curso</string>
   <string name="call_incoming_message_custom">Escribe tu propia respuesta…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Escribe tu propia respuesta…</string>

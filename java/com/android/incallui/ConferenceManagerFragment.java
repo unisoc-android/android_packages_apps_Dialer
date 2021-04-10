@@ -72,7 +72,7 @@ public class ConferenceManagerFragment
   public void onResume() {
     super.onResume();
     final CallList calls = CallList.getInstance();
-    getPresenter().init(calls);
+    getPresenter().init(getActivity(), calls);
     // Request focus on the list of participants for accessibility purposes.  This ensures
     // that once the list of participants is shown, the first participant is announced.
     conferenceParticipantList.requestFocus();

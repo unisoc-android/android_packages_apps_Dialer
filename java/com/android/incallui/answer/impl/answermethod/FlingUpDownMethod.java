@@ -182,7 +182,11 @@ public class FlingUpDownMethod extends AnswerMethod implements OnProgressChanged
     falsingManager.onScreenOff();
     if (getActivity().isFinishing()) {
       setAnimationState(AnimationState.COMPLETED);
+    /* UNISOC: add for bug1163266. @{ */
+    } else {
+      setAnimationState(AnimationState.ENTRY);
     }
+    /* @} */
     super.onStop();
     Trace.endSection();
   }

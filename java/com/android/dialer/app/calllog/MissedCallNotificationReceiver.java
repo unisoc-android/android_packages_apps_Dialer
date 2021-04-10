@@ -19,6 +19,7 @@ package com.android.dialer.app.calllog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.v4.util.Pair;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.DialerExecutorComponent;
@@ -39,6 +40,12 @@ public class MissedCallNotificationReceiver extends BroadcastReceiver {
   public static final String EXTRA_NOTIFICATION_PHONE_NUMBER =
       "android.telecom.extra.NOTIFICATION_PHONE_NUMBER";
 
+  /* AndroidQ Feature Porting: bug1072635 show main/vice card feature. @{ */
+  public static final String MAIN_VICE_INFO = "main_vice_info";
+  public static final String COUNT = "count";
+  public static final String PHONE_NUMBER = "phoneNumber";
+  /* @} */
+
   @Override
   public void onReceive(Context context, Intent intent) {
     String action = intent.getAction();
@@ -52,6 +59,13 @@ public class MissedCallNotificationReceiver extends BroadcastReceiver {
         intent.getIntExtra(
             EXTRA_NOTIFICATION_COUNT, CallLogNotificationsService.UNKNOWN_MISSED_CALL_COUNT);
     String phoneNumber = intent.getStringExtra(EXTRA_NOTIFICATION_PHONE_NUMBER);
+
+    /* AndroidQ Feature Porting: bug1072635 show main/vice card feature. @{ */
+    String subText = intent.getStringExtra(MAIN_VICE_INFO);
+    Bundle bundle = new Bundle();
+    bundle.putInt(COUNT, count);
+    bundle.putString(PHONE_NUMBER, phoneNumber);
+    bundle.putString(MAIN_VICE_INFO, subText);
 
     PendingResult pendingResult = goAsync();
 
@@ -74,8 +88,9 @@ public class MissedCallNotificationReceiver extends BroadcastReceiver {
               pendingResult.finish();
             })
         .build()
-        .executeParallel(new Pair<>(count, phoneNumber));
+        .executeParallel(bundle);
   }
+  /* @} */
 
   private static void updateBadgeCount(Context context, int count) {
     boolean success = ShortcutBadger.applyCount(context, count);

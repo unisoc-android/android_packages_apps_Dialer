@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">காது கேட்காதவர்கள், கேட்பதில் பிரச்சனை உள்ளவர்கள், பேச முடியாதவர்கள் அல்லது குரலுடன் கூடுதல் சேவை தேவைப்படும் அழைப்பாளர்களுக்கு RTT உதவுகிறது.</string>
   <string name="rtt_button_decline_request">வேண்டாம்</string>
   <string name="rtt_button_accept_request">RTT இல் சேர்</string>
+  <string name="notification_action_answer_voice">"குரல்"</string>
+  <string name="notification_action_mute_on">"ஒலி நிறுத்து"</string>
+  <string name="notification_action_mute_off">"ஒலிதடு நீக்குக"</string>
+  <string name="notification_action_reject_with_message">"SMS மறுக்கவும்"</string>
+  <string name="card_title_in_call">"அழைப்பில்"</string>
+  <string name="card_title_conf_call">"கான்பரன்ஸ் அழைப்பு"</string>
+  <string name="fail_change_video_due_to_bgcall">"பின்னணி அழைப்பு உள்ளது, வீடியோ அழைப்பில் தற்போதைய அழைப்பை மாற்றுவதில் தோல்வி."</string>
 </resources>

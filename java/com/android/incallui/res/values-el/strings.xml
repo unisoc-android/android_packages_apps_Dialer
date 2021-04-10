@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">Το RTT υποβοηθά καλούντες που είναι κωφοί ή αντιμετωπίζουν προβλήματα ακοής ή ομιλίας, καθώς και όσους χρειάζονται κάτι περισσότερο από απλή φωνητική επικοινωνία.</string>
   <string name="rtt_button_decline_request">Όχι, ευχαριστώ</string>
   <string name="rtt_button_accept_request">Συμμετοχή σε RTT</string>
+  <string name="notification_action_answer_voice">Φωνή</string>
+  <string name="notification_action_mute_on">Σίγαση</string>
+  <string name="notification_action_mute_off">Διακοπή σίγασης</string>
+  <string name="notification_action_reject_with_message">Απόρριψη SMS</string>
+  <string name="card_title_in_call">"Σε κλήση"</string>
+  <string name="card_title_conf_call">"Κλήση διάσκεψης"</string>
+  <string name="fail_change_video_due_to_bgcall">Υπάρχει κλήση στο παρασκήνιο. Η αλλαγή της τρέχουσας κλήσης σε κλήση βίντεο απέτυχε.</string>
 </resources>

@@ -18,10 +18,14 @@ package com.android.dialer.searchfragment.common;
 
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.Data;
-
+import com.android.dialer.database.DialerDatabaseHelper;
+import android.provider.ContactsContract.RawContacts;
+import android.provider.CallLog.Calls;
 /** Class containing relevant projections for searching contacts. */
 public class Projections {
 
+  /* UNISOC: Matching callLog when search in dialpad feature bug478742@{
+  /* @orig*
   public static final int ID = 0;
   public static final int PHONE_TYPE = 1;
   public static final int PHONE_LABEL = 2;
@@ -31,8 +35,26 @@ public class Projections {
   public static final int PHOTO_URI = 6;
   public static final int LOOKUP_KEY = 7;
   public static final int CARRIER_PRESENCE = 8;
-  public static final int CONTACT_ID = 9;
+  public static final int CONTACT_ID = 9;*/
 
+  public static final int ID = 0;
+  public static final int PHONE_TYPE = 1;
+  public static final int PHONE_LABEL = 2;
+  public static final int PHONE_NUMBER = 3;
+  public static final int CONTACT_ID = 4;
+  public static final int LOOKUP_KEY = 5;
+  public static final int PHOTO_ID = 6;
+  public static final int DISPLAY_NAME = 7;
+  public static final int PHOTO_URI = 8;
+  public static final int CARRIER_PRESENCE = 9;
+  public static final int CONTACT_DISPLAY_ACCOUNT_TYPE = 10;
+  public static final int CONTACT_DISPLAY_ACCOUNT_NAME = 11;
+  public static final int ITEM_TYPE = 12;
+  public static final int CALLS_DATE = 13;
+  public static final int CALLS_TYPE = 14;
+  public static final int CACHED_LOOKUP_URI = 15;
+  public static final int SYNC1 = 16;
+  /* @} */
   @SuppressWarnings("unused")
   public static final int SORT_KEY = 10;
 
@@ -80,6 +102,47 @@ public class Projections {
         // Nickname.NAME // 14
       };
 
+  /* UNISOC: Matching callLog when search in dialpad feature bug478742@{ */
+  public static final String[] PROJECTION_DIALMATCH = new String[] {
+          Phone._ID, // 0
+          Phone.TYPE, // 1
+          Phone.LABEL, // 2
+          Phone.NUMBER, // 3
+          Phone.CONTACT_ID, // 4
+          Phone.LOOKUP_KEY, // 5
+          Phone.PHOTO_ID, // 6
+          Phone.DISPLAY_NAME_PRIMARY, // 7
+          Phone.PHOTO_THUMBNAIL_URI, // 8
+          Phone.CARRIER_PRESENCE, //9
+          DialerDatabaseHelper.DISPLAY_ACCOUNT_TYPE, // 10
+          DialerDatabaseHelper.DISPLAY_ACCOUNT_NAME, // 11
+          "item_type", //12
+          Calls.DATE, //13
+          Calls.TYPE, //14
+          Calls.CACHED_LOOKUP_URI, //15
+          RawContacts.SYNC1 //16
+
+  };
+
+  public static final String[] PROJECTION_DIALMATCH_ALTERNATIVE = new String[] {
+          Phone._ID, // 0
+          Phone.TYPE, // 1
+          Phone.LABEL, // 2
+          Phone.NUMBER, // 3
+          Phone.CONTACT_ID, // 4
+          Phone.LOOKUP_KEY, // 5
+          Phone.PHOTO_ID, // 6
+          Phone.DISPLAY_NAME_ALTERNATIVE, // 7
+          Phone.PHOTO_THUMBNAIL_URI, // 8
+          DialerDatabaseHelper.DISPLAY_ACCOUNT_TYPE,
+          DialerDatabaseHelper.DISPLAY_ACCOUNT_NAME,
+          "item_type",
+          Calls.DATE,
+          Calls.TYPE,
+          Calls.CACHED_LOOKUP_URI,
+          RawContacts.SYNC1
+  };
+  /* @} */
   public static final String[] DATA_PROJECTION =
       new String[] {
         Data._ID, // 0

@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">చెవిటివారు, వినికిడి సమస్యలు ఉన్న వారు, మాట్లాడటంలో సమస్యలు ఉన్న వారు లేదా కేవలం వాయిస్‌తో అర్థం చేసుకోలేని కాలర్‌లకు RTT సహాయపడుతుంది.</string>
   <string name="rtt_button_decline_request">వద్దు, ధన్యవాదాలు</string>
   <string name="rtt_button_accept_request">RTTలో చేరండి</string>
+  <string name="notification_action_answer_voice">"వాయిస్"</string>
+  <string name="notification_action_mute_on">"మ్యూట్"</string>
+  <string name="notification_action_mute_off">"మ్యూటును తొలిగించుము"</string>
+  <string name="notification_action_reject_with_message">"రిజెక్ట్ SMS"</string>
+  <string name="card_title_in_call">"ఇన్ కాల్"</string>
+  <string name="card_title_conf_call">"కాన్ఫరెన్స్ కాల్"</string>
+  <string name="fail_change_video_due_to_bgcall">"బ్యాక్ గ్రౌండ్ కాల్ వలన ప్రస్తుత కాల్ ను వీడియో కాల్ కు మార్చుట ఫైయిల్ అయినది"</string>
 </resources>

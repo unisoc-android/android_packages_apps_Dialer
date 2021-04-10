@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">Tin nhắn theo thời gian thực (RTT) trợ giúp những người gọi khiếm thính, bị suy giảm thính lực, không có khả năng nói hoặc cần thêm hỗ trợ khác ngoài giọng nói.</string>
   <string name="rtt_button_decline_request">Không, cảm ơn</string>
   <string name="rtt_button_accept_request">Tham gia RTT</string>
+  <string name="notification_action_answer_voice">"Thoại"</string>
+  <string name="notification_action_mute_on">Tắt tiếng</string>
+  <string name="notification_action_mute_off">Bỏ tắt tiếng</string>
+  <string name="notification_action_reject_with_message">"Từ chối SMS"</string>
+  <string name="card_title_in_call">"Đang trong cuộc gọi"</string>
+  <string name="card_title_conf_call">"Cuộc gọi hội thảo"</string>
+  <string name="fail_change_video_due_to_bgcall">"Có cuộc gọi dưới nền, không đổi được cuộc gọi hiện thời thành cuộc gọi video."</string>
 </resources>

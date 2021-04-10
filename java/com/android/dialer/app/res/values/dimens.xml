@@ -37,6 +37,8 @@
   <dimen name="call_log_vertical_padding">8dp</dimen>
   <dimen name="call_log_list_item_info_margin_start">16dp</dimen>
 
+  <dimen name="call_detail_horizontal_margin">20dp</dimen>
+
   <!-- Size of contact photos in the call log and call details. -->
   <dimen name="contact_photo_size">48dp</dimen>
 

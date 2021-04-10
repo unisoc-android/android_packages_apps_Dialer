@@ -26,6 +26,7 @@ import android.graphics.drawable.Drawable;
 import android.provider.CallLog.Calls;
 import android.support.annotation.VisibleForTesting;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import com.android.dialer.theme.base.Theme;
 import com.android.dialer.theme.base.ThemeComponent;
@@ -54,6 +55,12 @@ public class CallTypeIconsView extends View {
   private boolean showRtt;
   private int width;
   private int height;
+  /* UNISOC: modify for bug1204210 @{ */
+  private static boolean mShowCallLogEx;
+  /**@}*/
+
+  //UNISOC: modify for bug1091958
+  private final boolean isAlwaysLargeIcons;
 
   public CallTypeIconsView(Context context) {
     this(context, null);
@@ -63,7 +70,11 @@ public class CallTypeIconsView extends View {
     super(context, attrs);
     TypedArray typedArray =
         context.getTheme().obtainStyledAttributes(attrs, R.styleable.CallTypeIconsView, 0, 0);
-    useLargeIcons = typedArray.getBoolean(R.styleable.CallTypeIconsView_useLargeIcons, false);
+    /* UNISOC: add for bug1091958 @{ */
+    float fontSize = context.getResources().getConfiguration().fontScale;
+    isAlwaysLargeIcons = typedArray.getBoolean(R.styleable.CallTypeIconsView_useLargeIcons, false);
+    useLargeIcons = isAlwaysLargeIcons || fontSize > 1;
+    /* @} */
     typedArray.recycle();
     if (resources == null) {
       resources = new Resources(context, false);
@@ -71,6 +82,10 @@ public class CallTypeIconsView extends View {
     if (largeResouces == null && useLargeIcons) {
       largeResouces = new Resources(context, true);
     }
+    /* UNISOC: modify for bug1204210 @{ */
+    mShowCallLogEx = context.getResources()
+            .getBoolean(R.bool.config_show_calllog_ex_icon);
+    /**@}*/
   }
 
   public void clear() {
@@ -96,11 +111,15 @@ public class CallTypeIconsView extends View {
    */
   public void setShowVideo(boolean showVideo) {
     this.showVideo = showVideo;
+    /* UNISOC: add for bug1091958 @{ */
     if (showVideo) {
-      width += resources.videoCall.getIntrinsicWidth() + resources.iconMargin;
-      height = Math.max(height, resources.videoCall.getIntrinsicHeight());
+      width += useLargeIcons ? largeResouces.videoCall.getIntrinsicWidth()
+              : resources.videoCall.getIntrinsicWidth() + resources.iconMargin;
+      height = Math.max(height, useLargeIcons ? largeResouces.videoCall.getIntrinsicHeight()
+              : resources.videoCall.getIntrinsicHeight());
       invalidate();
     }
+    /* @} */
   }
 
   /**
@@ -114,11 +133,15 @@ public class CallTypeIconsView extends View {
 
   public void setShowHd(boolean showHd) {
     this.showHd = showHd;
+    /* UNISOC: add for bug1091958 @{ */
     if (showHd) {
-      width += resources.hdCall.getIntrinsicWidth() + resources.iconMargin;
-      height = Math.max(height, resources.hdCall.getIntrinsicHeight());
+      width += useLargeIcons ? largeResouces.hdCall.getIntrinsicWidth()
+              : resources.hdCall.getIntrinsicWidth() + resources.iconMargin;
+      height = Math.max(height, useLargeIcons ? largeResouces.hdCall.getIntrinsicHeight()
+              : resources.hdCall.getIntrinsicHeight());
       invalidate();
     }
+    /* @} */
   }
 
   @VisibleForTesting
@@ -128,11 +151,15 @@ public class CallTypeIconsView extends View {
 
   public void setShowWifi(boolean showWifi) {
     this.showWifi = showWifi;
+    /* UNISOC: add for bug1091958 @{ */
     if (showWifi) {
-      width += resources.wifiCall.getIntrinsicWidth() + resources.iconMargin;
-      height = Math.max(height, resources.wifiCall.getIntrinsicHeight());
+      width += useLargeIcons ? largeResouces.wifiCall.getIntrinsicWidth()
+              : resources.wifiCall.getIntrinsicWidth() + resources.iconMargin;
+      height = Math.max(height, useLargeIcons ? largeResouces.wifiCall.getIntrinsicHeight()
+              : resources.wifiCall.getIntrinsicHeight());
       invalidate();
     }
+    /* @} */
   }
 
   public boolean isAssistedDialedShown() {
@@ -175,6 +202,10 @@ public class CallTypeIconsView extends View {
         return resources.outgoing;
       case Calls.MISSED_TYPE:
         return resources.missed;
+      /**UNISOC:973107,1091955 add reject type icon @{*/
+      case Calls.REJECTED_TYPE:
+        return resources.reject;
+      /** @}*/
       case Calls.VOICEMAIL_TYPE:
         return resources.voicemail;
       case Calls.BLOCKED_TYPE:
@@ -200,7 +231,8 @@ public class CallTypeIconsView extends View {
     // If we are using large icons, we should only show one icon (video, hd or call type) with
     // priority give to HD or Video. So we skip the call type icon if we plan to show them.
 
-    if (!useLargeIcons || !(showHd || showVideo || showWifi || showAssistedDialed || showRtt)) {
+    // UNISOC: modify for bug743034
+    if (!(useLargeIcons && isAlwaysLargeIcons) || !(showHd || showVideo || showWifi || showAssistedDialed || showRtt)) {
       for (Integer callType : callTypes) {
         final Drawable drawable = getCallTypeDrawable(callType);
         final int right = left + drawable.getIntrinsicWidth();
@@ -216,7 +248,11 @@ public class CallTypeIconsView extends View {
     }
     // If showing HD call icon, draw it scaled appropriately.
     if (showHd) {
-      left = addDrawable(canvas, resources.hdCall, left) + resources.iconMargin;
+      /* UNISOC: modify for bug1204210 @{ */
+      if (!showVideo || !mShowCallLogEx) {
+        left = addDrawable(canvas, resources.hdCall, left) + resources.iconMargin;
+      }
+      /**@}*/
     }
     // If showing HD call icon, draw it scaled appropriately.
     if (showWifi) {
@@ -250,6 +286,10 @@ public class CallTypeIconsView extends View {
     // Drawable representing an incoming missed call.
     public final Drawable missed;
 
+    // Drawable representing an incoming reject call.
+    // UNISOC:973107,1091955 add reject type icon
+    public final Drawable reject;
+
     // Drawable representing a voicemail.
     public final Drawable voicemail;
 
@@ -264,6 +304,9 @@ public class CallTypeIconsView extends View {
 
     // Drawable representing a WiFi call.
     final Drawable wifiCall;
+
+    // UNISOC: modify for bug1072698
+    private boolean isSupportTel;
 
     // Drawable representing an assisted dialed call.
     final Drawable assistedDialedCall;
@@ -286,7 +329,10 @@ public class CallTypeIconsView extends View {
      */
     public Resources(Context context, boolean largeIcons) {
       final android.content.res.Resources r = context.getResources();
-
+      /** UNISOC: add for bug1072698 @{ */
+      isSupportTel = context.getResources().getBoolean(R.bool.is_support_vowifi_volte);
+      Log.d("CallTypeIconsView", "isSupportTel is " + isSupportTel);
+      /** @} */
       int iconId = R.drawable.quantum_ic_call_received_white_24;
       Drawable drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
       incoming = drawable.mutate();
@@ -306,6 +352,12 @@ public class CallTypeIconsView extends View {
       missed.setColorFilter(r.getColor(R.color.dialer_red), PorterDuff.Mode.MULTIPLY);
 
       Theme theme = ThemeComponent.get(context).theme();
+      /**UNISOC:973107,1091955 add reject type icon @{*/
+      iconId = R.drawable.quantum_ic_call_reject_phone_white_24;
+      drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
+      reject = drawable.mutate();
+      reject.setColorFilter(r.getColor(R.color.dialer_red), PorterDuff.Mode.MULTIPLY);
+      /**@}*/
       iconId = R.drawable.quantum_ic_voicemail_white_24;
       drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
       voicemail = drawable.mutate();
@@ -316,21 +368,38 @@ public class CallTypeIconsView extends View {
       blocked = drawable.mutate();
       blocked.setColorFilter(theme.getColorIcon(), PorterDuff.Mode.MULTIPLY);
 
-      iconId = R.drawable.quantum_ic_videocam_vd_white_24;
+      /* UNISOC: modify for bug1204210 @{ */
+      if (mShowCallLogEx) {
+        iconId = R.drawable.quantum_ic_phone_video_reliance;
+      } else {
+        iconId = R.drawable.quantum_ic_videocam_vd_white_24;
+      }
+      /* @} */
       drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
       videoCall = drawable.mutate();
       videoCall.setColorFilter(theme.getColorIcon(), PorterDuff.Mode.MULTIPLY);
+      /** UNISOC: add for bug1072698 @{ */
+      if (isSupportTel) {
+        hdCall = r.getDrawable(R.drawable.ic_voltecall);
+        wifiCall = r.getDrawable(R.drawable.ic_vowificall);
+      } else {
+        /* UNISOC: modify for bug1204210 @{ */
+        if (mShowCallLogEx) {
+          iconId = R.drawable.quantum_ic_phone_volte_reliance;
+        } else {
+          iconId = R.drawable.quantum_ic_hd_white_24;
+        }
+        /* @} */
+        drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
+        hdCall = drawable.mutate();
+        hdCall.setColorFilter(r.getColor(R.color.telcel_call_type_icon_color), PorterDuff.Mode.MULTIPLY);
 
-      iconId = R.drawable.quantum_ic_hd_white_24;
-      drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
-      hdCall = drawable.mutate();
-      hdCall.setColorFilter(theme.getColorIcon(), PorterDuff.Mode.MULTIPLY);
-
-      iconId = R.drawable.quantum_ic_signal_wifi_4_bar_white_24;
-      drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
-      wifiCall = drawable.mutate();
-      wifiCall.setColorFilter(theme.getColorIcon(), PorterDuff.Mode.MULTIPLY);
-
+        iconId = R.drawable.quantum_ic_signal_wifi_4_bar_white_24;
+        drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
+        wifiCall = drawable.mutate();
+        wifiCall.setColorFilter(r.getColor(R.color.telcel_call_type_icon_color), PorterDuff.Mode.MULTIPLY);
+      }
+      /** @} */
       iconId = R.drawable.quantum_ic_language_white_24;
       drawable = largeIcons ? r.getDrawable(iconId) : getScaledBitmap(context, iconId);
       assistedDialedCall = drawable.mutate();

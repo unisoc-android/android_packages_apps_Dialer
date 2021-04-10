@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+    <!-- UNISOC Feature Porting: FL0108130012 Enable send sms in incallui feature. -->
+    <bool name="config_is_send_sms_enabled_feature" targetCarriers="cmcc,telcel,reliance">false</bool>
+    <!-- UNISOC Feature Porting: FL1000060550 Continue call timer when primary call on hold. -->
+    <bool name="config_is_show_calltimer_when_call_onhold" targetCarriers="vodafone">false</bool>
+    <!-- UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case. -->
+    <bool name="config_is_support_hangup_all_feature" targetCarriers="orange">false</bool>
+    <!-- UNISOC Feature Porting: FL1000060336 Hide recorder feature for telstra case. -->
+    <bool name="config_is_recorder_enabled_feature" targetCarriers="telstra">true</bool>
+    <!-- UNISOC Feature Porting: FL1000060352 display state of conference member -->
+    <bool name="config_is_show_conference_state_feature" targetCarriers="cmcc">false</bool>
+    <!-- UNISOC Feature Porting: FL0108020012  Voice Clear Code Feature -->
+    <bool name="config_is_support_voiceclearcode_feature" targetCarriers="telcel,claro">false</bool>
+    <bool name="config_is_support_voiceclearcode_feature_claro" targetCarriers="claro">false</bool>
+    <!-- UNISOC:add for bug1157000.SIP Voice Clear Code Feature -->
+    <bool name="config_is_support_csfb_volteclearcode_feature" targetCarriers="telcel">false</bool>
+    <!-- UNISOC Feature Porting: FL0108020044 Support Telcel Operator requirement. @{-->
+    <bool name="config_if_support_display_telcel_feature" targetCarriers="telcel">false</bool>
+
+    <!-- UNISOC Feature Porting: FL0108020019 Shaking phone to start recording -->
+    <bool name="config_is_support_shaking_phone_startrecord_feature" >true</bool>
+    <!-- UNISOC:add for bug937150 -->
+    <bool name="config_is_speaker_to_headset_feature">true</bool>
+    <!-- UNISOC Feature Porting:FL 0108020028 InComing Third Call Feature. -->
+    <bool name="config_is_support_incoming_third_call_feature" targetCarriers="telcel">false</bool>
+    <!-- UNISOC Feature Porting:FL 0108010003 Display caller address for phone number feature. -->
+    <bool name="config_is_support_display_caller_address" targetCarriers="cmcc,cucc">false</bool>
+    <!-- UNISOC Feature Porting: Toast information when the number of conference call is over limit for cmcc case -->
+    <bool name="config_is_support_conference_number_limit_feature" targetCarriers="cmcc">false</bool>
+    <!-- UNISOC Feature Porting: Show emergency number when dial emergency call feature -->
+    <bool name="config_is_show_emergency_number_feature" targetCarriers="cmcc">false</bool>
+    <!-- UNISOC: feature FL0108020003 Show call elapsed time feature -->
+    <bool name="config_is_show_call_elapsed_time_feature" targetCarriers="vodafone,cmcc">false</bool>
+    <!-- UNISOC Feature Porting: Add for change video type Feature -->
+    <bool name="video_call_use_ext">true</bool>
+    <!--UNISOC:modify for bug1147838-->
+    <bool name="config_is_show_main_vice_card_feature" targetCarriers="cmcc">false</bool>
+
+    <!-- SFR new feature:Wifi Calling UI -->
+    <bool name="config_is_support_vowifi_icon_feature" targetCarriers="sfr">false</bool>
+
+</resources>
+

@@ -51,7 +51,8 @@
   call.
        Set taskAffinity for application is not working because it will be merged and the result is
   that all activities here still have same taskAffinity as activities under dialer. -->
-  <application>
+  <!-- UNISOC: modify for bug1107273 -->
+  <application android:resizeableActivity="false">
     <!-- Go variants need hardware acceleration for IMS video calls even though it is disabled at
     the application level -->
     <activity
@@ -62,23 +63,26 @@
         android:label="@string/phoneAppLabel"
         android:launchMode="singleInstance"
         android:name="com.android.incallui.InCallActivity"
-        android:resizeableActivity="true"
+        android:resizeableActivity="false"
         android:screenOrientation="nosensor"
+        android:showWhenLocked="true"
         android:taskAffinity="com.android.incallui"
         android:theme="@style/Theme.InCallScreen"
+        android:configChanges="uiMode"
         android:windowSoftInputMode="adjustResize">
     </activity>
 
     <activity
         android:directBootAware="true"
-        android:excludeFromRecents="true"
+        android:excludeFromRecents="false"
         android:exported="false"
         android:label="@string/manageConferenceLabel"
         android:launchMode="singleTask"
         android:name="com.android.incallui.ManageConferenceActivity"
-        android:noHistory="true"
-        android:resizeableActivity="true"
+        android:noHistory="false"
+        android:resizeableActivity="false"
         android:taskAffinity="com.android.incallui"
+        android:configChanges="uiMode"
         android:theme="@style/Theme.InCallScreen.ManageConference"/>
 
     <service
@@ -108,11 +112,24 @@
         android:noHistory="true"
         android:theme="@style/Theme.Incall.DialogHolder"
         />
+    <!-- UNISOC: Feature improvement -->
+    <activity
+        android:name="com.android.incallui.sprd.settings.callrecording.ListedNumberActivity"
+        android:configChanges="orientation|screenSize"
+        android:label="@string/listed_numbers"
+        android:theme="@style/SettingsStyle" />
 
     <activity
         android:excludeFromRecents="true"
         android:exported="false"
         android:name="com.android.incallui.PostCharDialogActivity"
+        android:noHistory="true"
+        android:theme="@style/Theme.Incall.DialogHolder"/>
+
+    <activity
+        android:excludeFromRecents="true"
+        android:exported="false"
+        android:name="com.android.incallui.sprd.RequestPermissionsActivity"
         android:noHistory="true"
         android:theme="@style/Theme.Incall.DialogHolder"/>
 

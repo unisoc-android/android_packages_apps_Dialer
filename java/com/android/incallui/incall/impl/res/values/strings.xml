@@ -73,4 +73,7 @@
        [CHAR LIMIT=32] -->
   <string name="incall_note_sent">Note sent</string>
 
+  <string name="xliff_string1">SIM1</string>
+  <string name="xliff_string2">SIM2</string>
+
 </resources>

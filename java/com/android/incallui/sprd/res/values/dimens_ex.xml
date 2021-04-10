@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="primary_text_size">16sp</dimen>
+    <dimen name="dialog_min_width">600dp</dimen>
+    <dimen name="icon_padding">8dp</dimen>
+    <dimen name="button_horizontal_padding">8dp</dimen>
+    <dimen name="listed_number_text_size">18sp</dimen>
+</resources>

@@ -39,11 +39,20 @@ import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.Pair;
 import com.android.dialer.common.LogUtil;
+import android.util.Log;
 import com.google.common.base.Optional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+/** UNISOC: bug1110945 DUT shows abnormal behaviour with calllog items in mentioned scenario. @{*/
+import com.android.incallui.call.CallList;
+import android.telephony.PhoneNumberUtils;
+import android.widget.Toast;
+import com.android.dialer.util.R;
+/** @}*/
+
+import android.os.UserHandle;
 
 /**
  * Performs permission checks before calling into TelecomManager. Each method is self-explanatory -
@@ -70,6 +79,12 @@ public abstract class TelecomUtil {
   public static void setInstanceForTesting(TelecomUtilImpl instanceForTesting) {
     instance = instanceForTesting;
   }
+
+  /* UNISOC: Bug1091930 No clear the previous voiceNumber make number not update. @{ */
+  public static void resetVoicemailCache() {
+    isVoicemailNumberCache.clear();
+  }
+  /* @} */
 
   public static void showInCallScreen(Context context, boolean showDialpad) {
     if (hasReadPhoneStatePermission(context)) {
@@ -176,7 +191,9 @@ public abstract class TelecomUtil {
     if (componentName == null) {
       return null;
     }
-    return new PhoneAccountHandle(componentName, accountId);
+    /**UNISOC: modify for the bug 1144159 @{*/
+    return new PhoneAccountHandle(componentName, accountId, UserHandle.SYSTEM);
+    /* @} */
   }
 
   /**
@@ -229,7 +246,15 @@ public abstract class TelecomUtil {
     }
     Pair<PhoneAccountHandle, String> cacheKey = new Pair<>(accountHandle, number);
     if (isVoicemailNumberCache.containsKey(cacheKey)) {
-      return isVoicemailNumberCache.get(cacheKey);
+      /* UNISOC: modify for bug1152365 @{ */
+      try {
+        return isVoicemailNumberCache.get(cacheKey);
+      } catch (NullPointerException e) {
+        Log.e(TAG, "isVoicemailNumber: isVoicemailNumberCache.get(cacheKey) Attempt to invoke virtual method 'boolean java.lang.Boolean.booleanValue()' on a null object reference, return false"
+                + e);
+        return false;
+      }
+      /* @} */
     }
     boolean result = false;
     if (hasReadPhoneStatePermission(context)) {
@@ -256,6 +281,14 @@ public abstract class TelecomUtil {
    *     due to a permission check.
    */
   public static boolean placeCall(Context context, Intent intent) {
+    /** UNISOC: bug1110945 DUT shows abnormal behaviour with calllog items in mentioned scenario. @{*/
+    Uri handle = intent.getData();
+    boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(handle == null ? "" : handle.getSchemeSpecificPart());
+    if (!isEmergency && CallList.getInstance().getIncomingCall() != null) {
+      Toast.makeText(context, R.string.call_cannot_be_sent, Toast.LENGTH_SHORT).show();
+      return false;
+    }
+    /** @}*/
     if (hasCallPhonePermission(context)) {
       getTelecomManager(context).placeCall(intent.getData(), intent.getExtras());
       return true;

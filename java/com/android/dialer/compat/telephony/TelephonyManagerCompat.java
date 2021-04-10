@@ -28,6 +28,8 @@ import android.telephony.TelephonyManager;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.telecom.TelecomUtil;
 import java.lang.reflect.InvocationTargetException;
+import android.widget.Toast;
+import com.android.dialer.app.R;
 
 /** Hidden APIs in {@link android.telephony.TelephonyManager}. */
 public class TelephonyManagerCompat {
@@ -84,6 +86,9 @@ public class TelephonyManagerCompat {
    */
   public static final String CARRIER_CONFIG_KEY_SHOW_VIDEO_CALL_CHARGES_ALERT_DIALOG_BOOL =
       "show_video_call_charges_alert_dialog_bool";
+
+  // UNISOC Added for Bug1145755
+  public static final String EVENT_CDMA_CALL_ANSWERED = "android.telephony.event.EVENT_CDMA_CALL_ANSWERED";
 
   /**
    * Returns the number of phones available. Returns 1 for Single standby mode (Single SIM
@@ -197,7 +202,14 @@ public class TelephonyManagerCompat {
             "not default dialer, cannot send special code");
         return;
       }
-      context.getSystemService(TelephonyManager.class).sendDialerSpecialCode(secretCode);
+      /*UNISOC:modify for Bug1080090, porting for bug936563 @{*/
+      try {
+        context.getSystemService(TelephonyManager.class).sendDialerSpecialCode(secretCode);
+      } catch (RuntimeException e) {
+        Toast.makeText(context, R.string.modem_abnormal, Toast.LENGTH_SHORT).show();
+        LogUtil.e("TelephonyManagerCompat.handleSecretCode", "modem abnormal: " + e.toString());
+      }
+      /*@}*/
     } else {
       // System service call is not supported pre-O, so must use a broadcast for N-.
       Intent intent =

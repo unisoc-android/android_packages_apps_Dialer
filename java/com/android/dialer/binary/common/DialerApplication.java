@@ -32,11 +32,16 @@ import com.android.dialer.inject.HasRootComponent;
 import com.android.dialer.notification.NotificationChannelManager;
 import com.android.dialer.persistentlog.PersistentLogger;
 import com.android.dialer.strictmode.StrictModeComponent;
-
+import com.android.incallui.sprd.NeededForReflection;
 /** A common application subclass for all Dialer build variants. */
 public abstract class DialerApplication extends Application implements HasRootComponent {
 
   private volatile Object rootComponent;
+  // UNISOC AndroidQ Feature Porting: bug1072941 used for identifying automatic recording started or not.
+  private boolean mIsAutomaticRecordingStart = false;
+  // UNISOC Feature Porting: Add for shaking phone to start recording feature.
+  private boolean mIsRecordingStart = false;
+
 
   @Override
   public void onCreate() {
@@ -92,4 +97,25 @@ public abstract class DialerApplication extends Application implements HasRootCo
     }
     return result;
   }
+
+  /* UNISOC AndroidQ Feature Porting: bug1072941 Add for automatic call record. @{ */
+  public boolean getIsAutomaticRecordingStart() {
+    return mIsAutomaticRecordingStart;
+  }
+
+  public void setIsAutomaticRecordingStart(boolean isAutomaticRecordingStart) {
+    mIsAutomaticRecordingStart = isAutomaticRecordingStart;
+  }
+  /* @} */
+  /* UNISOC Feature Porting: Add for shaking phone to start recording feature. @{ */
+  @NeededForReflection
+  public boolean getIsRecordingStart() {
+    return mIsRecordingStart;
+  }
+
+  @NeededForReflection
+  public void setIsRecordingStart(boolean isRecordingStart) {
+    mIsRecordingStart = isRecordingStart;
+  }
+  /* @} */
 }

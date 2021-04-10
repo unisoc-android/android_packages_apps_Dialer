@@ -31,7 +31,7 @@
   <string name="description_phone_account">使用 ^1</string>
   <string name="description_via_number">透過 %1$s</string>
   <string name="description_via_number_phone_account">在 %1$s 上透過 %2$s</string>
-  <string name="voicemail_string">留言</string>
+  <string name="voicemail_string">留言信箱</string>
   <string name="just_now">剛剛</string>
   <string name="new_call_log_carrier_video">流動網絡供應商視像</string>
   <string name="new_call_log_duo_video">Duo 視像</string>

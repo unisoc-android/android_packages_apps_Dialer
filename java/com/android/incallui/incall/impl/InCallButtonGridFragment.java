@@ -16,6 +16,7 @@
 
 package com.android.incallui.incall.impl;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
 import android.support.annotation.Nullable;
@@ -33,19 +34,35 @@ import java.util.Set;
 /** Fragment for the in call buttons (mute, speaker, ect.). */
 public class InCallButtonGridFragment extends Fragment {
 
+  // UNISOC : InCallUI Layout Refactor
+  private static final String PAGE = "page";
+
   private static final int BUTTON_COUNT = 6;
-  private static final int BUTTONS_PER_ROW = 3;
+  public static final int BUTTONS_PER_ROW = 3;
 
   private CheckableLabeledButton[] buttons = new CheckableLabeledButton[BUTTON_COUNT];
   private OnButtonGridCreatedListener buttonGridListener;
 
-  public static Fragment newInstance() {
-    return new InCallButtonGridFragment();
+  /* UNISOC : InCallUI Layout Refactor */
+  private int page;
+
+  public static Fragment newInstance(int page) {
+    InCallButtonGridFragment f = new InCallButtonGridFragment();
+    Bundle bundle = new Bundle();
+    bundle.putInt(PAGE, page);
+    f.setArguments(bundle);
+    return f;
   }
 
+  /* @} */
   @Override
   public void onCreate(@Nullable Bundle bundle) {
     super.onCreate(bundle);
+    // UNISOC : InCallUI Layout Refactor
+    if (getArguments() != null) {
+      page = getArguments().getInt(PAGE);
+    }
+
     buttonGridListener = FragmentUtils.getParent(this, OnButtonGridCreatedListener.class);
     Assert.isNotNull(buttonGridListener);
   }
@@ -69,13 +86,15 @@ public class InCallButtonGridFragment extends Fragment {
   @Override
   public void onViewCreated(View view, @Nullable Bundle bundle) {
     super.onViewCreated(view, bundle);
-    buttonGridListener.onButtonGridCreated(this);
+    // UNISOC : InCallUI Layout Refactor
+    buttonGridListener.onButtonGridCreated(this, page);
   }
 
   @Override
   public void onDestroyView() {
     super.onDestroyView();
-    buttonGridListener.onButtonGridDestroyed();
+    // UNISOC : InCallUI Layout Refactor
+    buttonGridListener.onButtonGridDestroyed(page);
   }
 
   public void onInCallScreenDialpadVisibilityChange(boolean isShowing) {
@@ -91,7 +110,8 @@ public class InCallButtonGridFragment extends Fragment {
       List<ButtonController> buttonControllers,
       @Nullable ButtonChooser buttonChooser,
       int voiceNetworkType,
-      int phoneType) {
+      int phoneType,
+      Context context) {
     Set<Integer> allowedButtons = new ArraySet<>();
     Set<Integer> disabledButtons = new ArraySet<>();
     for (ButtonController controller : buttonControllers) {
@@ -103,18 +123,46 @@ public class InCallButtonGridFragment extends Fragment {
       }
     }
 
-    for (ButtonController controller : buttonControllers) {
+    /*for (ButtonController controller : buttonControllers) {
       controller.setButton(null);
-    }
+    }*/
 
     if (buttonChooser == null) {
       buttonChooser =
-          ButtonChooserFactory.newButtonChooser(voiceNetworkType, false /* isWiFi */, phoneType);
+          ButtonChooserFactory.newButtonChooser(voiceNetworkType, false /* isWiFi */, phoneType, context);
     }
 
-    int numVisibleButtons = getResources().getInteger(R.integer.incall_num_rows) * BUTTONS_PER_ROW;
+    /* UNISOC: InCallUI Layout Refactor @{ */
+    int numVisibleButtons = getResources().getInteger(R.integer.incall_num_rows) * BUTTONS_PER_ROW * 2;
     List<Integer> buttonsToPlace =
         buttonChooser.getButtonPlacement(numVisibleButtons, allowedButtons, disabledButtons);
+
+    // Used for notifer incallfragment update page.
+    buttonGridListener.onPageChanged(buttonsToPlace.size());
+
+    if (page == InCallPagerAdapter.PAGE_TWO && buttonsToPlace.size() > BUTTON_COUNT) {
+      int i = 0;
+      for (; i < (buttonsToPlace.size() - BUTTON_COUNT); ++i) {
+        @InCallButtonIds int button = buttonsToPlace.get(i + BUTTON_COUNT);
+        buttonGridListener.getButtonController(button).setButton(buttons[i]);
+      }
+      for (int j = i; j < BUTTON_COUNT; ++j) {
+        buttons[j].setVisibility(View.INVISIBLE);
+      }
+
+      return numVisibleButtons;
+    } else if (page == InCallPagerAdapter.PAGE_TWO) {
+      return 0;
+    }
+    /* @} */
+    /* UNISOC: add for button1138057 @{ */
+    if (!isAdded()) {
+      return -1;
+    }
+    /* @} */
+    for (ButtonController controller : buttonControllers) {
+      controller.setButton(null);
+    }
 
     for (int i = 0; i < BUTTON_COUNT; ++i) {
       if (i >= buttonsToPlace.size()) {
@@ -136,8 +184,11 @@ public class InCallButtonGridFragment extends Fragment {
 
   /** Interface to let the listener know the status of the button grid. */
   public interface OnButtonGridCreatedListener {
-    void onButtonGridCreated(InCallButtonGridFragment inCallButtonGridFragment);
-    void onButtonGridDestroyed();
+    /* UNISOC: InCallUI Layout Refactor @{ */
+    void onButtonGridCreated(InCallButtonGridFragment inCallButtonGridFragment, int page);
+    void onButtonGridDestroyed(int page);
+    void onPageChanged(int buttonsToPlaceSize);
+    /* @} */
 
     ButtonController getButtonController(@InCallButtonIds int id);
   }

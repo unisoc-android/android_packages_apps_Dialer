@@ -17,6 +17,8 @@
 package com.android.incallui;
 
 import android.content.Context;
+import android.content.res.Configuration;
+import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.support.annotation.ColorInt;
 import android.support.annotation.Nullable;
@@ -34,6 +36,7 @@ import com.android.incallui.call.DialerCall;
  */
 public class ThemeColorManager {
   private final MaterialColorMapUtils colorMap;
+  private int currentNightMode = Configuration.UI_MODE_NIGHT_NO;
   @ColorInt private int primaryColor;
   @ColorInt private int secondaryColor;
   @ColorInt private int backgroundColorTop;
@@ -68,7 +71,19 @@ public class ThemeColorManager {
 
   private void updateThemeColors(Context context, @ColorInt int highlightColor, boolean isSpam) {
     MaterialPalette palette;
-    if (isSpam) {
+    currentNightMode =  context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+    if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+      int nightColor = context.getColor(R.color.incall_background_night);
+      palette = colorMap.calculatePrimaryAndSecondaryColor(nightColor);
+      backgroundColorTop = applyAlpha(nightColor, context.getColor(R.color.incall_background_gradient_night_top));
+      backgroundColorMiddle = applyAlpha(nightColor, context.getColor(R.color.incall_background_gradient_night_middle));
+      backgroundColorBottom = applyAlpha(nightColor, context.getColor(R.color.incall_background_gradient_night_bottom));
+      backgroundColorSolid = applyAlpha(nightColor, context.getColor(R.color.incall_background_multiwindow));
+
+      primaryColor = nightColor;
+      secondaryColor = palette.mPrimaryColor;
+      return;
+    } else if (isSpam) {
       palette =
           colorMap.calculatePrimaryAndSecondaryColor(R.color.incall_call_spam_background_color);
       backgroundColorTop = context.getColor(R.color.incall_background_gradient_spam_top);

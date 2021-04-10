@@ -43,7 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-
+import com.android.incallui.sprd.plugin.ShowEmergencyNumber.ShowEmergencyNumberHelper;
 /**
  * Helper class to make it easier to run asynchronous caller-id lookup queries.
  *
@@ -478,6 +478,8 @@ public class CallerInfoAsyncQuery {
           if (cw.event == EVENT_EMERGENCY_NUMBER) {
             // Note we're setting the phone number here (refer to javadoc
             // comments at the top of CallerInfo class).
+            // UNISOC Feature Porting: Show emergency number when dial emergency call feature.
+            ShowEmergencyNumberHelper.getInstance(queryContext).setEmergencyNumber(cw.number);
             callerInfo = new CallerInfo().markAsEmergency(queryContext);
           } else if (cw.event == EVENT_VOICEMAIL_NUMBER) {
             callerInfo = new CallerInfo().markAsVoiceMail(queryContext);

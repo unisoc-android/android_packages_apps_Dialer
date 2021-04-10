@@ -37,7 +37,7 @@
   <string name="block_report_number_alert_title">Block <xliff:g id="number">%1$s</xliff:g>?</string>
 
   <!-- Text in alert dialog after clicking on Block/report as spam.  [CHAR LIMIT=100] -->
-  <string name="block_report_number_alert_details">You will no longer receive calls from this number.</string>
+  <string name="block_report_number_alert_details">You will no longer receive calls or texts from this number.</string>
 
   <!-- Text in alert dialog after clicking on Block.  [CHAR LIMIT=100] -->
   <string name="block_number_alert_details"><xliff:g id="text">%1$s</xliff:g> This call will be reported as spam.</string>

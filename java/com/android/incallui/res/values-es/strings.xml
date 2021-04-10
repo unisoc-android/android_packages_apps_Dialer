@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">La función TTR (texto en tiempo real) ofrece asistencia a las personas sordas o con discapacidades auditivas, que tienen algún trastorno del habla o que necesitan una transcripción además de la voz para comunicarse.</string>
   <string name="rtt_button_decline_request">No, gracias</string>
   <string name="rtt_button_accept_request">Unirme a TTR</string>
+  <string name="notification_action_answer_voice">"Voz"</string>
+  <string name="notification_action_mute_on">"SILENCIO"</string>
+  <string name="notification_action_mute_off">"Desactivar el silenciamiento"</string>
+  <string name="notification_action_reject_with_message">"Rechazar SMS"</string>
+  <string name="card_title_in_call">"En llamada"</string>
+  <string name="card_title_conf_call">"Llamada en conferencia"</string>
+  <string name="fail_change_video_due_to_bgcall">"Hay una llamada en segundo plano, error al cambiar de la llamada actual a una videollamada."</string>
 </resources>

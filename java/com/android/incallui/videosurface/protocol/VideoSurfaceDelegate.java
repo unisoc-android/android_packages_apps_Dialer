@@ -16,6 +16,8 @@
 
 package com.android.incallui.videosurface.protocol;
 
+import com.android.incallui.videosurface.impl.VideoSurfaceTextureImpl;//add for bug 1130479
+
 /** Callbacks from the video surface. */
 public interface VideoSurfaceDelegate {
 
@@ -26,4 +28,8 @@ public interface VideoSurfaceDelegate {
   void onSurfaceDestroyed(VideoSurfaceTexture videoCallSurface);
 
   void onSurfaceClick(VideoSurfaceTexture videoCallSurface);
+
+  //add for bug 1130479
+  void onSufaceChangeToSmall(VideoSurfaceTextureImpl videoCallSurface);
+  void onSufaceChangeToBig(VideoSurfaceTextureImpl videoCallSurface);
 }

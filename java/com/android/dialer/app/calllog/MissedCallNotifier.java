@@ -22,8 +22,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.CallLog.Calls;
 import android.service.notification.StatusBarNotification;
 import android.support.annotation.NonNull;
@@ -68,12 +70,19 @@ import com.android.dialer.util.IntentUtil;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
 
 /** Creates a notification for calls that the user missed (neither answered nor rejected). */
-public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
+public class MissedCallNotifier implements Worker<Bundle, Void> {
 
   private final Context context;
   private final CallLogNotificationsQueryHelper callLogNotificationsQueryHelper;
+
+  /** UNISOC AndroidQ Feature Porting: bug1072642 missed call notification RGB light feature. @{ */
+  public static final int LED_ARGB = Color.BLUE;
+  public static final int LED_ON_MS = 1500;
+  public static final int LED_OFF_MS = 2500;
+  /** @} */
 
   @VisibleForTesting
   MissedCallNotifier(
@@ -86,10 +95,20 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
     return new MissedCallNotifier(context, CallLogNotificationsQueryHelper.getInstance(context));
   }
 
+  /* AndroidQ Feature Porting: bug1072635 show main/vice card feature. @{ */
   @Nullable
   @Override
-  public Void doInBackground(@Nullable Pair<Integer, String> input) throws Throwable {
-    updateMissedCallNotification(input.first, input.second);
+  public Void doInBackground(@Nullable Bundle input) throws Throwable {
+    int count = 0;
+    String number = "";
+    String subText = "";
+    if (input != null) {
+      count = input.getInt(MissedCallNotificationReceiver.COUNT);
+      number = input.getString(MissedCallNotificationReceiver.PHONE_NUMBER);
+      subText = input.getString(MissedCallNotificationReceiver.MAIN_VICE_INFO);
+    }
+    updateMissedCallNotification(count, number, subText);
+    /* @} */
     return null;
   }
 
@@ -104,7 +123,7 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
    */
   @VisibleForTesting
   @WorkerThread
-  void updateMissedCallNotification(int count, @Nullable String number) {
+  void updateMissedCallNotification(int count, @Nullable String number, String subText) {
     LogUtil.enterBlock("MissedCallNotifier.updateMissedCallNotification");
 
     final int titleResId;
@@ -205,10 +224,12 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
             CallLogNotificationsService.createCancelAllMissedCallsPendingIntent(context));
 
     // Create the notification summary suitable for display when sensitive information is showing.
+    // AndroidQ Feature Porting: bug1072635 show main/vice card feature.
     groupSummary
         .setContentTitle(context.getText(titleResId))
         .setContentText(expandedText)
         .setContentIntent(createCallLogPendingIntent())
+        .setSubText(subText)
         .setDeleteIntent(
             CallLogNotificationsService.createCancelAllMissedCallsPendingIntent(context))
         .setGroupSummary(useCallList)
@@ -241,16 +262,20 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
         activeAndThrottledTags.add(throttledNotification.getTag());
       }
 
+      /**UNISOC:1180484 & 1190923 Reduce the number of missed calls sent to avoid anr occur @{*/
       for (NewCall call : newCalls) {
         String callTag = getNotificationTagForCall(call);
         if (!activeAndThrottledTags.contains(callTag)) {
+          // AndroidQ Feature Porting: bug1072635 show main/vice card feature.
           DialerNotificationManager.notify(
-              context,
-              callTag,
-              MissedCallConstants.NOTIFICATION_ID,
-              getNotificationForCall(call, null));
+                  context,
+                  callTag,
+                  MissedCallConstants.NOTIFICATION_ID,
+                  getNotificationForCall(call, null, subText));
+          break;
         }
       }
+      /**@} */
     }
   }
 
@@ -308,11 +333,12 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
         if (FuzzyPhoneNumberMatcher.matches(call.number, number.replace("tel:", ""))) {
           LogUtil.i("MissedCallNotifier.insertPostCallNotification", "Notification updated");
           // Update the first notification that matches our post call note sender.
+          // AndroidQ Feature Porting: bug1072635 show main/vice card feature.
           DialerNotificationManager.notify(
               context,
               getNotificationTagForCall(call),
               MissedCallConstants.NOTIFICATION_ID,
-              getNotificationForCall(call, note));
+              getNotificationForCall(call, note, null));
           return;
         }
       }
@@ -321,7 +347,7 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
   }
 
   private Notification getNotificationForCall(
-      @NonNull NewCall call, @Nullable String postCallMessage) {
+      @NonNull NewCall call, @Nullable String postCallMessage, String subText) {
     ContactInfo contactInfo =
         callLogNotificationsQueryHelper.getContactInfo(
             call.number, call.numberPresentation, call.countryIso);
@@ -358,9 +384,11 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
       builder.setLargeIcon(photoIcon);
     }
     // Create the notification suitable for display when sensitive information is showing.
+     // AndroidQ Feature Porting: bug1072635 show main/vice card feature.
     builder
         .setContentTitle(context.getText(titleResId))
         .setContentText(expandedText)
+        .setSubText(subText)
         // Include a public version of the notification to be shown when the missed call
         // notification is shown on the user's lock screen and they have chosen to hide
         // sensitive notification information.
@@ -489,7 +517,14 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
   /** Configures a notification to emit the blinky notification light. */
   private void configureLedOnNotification(Notification notification) {
     notification.flags |= Notification.FLAG_SHOW_LIGHTS;
-    notification.defaults |= Notification.DEFAULT_LIGHTS;
+    /** UNISOC AndroidQ Feature Porting: bug1072642 missed call notification RGB light feature. @{
+     * @orig
+     * notification.defaults |= Notification.DEFAULT_LIGHTS; */
+    notification.defaults |= Notification.DEFAULT_SOUND;
+    notification.ledARGB = LED_ARGB;
+    notification.ledOnMS = LED_ON_MS;
+    notification.ledOffMS = LED_OFF_MS;
+    /** @} */
   }
 
   /** Closes open system dialogs and the notification shade. */

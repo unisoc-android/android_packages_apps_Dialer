@@ -18,6 +18,13 @@ package com.android.dialer.location;
 
 import android.content.Context;
 import android.os.Trace;
+/** UNISOC Feature Porting: Bug1072623 Display caller address for phone number feature. @{ */
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
+import com.google.i18n.phonenumbers.geocoding.PhoneNumberOfflineGeocoder;
+import java.util.Locale;
+/**@}*/
 
 /** Static methods related to Geo. */
 public class GeoUtil {
@@ -35,4 +42,19 @@ public class GeoUtil {
     Trace.endSection();
     return countryIso;
   }
+
+  /** UNISOC Feature Porting: Bug1072623 Display caller address for phone number feature. @{ */
+  public static String getGeocodedLocationFor(Context context,  String phoneNumber) {
+    final PhoneNumberOfflineGeocoder geocoder = PhoneNumberOfflineGeocoder.getInstance();
+    final PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
+    try {
+      final Phonenumber.PhoneNumber structuredPhoneNumber =
+              phoneNumberUtil.parse(phoneNumber, getCurrentCountryIso(context));
+      final Locale locale = context.getResources().getConfiguration().locale;
+      return geocoder.getDescriptionForNumber(structuredPhoneNumber, locale);
+    } catch (NumberParseException e) {
+      return null;
+    }
+  }
+  /**@}*/
 }

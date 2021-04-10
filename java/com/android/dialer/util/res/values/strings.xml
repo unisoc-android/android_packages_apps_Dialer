@@ -41,4 +41,13 @@
 
   <!-- Text presented to the user explaining that we have enabled the camera permission automatically [CHAR LIMIT=NONE] -->
   <string name="camera_privacy_text">Camera permission enabled</string>
+  <!-- UNISOC AndroidQ Feature Porting: bug1072659 Add feature of low battery for Reliance -->
+  <string name="low_battery_warning_title">"Low Battery Warning"</string>
+  <string name="low_battery_warning_message">"Your battery level is below 15%.Do you want to continue with the video call or covert to voice call?"</string>
+  <string name="low_battery_continue_video_call">"Yes"</string>
+  <string name="low_battery_convert_to_voice_call">"Convert"</string>
+  <!-- UNISOC: bug1110945 DUT shows abnormal behaviour with calllog items in mentioned scenario. -->
+  <string name="call_cannot_be_sent">Call cannot be sent</string>
+  <!-- UNISOC: Modify for bug1131060 -->
+  <string name="activity_not_security">No access rights for this application.</string>
 </resources>

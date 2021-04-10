@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Rrëshqite nga ikona për t\'u përgjigjur si telefonatë me audio</string>
   <string name="call_incoming_default_label_answer_and_release_second">Rrëshqit shpejt lart për t\'u përgjigjur dhe për të vendosur në pritje telefonatën në vazhdim</string>
   <string name="call_incoming_default_label_answer_and_release_third">Rrëshqit shpejt lart për t\'u përgjigjur dhe për të mbyllur telefonatën në pritje</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Rrëshqite lart për t\'u përgjigjur dhe për të mbyllur thirrjen aktive"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Rrëshqit shpejt nga ikona për t\'u përgjigjur dhe për të mbyllur telefonatën në vazhdim</string>
   <string name="call_incoming_message_custom">Shkruaj tënden…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Shkruaj tënden…</string>

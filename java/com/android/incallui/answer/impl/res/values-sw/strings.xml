@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Telezesha kidole ukianzia kwenye aikoni ili uijibu kama simu ya sauti</string>
   <string name="call_incoming_default_label_answer_and_release_second">Telezesha kidole ili upokee na usitishe kidogo simu inayoendelea</string>
   <string name="call_incoming_default_label_answer_and_release_third">Telezesha kidole ili upokee na ukate simu iliyositishwa</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Telezesha juu ili kujibu na kukatisha simu inayoendelea"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Telezesha kidole ukianzia kwenye aikoni ili ujibu na ukate simu inayoendelea</string>
   <string name="call_incoming_message_custom">Andika yako mwenyewe…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Andika yako mwenyewe…</string>

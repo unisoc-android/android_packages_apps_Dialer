@@ -25,6 +25,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteStatement;
+import android.database.sqlite.SQLiteFullException;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.provider.ContactsContract;
@@ -53,6 +54,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import android.net.Uri.Builder;
+import android.provider.CallLog;
+import android.provider.CallLog.Calls;
+import com.google.common.collect.Lists;
+import android.util.Log;
 
 /**
  * Database helper for smart dial. Designed as a singleton to make sure there is only one access
@@ -90,6 +96,16 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
   private final DialerFutureSerializer dialerFutureSerializer = new DialerFutureSerializer();
 
   private boolean isTestInstance = false;
+
+  /* UNISOC: Matching callLog when search in dialpad bug478742 @{*/
+  private static final String LIMIT_PARAM_KEY = "limit";
+  private static final String LIMIT_PRARAM_VALUE = "500";
+  public static final String DISPLAY_ACCOUNT_TYPE = "account_type";
+  public static final String DISPLAY_ACCOUNT_NAME = "account_name";
+  /* @} */
+
+  // UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD
+  private static final String NEED_STRIP_COUNTRY_CODE = "need_strip_country_code";
 
   protected DialerDatabaseHelper(Context context, String databaseName, int dbVersion) {
     super(context, databaseName, null, dbVersion);
@@ -605,9 +621,19 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
       }
 
       db.setTransactionSuccessful();
-    } finally {
-      db.endTransaction();
-    }
+      /* unisoc: add for bug1091853 @{ */
+      } catch (SQLiteFullException e) {
+        Log.w(TAG, "database or disk is full.");
+      } finally {
+        try {
+          db.endTransaction();
+        } catch (SQLiteFullException e) {
+          Log.w(TAG, "database or disk is full.");
+        } catch (RuntimeException e) {
+          e.printStackTrace();
+        }
+      /* @} */
+      }
   }
 
   /**
@@ -1019,6 +1045,111 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
     return result;
   }
 
+  /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
+  public static class DialMatchInfo extends ContactNumber {
+    public static final int TYPE_CALLLOG = 0;
+    public static final int TYPE_CONTACT = 1;
+    public int itemType;
+    public long callsDate = 0;
+    public int callsType = 0;
+    public String callsCachedLookupUri;
+
+    public DialMatchInfo(long id, long dataID, String displayName, String phoneNumber,
+                         String lookupKey, long photoId, int carrierPresence, String accountType,
+                         String accountName, boolean isCallLog, long callLogDate, int callLogType,
+                         String cachedLookupUri) {
+      super(id, dataID, displayName, phoneNumber, lookupKey, photoId, carrierPresence,
+              accountType, accountName);
+      itemType = isCallLog ? 0 : 1;
+      callsDate = callLogDate;
+      callsType = callLogType;
+      callsCachedLookupUri = cachedLookupUri;
+    }
+
+    @Override
+    public int hashCode() {
+      return com.google.common.base.Objects.hashCode(id, dataId, displayName, phoneNumber,
+              lookupKey, photoId, carrierPresence, itemType, callsDate, callsType,
+              callsCachedLookupUri);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+      if (object instanceof DialMatchInfo && super.equals(object)) {
+        DialMatchInfo that = (DialMatchInfo) object;
+        return com.google.common.base.Objects.equal(this.itemType, that.itemType);
+      }
+
+      return false;
+    }
+  }
+
+  public ArrayList<DialMatchInfo> getLooseMatchesForDialMatchInfo(
+          String query, SmartDialNameMatcher nameMatcher) {
+    /* UNISOC: modify for bug1255617 @{ */
+    Cursor cursor;
+    /* @} */
+    final ArrayList<DialMatchInfo> result = Lists.newArrayList();
+
+    if (!TextUtils.isEmpty(query)) {
+      /** If need to match call logs and contacts, then use this partion. */
+      // UNISOC: add for bug651664
+      // UNISOC: Bug 1072630 androidq porting feature for FEATURE_MATCH_COUNTRY_CODE_IN_DIALPAD
+      /* UNISOC: modify for bug1255617 @{ */
+      try {
+        Builder builder = Uri.parse(CallLog.Calls.CONTENT_URI + "/callabledialmatch")
+              .buildUpon()
+              .appendQueryParameter(LIMIT_PARAM_KEY, LIMIT_PRARAM_VALUE)
+              .appendQueryParameter(NEED_STRIP_COUNTRY_CODE,
+                        "" + SmartDialNameMatcher.isNeedstripCountryCode());
+        Uri uri = builder.appendPath(query).build();
+        cursor = context.getContentResolver().query(uri, PhoneQuery.DIALMATCH_PROJECTION,
+              null, null, PhoneQuery.ITEM_TYPE);
+      } catch (SecurityException e) {
+         cursor = null;
+      }
+      /* @} */
+    } else {
+      cursor = null;
+    }
+    if (cursor == null) {
+      LogUtil.d(TAG, "cursor is null");
+      return result;
+    }
+
+    try {
+      while ((cursor.moveToNext())) {
+        final long dataId = cursor.getLong(PhoneQuery.DIALMATCH_PHONE_ID);
+        final String displayName = cursor.getString(PhoneQuery.DIALMATCH_DISPLAY_NAME);
+        final long photoId = cursor.getLong(PhoneQuery.DIALMATCH_PHOTO_ID);
+        final String phoneNumber = cursor.getString(PhoneQuery.DIALMATCH_PHONE_NUMBER);
+        final long contactId = cursor.getLong(PhoneQuery.DIALMATCH_PHONE_CONTACT_ID);
+        final String lookupKey = cursor.getString(PhoneQuery.DIALMATCH_PHONE_LOOKUP_KEY);
+        final long item_type = cursor.getLong(PhoneQuery.DIALMATCH_ITEM_TYPE);
+        final long calls_date = cursor.getLong(PhoneQuery.DIALMATCH_CallS_DATE);
+        final int calls_type = cursor.getInt(PhoneQuery.DIALMATCH_CallS_TYPE);
+        final int carrierPresence = cursor.getInt(PhoneQuery.DIALMATCH_DATA_CARRIER_PRESENCE);
+        final String accountType = cursor.getString(PhoneQuery.DIALMATCH_DISPLAY_ACCOUNT_TYPE);
+        final String accountName = cursor.getString(PhoneQuery.DIALMATCH_DISPLAY_ACCOUNT_NAME);
+        final String lookupUri = cursor.getString(PhoneQuery.DIALMATCH_CALLS_CACHED_LOOKUP_URI);
+
+        if (item_type == DialMatchInfo.TYPE_CALLLOG) {
+          result.add(new DialMatchInfo(contactId, dataId, displayName, phoneNumber,
+                  lookupKey, photoId, carrierPresence, accountType, accountName, true,
+                  calls_date,
+                  calls_type, lookupUri));
+        } else {
+          result.add(new DialMatchInfo(contactId, dataId, displayName, phoneNumber,
+                  lookupKey, photoId, carrierPresence, accountType, accountName, false,
+                  0, 0, null));
+        }
+      }
+    } finally {
+      cursor.close();
+    }
+    return result;
+  }
+  /* @} */
   public interface Tables {
 
     /** Saves a list of numbers to be blocked. */
@@ -1074,7 +1205,9 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
                 ContactsContract.DIRECTORY_PARAM_KEY, String.valueOf(Directory.DEFAULT))
             .appendQueryParameter(ContactsContract.REMOVE_DUPLICATE_ENTRIES, "true")
             .build();
-
+    /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
+    static final String ITEM_TYPE = "item_type";
+    /* @} */
     String[] PROJECTION =
         new String[] {
           Phone._ID, // 0
@@ -1093,6 +1226,37 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
           Data.IS_PRIMARY, // 13
           Data.CARRIER_PRESENCE, // 14
         };
+
+    /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
+    public static final String[] DIALMATCH_PROJECTION = new String[] {
+            Phone._ID,//0
+            Phone.DISPLAY_NAME,//1
+            Phone.PHOTO_ID,//2
+            Phone.NUMBER,//3
+            Phone.CONTACT_ID,//4
+            Phone.LOOKUP_KEY,//5
+            ITEM_TYPE,//6
+            Calls.DATE,//7
+            Calls.TYPE,//8
+            Data.CARRIER_PRESENCE,//9
+            DISPLAY_ACCOUNT_TYPE, // 10
+            DISPLAY_ACCOUNT_NAME, // 11
+            Calls.CACHED_LOOKUP_URI, // 12
+    };
+    int DIALMATCH_PHONE_ID = 0;
+    int DIALMATCH_DISPLAY_NAME = 1;
+    int DIALMATCH_PHOTO_ID = 2;
+    int DIALMATCH_PHONE_NUMBER = 3;
+    int DIALMATCH_PHONE_CONTACT_ID = 4;
+    int DIALMATCH_PHONE_LOOKUP_KEY = 5;
+    int DIALMATCH_ITEM_TYPE = 6;
+    int DIALMATCH_CallS_DATE = 7;
+    int DIALMATCH_CallS_TYPE = 8;
+    int DIALMATCH_DATA_CARRIER_PRESENCE = 9;
+    int DIALMATCH_DISPLAY_ACCOUNT_TYPE = 10;
+    int DIALMATCH_DISPLAY_ACCOUNT_NAME = 11;
+    int DIALMATCH_CALLS_CACHED_LOOKUP_URI = 12;
+    /* @} */
 
     int PHONE_ID = 0;
     int PHONE_TYPE = 1;
@@ -1245,6 +1409,9 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
     public final String lookupKey;
     public final long photoId;
     public final int carrierPresence;
+    /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
+    public final String accountType;
+    public final String accountName;
 
     public ContactNumber(
         long id,
@@ -1261,7 +1428,24 @@ public class DialerDatabaseHelper extends SQLiteOpenHelper {
       this.lookupKey = lookupKey;
       this.photoId = photoId;
       this.carrierPresence = carrierPresence;
+      this.accountType = null;
+      this.accountName = null;
     }
+
+    public ContactNumber(long id, long dataID, String displayName, String phoneNumber,
+                         String lookupKey, long photoId, int carrierPresence, String accountType,
+                         String accountName) {
+      this.dataId = dataID;
+      this.id = id;
+      this.displayName = displayName;
+      this.phoneNumber = phoneNumber;
+      this.lookupKey = lookupKey;
+      this.photoId = photoId;
+      this.carrierPresence = carrierPresence;
+      this.accountType = accountType;
+      this.accountName = accountName;
+    }
+    /* @} */
 
     @Override
     public int hashCode() {

@@ -57,13 +57,14 @@ public class OnHoldFragment extends Fragment {
     SecondaryInfo secondaryInfo = getArguments().getParcelable(ARG_INFO);
     secondaryInfo = Assert.isNotNull(secondaryInfo);
 
+    // UNISOC: modify for bug1174366
     ((TextView) view.findViewById(R.id.hold_contact_name))
         .setText(
-            secondaryInfo.nameIsNumber()
-                ? PhoneNumberUtils.createTtsSpannable(
+            /*secondaryInfo.nameIsNumber()
+                ? */PhoneNumberUtils.createTtsSpannable(
                     BidiFormatter.getInstance()
                         .unicodeWrap(secondaryInfo.name(), TextDirectionHeuristics.LTR))
-                : secondaryInfo.name());
+                /*: secondaryInfo.name()*/);
     ((ImageView) view.findViewById(R.id.hold_phone_icon))
         .setImageResource(
             secondaryInfo.isVideoCall()

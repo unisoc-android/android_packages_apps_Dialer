@@ -30,6 +30,7 @@ import android.util.ArraySet;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import java.util.Set;
+import android.graphics.Color;
 
 /** Creates all notification channels for Dialer. */
 @TargetApi(VERSION_CODES.O)
@@ -151,6 +152,10 @@ public final class NotificationChannelManager {
     channel.setShowBadge(true);
     channel.enableLights(true);
     channel.enableVibration(true);
+    /** UNISOC AndroidQ Feature Porting: bug1072642 missed call notification RGB light feature. @{ */
+    channel.setLightColor(Color.BLUE);
+    /** @} */
+
     channel.setSound(
         null, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
     context.getSystemService(NotificationManager.class).createNotificationChannel(channel);

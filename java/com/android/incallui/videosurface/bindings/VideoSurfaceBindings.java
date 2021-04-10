@@ -41,4 +41,10 @@ public class VideoSurfaceBindings {
       TextureView textureView, int videoWidth, int videoHeight) {
     VideoScale.scaleVideoMaintainingAspectRatio(textureView, videoWidth, videoHeight);
   }
+  /* UNISOC: bug1146954@{ */
+  public static void scaleVideoMaintainingAspectRatioWithRot(
+          TextureView textureView, float videoWidth, float videoHeight, float rotationDegrees) {
+    VideoScale.scaleVideoMaintainingAspectRatioWithRot(textureView, videoWidth, videoHeight, rotationDegrees);
+  }
+  /*@}*/
 }

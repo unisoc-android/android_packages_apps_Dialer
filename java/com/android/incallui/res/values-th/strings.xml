@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT ช่วยเหลือผู้โทรที่หูหนวก ได้ยินไม่ชัด มีความบกพร่องในการพูด หรือต้องการการสื่อสารที่นอกเหนือจากเสียงพูด</string>
   <string name="rtt_button_decline_request">ไม่เป็นไร</string>
   <string name="rtt_button_accept_request">เข้าร่วม RTT</string>
+  <string name="notification_action_answer_voice">"เสียง"</string>
+  <string name="notification_action_mute_on">"ปิดเสียง"</string>
+  <string name="notification_action_mute_off">"ยกเลิกการปิดเสียง"</string>
+  <string name="notification_action_reject_with_message">"ปฏิเสธ SMS"</string>
+  <string name="card_title_in_call">"กำลังใช้สาย"</string>
+  <string name="card_title_conf_call">"การประชุมสาย"</string>
+  <string name="fail_change_video_due_to_bgcall">"นี่เป็นการโทรในเบื้องหลัง ไม่สามารถเปลี่ยนการโทรในปัจจุบันไปยังการโทรผ่านวิดีโอได้"</string>
 </resources>

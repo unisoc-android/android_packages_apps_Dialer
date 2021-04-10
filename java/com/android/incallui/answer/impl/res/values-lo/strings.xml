@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ປັດຈາກໄອຄອນເພື່ອຮັບສາຍ</string>
   <string name="call_incoming_default_label_answer_and_release_second">ປັດຂຶ້ນເພື່ອຮັບສາຍ ແລະ ພັກສາຍທີ່ກຳລັງໂທອອກໄວ້ກ່ອນ</string>
   <string name="call_incoming_default_label_answer_and_release_third">ປັດຂຶ້ນເພື່ອຮັບສາຍ ແລະ ວາງສາຍທີ່ກຳລັງພັກຢູ່</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"ປັດຂຶ້ນເພື່ອຮັບ ແລະ ວາງສາຍທີ່ສົນທະນາຢູ່"</string>
   <string name="call_incoming_swipe_to_answer_and_release">ປັດຈາກໄອຄອນເພື່ອຮັບສາຍ ແລະ ວາງສາຍທີ່ກຳລັງໂທອອກ</string>
   <string name="call_incoming_message_custom">ຂຽນຂໍ້ຄວາມຂອງທ່ານເອງ...</string>
   <string name="call_incoming_respond_via_sms_custom_message">ຂຽນຂໍ້ຄວາມຂອງທ່ານເອງ...</string>

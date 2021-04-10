@@ -128,7 +128,7 @@
   <string name="description_clear_search">Очистить условия поиска</string>
   <string name="select_account_dialog_title">Аккаунт</string>
   <string name="set_default_account">Всегда использовать для звонков</string>
-  <string name="select_phone_account_for_calls">Выберите SIM-карту для вызова</string>
+  <string name="select_phone_account_for_calls">Использовать SIM-карту</string>
   <string name="select_phone_account_for_calls_remember">Запомнить выбор</string>
   <string name="call_with_a_note">Написать сообщение абоненту</string>
   <string name="call_subject_hint">Введите текст…</string>

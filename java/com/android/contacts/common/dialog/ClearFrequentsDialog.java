@@ -52,6 +52,12 @@ public class ClearFrequentsDialog extends DialogFragment {
               return;
             }
 
+            /** UNISOC: Modify for Bug1103285  @{*/
+            if (getActivity() == null || isDetached()) {
+                return;
+            }
+            /** @} */
+
             final ProgressDialog progressDialog =
                 ProgressDialog.show(
                     getContext(),
@@ -71,7 +77,13 @@ public class ClearFrequentsDialog extends DialogFragment {
 
                   @Override
                   protected void onPostExecute(Void result) {
-                    progressDialog.dismiss();
+                     /** UNISOC: Bug1082658 catch java.lang.IllegalArgumentException to avoid to crash @{*/
+                     try {
+                         progressDialog.dismiss();
+                     } catch (IllegalArgumentException e) {
+                         e.printStackTrace();
+                     }
+                     /** @} */
                   }
                 };
             task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);

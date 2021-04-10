@@ -126,7 +126,12 @@ public class PostCall {
           Logger.get(activity)
               .logImpression(
                   DialerImpression.Type.POST_CALL_PROMPT_USER_TO_VIEW_SENT_MESSAGE_CLICKED);
-          Intent intent = IntentUtil.getSendSmsIntent(number);
+          /** UNISOC: Bug1089904 Device will show conversation list rather than thread list when click "view" button from dialer. @{ */
+          //Intent intent = IntentUtil.getSendSmsIntent(number);
+          Intent intent = new Intent(Intent.ACTION_MAIN);
+          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          intent.addCategory(Intent.CATEGORY_APP_MESSAGING);
+          /** @} */
           DialerUtils.startActivityWithErrorToast(activity, intent);
         };
 

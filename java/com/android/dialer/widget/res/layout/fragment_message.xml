@@ -58,6 +58,7 @@
       android:textCursorDrawable="@drawable/edittext_custom_cursor"
       android:layout_toStartOf="@+id/count_and_send_container"
       android:inputType="textShortMessage|textCapSentences"
+      android:maxLength="160"
       android:imeOptions="flagNoExtractUi|actionSend"/>
 
     <LinearLayout

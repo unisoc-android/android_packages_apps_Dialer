@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">Vastaa äänipuheluna pyyhkäisemällä kuvaketta.</string>
   <string name="call_incoming_default_label_answer_and_release_second">Laita nykyinen puhelu pitoon ja vastaa saapuvaan puheluun pyyhkäisemällä ylös</string>
   <string name="call_incoming_default_label_answer_and_release_third">Lopeta nykyinen puhelu ja vastaa saapuvaan puheluun pyyhkäisemällä ylös</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"Vastaa ja lopeta käynnissä oleva puhelu pyyhkäisemällä ylös"</string>
   <string name="call_incoming_swipe_to_answer_and_release">Vastaa puheluun ja lopeta nykyinen puhelu pyyhkäisemällä kuvakkeesta.</string>
   <string name="call_incoming_message_custom">Kirjoita oma…</string>
   <string name="call_incoming_respond_via_sms_custom_message">Kirjoita oma…</string>

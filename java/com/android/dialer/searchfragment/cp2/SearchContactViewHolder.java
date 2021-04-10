@@ -46,6 +46,9 @@ import com.android.dialer.searchfragment.common.SearchCursor;
 import com.android.dialer.widget.BidiTextView;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import com.android.dialer.database.DialerDatabaseHelper.DialMatchInfo;
+import com.android.dialer.util.UriUtils;
+import com.android.dialer.util.CallUtil;
 
 /** ViewHolder for a contact row. */
 public final class SearchContactViewHolder extends ViewHolder implements OnClickListener {
@@ -105,12 +108,21 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
                 com.android.dialer.contacts.resources.R.string.call_subject_type_and_number,
                 label,
                 number);
-
     nameOrNumberView.setText(QueryBoldingUtil.getNameWithQueryBolded(query, name, context));
     numberView.setText(QueryBoldingUtil.getNumberWithQueryBolded(query, secondaryInfo));
     setCallToAction(cursor, query);
-
-    if (shouldShowPhoto(cursor)) {
+    /* UNISOC: Matching callLog when search in dialpad bug478742 @{ */
+    int itemTypeIndex = cursor.getColumnIndex("item_type");
+    long itemType = 1;// view contact by default
+    if (itemTypeIndex != -1) {
+       itemType = cursor.getLong(itemTypeIndex);
+    }
+    if (itemType == DialMatchInfo.TYPE_CALLLOG) {
+        photo.setVisibility(View.VISIBLE);
+        nameOrNumberView.setVisibility(View.VISIBLE);
+        photo.setImageResource(R.drawable.calllog_item_img);
+        photo.assignContactUri(UriUtils.parseUriOrNull(cursor.getString(Projections.LOOKUP_KEY)));
+    } else if (shouldShowPhoto(cursor)) {
       nameOrNumberView.setVisibility(View.VISIBLE);
       photo.setVisibility(View.VISIBLE);
       String photoUri = cursor.getString(Projections.PHOTO_URI);
@@ -126,6 +138,7 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
       nameOrNumberView.setVisibility(View.GONE);
       photo.setVisibility(View.INVISIBLE);
     }
+    /* @} */
   }
 
   // Show the contact photo next to only the first number if a contact has multiple numbers
@@ -196,9 +209,12 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
       Context context, SearchCursor cursor, String query) {
     int carrierPresence = cursor.getInt(Projections.CARRIER_PRESENCE);
     String number = cursor.getString(Projections.PHONE_NUMBER);
-    if ((carrierPresence & Phone.CARRIER_PRESENCE_VT_CAPABLE) == 1) {
+    /**UNISOC:modify for the bug 1100498  @{*/
+    if (((carrierPresence & Phone.CARRIER_PRESENCE_VT_CAPABLE) == 1)
+            && CallUtil.isVideoEnabled(context)) {
       return CallToAction.VIDEO_CALL;
     }
+    /*@}*/
 
     if (DuoComponent.get(context).getDuo().isReachable(context, number)) {
       return CallToAction.DUO_CALL;

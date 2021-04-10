@@ -109,6 +109,15 @@
           app:autoResizeText_minTextSize="@dimen/answer_contact_name_min_size"
           tools:ignore="Deprecated"
           tools:text="Jake Peralta"/>
+      <!-- UNISOC Feature: MT conference call.  -->
+      <TextView
+          android:id="@+id/contactgrid_contact_number"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_gravity="center_horizontal"
+          android:singleLine="true"
+          android:textAppearance="@style/Dialer.Incall.TextAppearance"
+          tools:gravity="center"/>
 
       <include
           android:id="@id/contactgrid_bottom_row"
@@ -117,6 +126,15 @@
           android:layout_height="wrap_content"
           android:layout_marginStart="24dp"
           android:layout_marginEnd="24dp"/>
+      <!-- UNISOC Feature Porting: Display caller address for phone number feature. @{ -->
+      <TextView
+          android:id="@+id/geocode"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:textAllCaps="true"
+          android:layout_gravity="center"
+          android:textAppearance="@style/Dialer.Incall.TextAppearance" />
+      <!-- @} -->
 
       <!-- TODO(a bug): textColorPrimary or textColorPrimaryInverse? -->
       <TextView

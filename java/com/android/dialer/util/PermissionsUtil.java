@@ -136,8 +136,13 @@ public class PermissionsUtil {
   }
 
   public static boolean hasPermission(Context context, String permission) {
+    /* UNISOC: modify for bug1200077 @{ */
+    if (context == null) {
+      return false;
+    }
     return ContextCompat.checkSelfPermission(context, permission)
         == PackageManager.PERMISSION_GRANTED;
+    /* @} */
   }
 
   /**

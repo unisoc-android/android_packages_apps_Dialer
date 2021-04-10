@@ -30,6 +30,8 @@ import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionInfo;
 import android.view.MenuItem;
 import android.widget.Toast;
 import com.android.dialer.about.AboutPhoneFragment;
@@ -44,6 +46,11 @@ import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.voicemail.settings.VoicemailSettingsFragment;
 import com.android.voicemail.VoicemailClient;
 import java.util.List;
+import com.android.ims.ImsManager;
+import com.android.incallui.sprd.InCallUiUtils;
+import com.android.incallui.sprd.settings.CallRecordingSettingsFragment;
+import com.android.incallui.sprd.settings.CallConnectionSettingsFragment;
+import static android.Manifest.permission.READ_PHONE_STATE;
 
 /** Activity for dialer settings. */
 @SuppressWarnings("FragmentInjection") // Activity not exported
@@ -53,6 +60,19 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
   protected SharedPreferences preferences;
   private boolean migrationStatusOnBuildHeaders;
   private List<Header> headers;
+  /** UNISOC:bug1072678 FAST DIAL FEATURE @{ */
+  private static final String FASTDIAL_ACTION = "android.callsettings.action.FASTDIAL";
+  private static final String FASTDIAL_PACKAGE_NAME = "com.android.dialer";
+  private static final String FASTDIAL_CLASS_NAME =
+          "com.android.dialer.app.fastdial.FastDialSettingActivity";
+  /** @} */
+  /**UNISOC: bug1084295 callforward button is disable @{ */
+  public static final String SUB_ID_EXTRA =
+          "com.android.phone.settings.SubscriptionInfoHelper.SubscriptionId";
+  /**@}*/
+
+  //UNISOC: add for bug1163964(bug893265)
+  private SubscriptionManager mSubscriptionManager;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +94,8 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
         }
       }
     }
+    //UNISOC: add for bug1163964(bug893265)
+    mSubscriptionManager = SubscriptionManager.from(this);
   }
 
   @Override
@@ -86,6 +108,8 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
     if (migrationStatusOnBuildHeaders != FilteredNumberCompat.hasMigratedToNewBlocking(this)) {
       invalidateHeaders();
     }
+    //UNISOC: add for bug1163964(bug893265)
+    mSubscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
   }
 
   @Override
@@ -100,10 +124,12 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
       target.add(displayOptionsHeader);
     }
 
+    /* UNISOC AndroidQ Feature Porting: bug1073146 remove sounds_and_vibration option in dialer settings @{
     Header soundSettingsHeader = new Header();
     soundSettingsHeader.titleRes = R.string.sounds_and_vibration_title;
     soundSettingsHeader.id = R.id.settings_header_sounds_and_vibration;
     target.add(soundSettingsHeader);
+    @} */
 
     Header quickResponseSettingsHeader = new Header();
     Intent quickResponseSettingsIntent =
@@ -122,6 +148,12 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
       Header callSettingsHeader = new Header();
       Intent callSettingsIntent = new Intent(TelecomManager.ACTION_SHOW_CALL_SETTINGS);
       callSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+      /**UNISOC: bug1084295 callforward button is disable @{ */
+      int[] subId = SubscriptionManager.getSubId(0);
+      if (subId != null && subId.length > 0 && subId[0] >= 0) {
+        callSettingsIntent.putExtra(SUB_ID_EXTRA, subId[0]);
+      }
+      /**@}*/
 
       callSettingsHeader.titleRes = R.string.call_settings_label;
       callSettingsHeader.intent = callSettingsIntent;
@@ -135,16 +167,29 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
       phoneAccountSettingsHeader.intent = phoneAccountSettingsIntent;
       target.add(phoneAccountSettingsHeader);
     }
+    /* UNISOC: Modify for Bug1072695. @{
     if (FilteredNumberCompat.canCurrentUserOpenBlockSettings(this)) {
       Header blockedCallsHeader = new Header();
       blockedCallsHeader.titleRes = R.string.manage_blocked_numbers_label;
       blockedCallsHeader.intent = FilteredNumberCompat.createManageBlockedNumbersIntent(this);
       target.add(blockedCallsHeader);
       migrationStatusOnBuildHeaders = FilteredNumberCompat.hasMigratedToNewBlocking(this);
-    }
+    }*/
 
     addVoicemailSettings(target, isPrimaryUser);
-
+    /** UNISOC AndroidQ Feature Porting: bug1072989 add for feature to set video call meeting photo @{*/
+    boolean isSupportVideoMeeting = getResources().getBoolean(
+            R.bool.config_show_video_meeting_photo);
+    if (PermissionsUtil.hasPermission(this, READ_PHONE_STATE)
+        && ImsManager.isVolteEnabledByPlatform(this) && isSupportVideoMeeting) {
+      Header videoPhotoSettingsHeader = new Header();
+      videoPhotoSettingsHeader.titleRes = R.string.video_photo_select_title;
+      videoPhotoSettingsHeader.fragment
+              = VideoCallMeetingPhotoSettingsFragment.class.getName();
+      videoPhotoSettingsHeader.id = R.id.settings_video_photo_select;
+      target.add(videoPhotoSettingsHeader);
+    }
+    /** @} */
     if (isPrimaryUser
         && (TelephonyManagerCompat.isTtyModeSupported(telephonyManager)
             || TelephonyManagerCompat.isHearingAidCompatibilitySupported(telephonyManager))) {
@@ -178,6 +223,63 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
       aboutPhoneHeader.fragment = AboutPhoneFragment.class.getName();
       target.add(aboutPhoneHeader);
     }
+
+    /** UNISOC:bug1072678 FAST DIAL FEATURE @{ */
+    if (isPrimaryUser) {
+      Header fastDialSettingsHeader = new Header();
+      Intent fastDialSettingsIntent = new Intent(FASTDIAL_ACTION);
+      fastDialSettingsIntent.setClassName(FASTDIAL_PACKAGE_NAME, FASTDIAL_CLASS_NAME);
+      fastDialSettingsHeader.titleRes = R.string.fast_dial_title;
+      fastDialSettingsHeader.intent = fastDialSettingsIntent;
+      target.add(fastDialSettingsHeader);
+    }
+    /** @} */
+
+    /** UNISOC AndroidQ Feature Porting: bug1072941 Automatic record. && Add switch for automatic record feature. @{ */
+    /*  UNISOC AndroidQ Feature Porting: bug1072960 Hide recorder feature for telstra case */
+    if (isPrimaryUser && PermissionsUtil.hasPermission(this, READ_PHONE_STATE)
+            && InCallUiUtils.isSupportAutomaticCallRecord(this)
+            && InCallUiUtils.isRecorderEnabled(this)) {
+      Header recordSettingsHeader = new Header();
+      recordSettingsHeader.titleRes = R.string.call_recording_setting_title;
+      recordSettingsHeader.fragment = CallRecordingSettingsFragment.class.getName();
+      target.add(recordSettingsHeader);
+    }
+    /** @} */
+    /* UNISOC Feature Porting:FL0108020021 Vibrate when call connected or disconnected feature. @{ */
+    if (PermissionsUtil.hasPermission(this, READ_PHONE_STATE) && isPrimaryUser
+            && InCallUiUtils.isSupportVibrateForCallConnectionFeature(this) ) {
+      Header callConnectionSettingsHeader = new Header();
+      callConnectionSettingsHeader.titleRes =
+              R.string.vibration_feedback_for_call_connection_setting_title;
+      callConnectionSettingsHeader.fragment =
+              CallConnectionSettingsFragment.class.getName();
+      target.add(callConnectionSettingsHeader);
+    }
+    /* @} */
+  /* UNISOC Feature Porting: Flip to silence from incoming calls. @{ */
+    if(PermissionsUtil.hasPermission(this, READ_PHONE_STATE) &&
+            !InCallUiUtils.isSupportFlipToMute(this) && isPrimaryUser
+            && InCallUiUtils.isFlipToSilentCallEnabled(this)) {
+      Header incomingCallsFlippingSilenceSettingsHeader = new Header();
+      incomingCallsFlippingSilenceSettingsHeader.titleRes =
+              R.string.incomingcall_flipping_silence_title;
+      incomingCallsFlippingSilenceSettingsHeader.intent = InCallUiUtils
+              .getIntentForStartingActivity(InCallUiUtils.FLAG_SILENT_FLIPING);
+      target.add(incomingCallsFlippingSilenceSettingsHeader);
+    }
+    /* @} */
+    /* UNISOC Feature Porting: Fade in ringer volume when incoming calls. @{ */
+    if (!InCallUiUtils.isSupportSensorHub(getApplicationContext())
+            && PermissionsUtil.hasPermission(this, READ_PHONE_STATE)
+            && isPrimaryUser && InCallUiUtils.isFadeInRingerEnabled(this)) {
+      Header fadeInSettingsHeader = new Header();
+      fadeInSettingsHeader.titleRes = R.string.fade_in_title;
+      fadeInSettingsHeader.intent = InCallUiUtils
+              .getIntentForStartingActivity(InCallUiUtils.FLAG_FADE_IN);
+      target.add(fadeInSettingsHeader);
+    }
+    /* @} */
   }
 
   private void addVoicemailSettings(List<Header> target, boolean isPrimaryUser) {
@@ -196,6 +298,15 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
       LogUtil.i("DialerSettingsActivity.addVoicemailSettings", "Missing READ_PHONE_STATE");
       return;
     }
+
+    /** UNISOC: add for bug1086094 When there is no sim card, the call settings should not display the voicemail menu. @{*/
+    List<SubscriptionInfo> subscriptionInfos
+            = SubscriptionManager.from(this).getActiveSubscriptionInfoList();
+    if (subscriptionInfos == null || subscriptionInfos.size() < 1) {
+      LogUtil.i("DialerSettingsActivity.addVoicemailSettings", "no active subcriptioninfo");
+      return;
+    }
+    /**@}*/
 
     LogUtil.i("DialerSettingsActivity.addVoicemailSettings", "adding voicemail settings");
     Header voicemailSettings = new Header();
@@ -242,7 +353,9 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
       if (phoneAccount == null) {
         continue;
       }
-      if (phoneAccount.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)) {
+      // UNISOC: modify for bug1162990(bug719145)
+      if (phoneAccount != null &&
+              phoneAccount.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)) {
         LogUtil.i(
             "DialerSettingsActivity.getSoleSimAccount", phoneAccountHandle + " is a SIM account");
         if (result != null) {
@@ -254,10 +367,12 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
     return result;
   }
 
+  /** UNISOC: bug1084237 remove aosp help menu @{*/
   /** Whether "about" should be shown in settings. Override to hide about. */
   public boolean showAbout() {
-    return true;
+    return false;
   }
+  /**@}*/
 
   /**
    * Returns {@code true} or {@code false} based on whether the display options setting should be
@@ -326,4 +441,20 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
   private boolean isPrimaryUser() {
     return getSystemService(UserManager.class).isSystemUser();
   }
+
+  /* UNISOC: add for bug1163964(bug893265) @{ */
+  private final SubscriptionManager.OnSubscriptionsChangedListener mOnSubscriptionsChangeListener
+          = new SubscriptionManager.OnSubscriptionsChangedListener() {
+    @Override
+    public void onSubscriptionsChanged() {
+      invalidateHeaders();
+    }
+  };
+
+  @Override
+  protected void onPause() {
+    super.onPause();
+    mSubscriptionManager.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
+  }
+  /* @} */
 }

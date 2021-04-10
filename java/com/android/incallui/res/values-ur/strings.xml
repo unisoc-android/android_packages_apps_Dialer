@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">‏RTT ایسے کالرز کی معاونت کرتا ہے جو بہرے ہیں، اونچا سنتے ہیں، بولنے سے معزور ہیں یا ان کیلئے صرف آواز ہی کافی نہیں ہے۔</string>
   <string name="rtt_button_decline_request">نہیں شکریہ</string>
   <string name="rtt_button_accept_request">‏RTT میں شامل ہوں</string>
+  <string name="notification_action_answer_voice">"آواز"</string>
+  <string name="notification_action_mute_on">"خاموش کریں"</string>
+  <string name="notification_action_mute_off">"خاموشی ختم کریں"</string>
+  <string name="notification_action_reject_with_message">"ایس ایم ایس رد کریں"</string>
+  <string name="card_title_in_call">"کال میں"</string>
+  <string name="card_title_conf_call">"کانفرنس کال"</string>
+  <string name="fail_change_video_due_to_bgcall">"پس منظر کال ہے، موجودہ کال کو ویڈیو کال میں تبدیل کرنے میں ناکام."</string>
 </resources>

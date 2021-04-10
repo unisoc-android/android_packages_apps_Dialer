@@ -38,6 +38,7 @@ import com.android.contacts.common.ContactTileLoaderFactory;
 import com.android.contacts.common.list.ContactEntry;
 import com.android.contacts.common.list.ContactTileView;
 import com.android.dialer.app.R;
+import com.android.dialer.app.sprd.telcel.DialerTelcelHelper;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.contactphoto.ContactPhotoManager;
 import com.android.dialer.contacts.ContactsComponent;
@@ -234,7 +235,14 @@ public class PhoneFavoritesTileAdapter extends BaseAdapter implements OnDragDrop
         final String photoUri = cursor.getString(photoUriColumn);
         final String lookupKey = cursor.getString(lookupKeyColumn);
         final int pinned = cursor.getInt(pinnedColumn);
-        final String name = cursor.getString(nameColumn);
+
+        /** UNISOC: add for Bug 966722 show fdn name in favourite contact list @{ */
+        final String phoneNumber = cursor.getString(phoneNumberColumn);
+        String name = cursor.getString(nameColumn);
+        name = DialerTelcelHelper.getInstance()
+                .queryFdnCacheForAllSubs(context, phoneNumber, name);
+        /**}@ */
+
         final String nameAlternative = cursor.getString(nameAlternativeColumn);
         final boolean isStarred = cursor.getInt(starredColumn) > 0;
         final boolean isDefaultNumber = cursor.getInt(isDefaultNumberColumn) > 0;
@@ -261,7 +269,10 @@ public class PhoneFavoritesTileAdapter extends BaseAdapter implements OnDragDrop
         final String phoneNumberCustomLabel = cursor.getString(phoneLabelColumn);
         contact.phoneLabel =
             (String) Phone.getTypeLabel(resources, phoneNumberType, phoneNumberCustomLabel);
-        contact.phoneNumber = cursor.getString(phoneNumberColumn);
+
+        /** UNISOC: add for Bug 966722 show fdn name in favourite contact list @{ */
+        contact.phoneNumber = phoneNumber;
+        /**}@ */
 
         contact.pinned = pinned;
         contactEntries.add(contact);

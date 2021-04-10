@@ -61,6 +61,8 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
   private final TextView assistedDialingInternationalDirectDialCodeAndCountryCodeText;
   private final RelativeLayout assistedDialingContainer;
 
+  private DialerContact contact;
+
   private final String number;
   private final String postDialDigits;
 
@@ -149,6 +151,7 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
 
   /** Populates the contact info fields based on the current contact information. */
   void updateContactInfo(DialerContact contact, @CallbackAction int callbackAction) {
+    this.contact = contact;
     ContactPhotoManager.getInstance(context)
         .loadDialerThumbnailOrPhoto(
             contactPhoto,
@@ -208,14 +211,17 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
     setCallbackAction(callbackAction);
   }
 
+  /**UNISOC: add for bug1072689
+   * call details only display a video icon ,
+   * so when callbackAction is CallbackAction.IMS_VIDEO, CallbackAction display Voice icon
+   * @{ */
   private void setCallbackAction(@CallbackAction int callbackAction) {
     this.callbackAction = callbackAction;
     switch (callbackAction) {
       case CallbackAction.DUO:
-      case CallbackAction.IMS_VIDEO:
         callbackButton.setVisibility(View.VISIBLE);
         callbackButton.setImageResource(R.drawable.quantum_ic_videocam_vd_theme_24);
-        break;
+      case CallbackAction.IMS_VIDEO:
       case CallbackAction.VOICE:
         callbackButton.setVisibility(View.VISIBLE);
         callbackButton.setImageResource(R.drawable.quantum_ic_call_vd_theme_24);
@@ -232,12 +238,10 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
   public void onClick(View view) {
     if (view == callbackButton) {
       switch (callbackAction) {
-        case CallbackAction.IMS_VIDEO:
-          callDetailsHeaderListener.placeImsVideoCall(number);
-          break;
         case CallbackAction.DUO:
           callDetailsHeaderListener.placeDuoVideoCall(number);
           break;
+        case CallbackAction.IMS_VIDEO:
         case CallbackAction.VOICE:
           callDetailsHeaderListener.placeVoiceCall(number, postDialDigits);
           break;
@@ -249,7 +253,7 @@ public class CallDetailsHeaderViewHolder extends RecyclerView.ViewHolder
       throw Assert.createIllegalStateFailException("View OnClickListener not implemented: " + view);
     }
   }
-
+  /* @}*/
   /** Listener for the call details header */
   interface CallDetailsHeaderListener {
 

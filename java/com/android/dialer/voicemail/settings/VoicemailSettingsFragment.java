@@ -17,6 +17,7 @@ import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.Context;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.preference.Preference;
@@ -33,6 +34,7 @@ import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.preference.SwitchPreferenceWithClickableSummary;
@@ -42,12 +44,15 @@ import com.android.dialer.logging.Logger;
 import com.android.dialer.notification.NotificationChannelManager;
 import com.android.dialer.spannable.ContentWithLearnMoreSpanner;
 import com.android.dialer.telecom.TelecomUtil;
+import com.android.dialer.util.PermissionsUtil;
 import com.android.voicemail.VoicemailClient;
 import com.android.voicemail.VoicemailClient.ActivationStateListener;
 import com.android.voicemail.VoicemailComponent;
 import com.google.common.base.Optional;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.List;
+import static android.Manifest.permission.READ_PHONE_STATE;
 
 /**
  * Fragment for voicemail settings. Requires {@link VoicemailClient#PARAM_PHONE_ACCOUNT_HANDLE} set
@@ -66,6 +71,12 @@ public class VoicemailSettingsFragment extends PreferenceFragment
   @VisibleForTesting
   static final String SUB_LABEL_EXTRA =
       "com.android.phone.settings.SubscriptionInfoHelper.SubscriptionLabel";
+
+  /* UNISOC: add for bug1162990(bug719145) @{ */
+  private SubscriptionManager mSubscriptionManager;
+  private TelecomManager mTelecomManager;
+  private int mSubId;
+  /* @} */
 
   private static final String TAG = "VmSettingsActivity";
   @Nullable private PhoneAccountHandle phoneAccountHandle;
@@ -88,13 +99,26 @@ public class VoicemailSettingsFragment extends PreferenceFragment
     phoneAccountHandle =
         Assert.isNotNull(getArguments().getParcelable(VoicemailClient.PARAM_PHONE_ACCOUNT_HANDLE));
     voicemailClient = VoicemailComponent.get(getContext()).getVoicemailClient();
+
+    /* UNISOC: add for bug1162990(bug719145) @{ */
+    mSubId = getSubId(getActivity(), phoneAccountHandle);
+    mSubscriptionManager = SubscriptionManager.from(getActivity());
+    mTelecomManager = getContext().getSystemService(TelecomManager.class);
+    /* @} */
   }
 
   @Override
   public void onResume() {
     super.onResume();
+    /* UNISOC: add for bug1162990(bug738400) @{ */
+    if (!PermissionsUtil.hasPermission(getContext(), READ_PHONE_STATE)) {
+      return;
+    }
+    /* @} */
     Logger.get(getContext()).logImpression(DialerImpression.Type.VVM_SETTINGS_VIEWED);
     voicemailClient.addActivationStateListener(this);
+    /* UNISOC: add for bug1162990(bug719145) @{ */
+    mSubscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
     PreferenceScreen preferenceScreen = getPreferenceScreen();
     if (preferenceScreen != null) {
       preferenceScreen.removeAll();
@@ -357,6 +381,8 @@ public class VoicemailSettingsFragment extends PreferenceFragment
   @Override
   public void onPause() {
     voicemailClient.removeActivationStateListener(this);
+    // UNISOC: add for bug1162990(bug734943)
+    mSubscriptionManager.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
     super.onPause();
   }
 
@@ -538,4 +564,41 @@ public class VoicemailSettingsFragment extends PreferenceFragment
     int ADVANCED_SETTING = 7;
     int CHANGE_GREETING = 8;
   }
+
+  /* UNISOC: add for bug1162990(bug709029) @{ */
+  private int getSubId(Context context, PhoneAccountHandle phoneAccountHandle) {
+    /* UNISOC: modify for bug1222291 @{ */
+    if (context == null) {
+      return -1;
+    }
+    /* @} */
+    TelephonyManager telephonyManager = context.getSystemService(TelephonyManager.class);
+    TelecomManager telecomManager = context.getSystemService(TelecomManager.class);
+    return telephonyManager.getSubIdForPhoneAccount(
+            telecomManager.getPhoneAccount(phoneAccountHandle));
+  }
+  /* @} */
+
+  /* UNISOC: add for bug1162990(bug719145) @{ */
+  private final SubscriptionManager.OnSubscriptionsChangedListener mOnSubscriptionsChangeListener
+          = new SubscriptionManager.OnSubscriptionsChangedListener() {
+    @Override
+    public void onSubscriptionsChanged() {
+      List<PhoneAccountHandle> accountHandles = mTelecomManager.getCallCapablePhoneAccounts();
+      boolean hasAccount = false;
+      for (PhoneAccountHandle handle : accountHandles) {
+        if (getSubId(getActivity(), handle) == mSubId) {
+          hasAccount = true;
+        }
+      }
+      if (!hasAccount) {
+        exit();
+      }
+    }
+  };
+
+  private void exit() {
+    getActivity().onBackPressed();
+  }
+  /* @} */
 }

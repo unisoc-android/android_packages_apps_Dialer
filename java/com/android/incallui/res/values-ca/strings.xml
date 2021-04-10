@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">La funció RTT ofereix assistència als usuaris que són sords, tenen problemes d\'audició o alteracions de la parla, o bé que necessiten un text a banda de la veu.</string>
   <string name="rtt_button_decline_request">No, gràcies</string>
   <string name="rtt_button_accept_request">Entra a la trucada RTT</string>
+  <string name="notification_action_answer_voice">"Veu"</string>
+  <string name="notification_action_mute_on">"Silencia"</string>
+  <string name="notification_action_mute_off">"Activar so"</string>
+  <string name="notification_action_reject_with_message">Rebutja l\'SMS</string>
+  <string name="card_title_in_call">"En una trucada"</string>
+  <string name="card_title_conf_call">"Conferència telefònica"</string>
+  <string name="fail_change_video_due_to_bgcall">Hi ha trucades en segon pla, no s\'ha pogut passar la trucada actual a videotrucada.</string>
 </resources>

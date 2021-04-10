@@ -115,6 +115,7 @@ public class PreferredAccountWorkerImpl implements PreferredAccountWorker {
             .getSystemService(TelecomManager.class)
             .getDefaultOutgoingPhoneAccount(PhoneAccount.SCHEME_TEL);
     if (defaultPhoneAccount != null) {
+      LogUtil.i("CallingAccountSelector.defaultPhoneAccount", "defaultPhoneAccount is not null");
       return useDefaultSim(defaultPhoneAccount, candidates, dataId.orNull());
     }
 
@@ -122,6 +123,7 @@ public class PreferredAccountWorkerImpl implements PreferredAccountWorker {
         SimSuggestionComponent.get(appContext)
             .getSuggestionProvider()
             .getSuggestion(appContext, phoneNumber);
+    LogUtil.i("CallingAccountSelector.suggestion", "suggestion.isPresent():" + suggestion.isPresent());
     if (suggestion.isPresent() && suggestion.get().shouldAutoSelect) {
       return useSuggestedSim(suggestion.get(), candidates, dataId.orNull());
     }
@@ -172,6 +174,7 @@ public class PreferredAccountWorkerImpl implements PreferredAccountWorker {
     Builder resultBuilder;
     PhoneAccountHandle suggestedPhoneAccount = suggestion.phoneAccountHandle;
     if (isSelectable(suggestedPhoneAccount)) {
+      LogUtil.i("CallingAccountSelector.usePreferredAccount", "global account is selectable");
       resultBuilder = Result.builder(suggestedPhoneAccount);
       Logger.get(appContext).logImpression(Type.DUAL_SIM_SELECTION_SUGGESTION_AUTO_SELECTED);
     } else {

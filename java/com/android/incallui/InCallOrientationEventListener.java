@@ -54,6 +54,9 @@ public class InCallOrientationEventListener extends OrientationEventListener {
 
   public static final int ACTIVITY_PREFERENCE_DISALLOW_ROTATION =
       ActivityInfo.SCREEN_ORIENTATION_NOSENSOR;
+  //UNISOC: bug900297
+  //We use SCREEN_ORIENTATION_USER so that reverse-portrait is allowed.
+  public static final int ACTIVITY_PREFERENCE_ALLOW_ROTATION_FULL = ActivityInfo.SCREEN_ORIENTATION_FULL_USER;
 
   /**
    * This is to identify dead zones where we won't notify others of orientation changed. Say for e.g

@@ -22,6 +22,7 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.FragmentUtils;
 import com.android.dialer.common.LogUtil;
@@ -29,6 +30,7 @@ import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
 import com.android.incallui.video.protocol.VideoCallScreenDelegateFactory;
 import com.android.incallui.videosurface.bindings.VideoSurfaceBindings;
+import com.android.incallui.videosurface.impl.VideoSurfaceTextureImpl;//add for bug1130479
 
 /** Shows a video preview for an incoming call. */
 public class AnswerVideoCallScreen implements VideoCallScreen {
@@ -54,6 +56,23 @@ public class AnswerVideoCallScreen implements VideoCallScreen {
 
     textureView.setVisibility(View.VISIBLE);
     overlayView.setVisibility(View.VISIBLE);
+
+    /* UNISOC: bug1146954@{ */
+    ViewTreeObserver observer = textureView.getViewTreeObserver();
+    observer.addOnGlobalLayoutListener(
+            new ViewTreeObserver.OnGlobalLayoutListener() {
+              @Override
+              public void onGlobalLayout() {
+                LogUtil.i("AnswerVideoCallScreen.onGlobalLayout", null);
+                updatePreviewVideoScaling();
+                // Remove the listener so we don't continually re-layout.
+                ViewTreeObserver observer = textureView.getViewTreeObserver();
+                if (observer.isAlive()) {
+                  observer.removeOnGlobalLayoutListener(this);
+                }
+              }
+            });
+    /*@}*/
   }
 
   @Override
@@ -123,19 +142,56 @@ public class AnswerVideoCallScreen implements VideoCallScreen {
       LogUtil.i("AnswerVideoCallScreen.updatePreviewVideoScaling", "camera dimensions not set");
       return;
     }
+    /* UNISOC: bug1146954@{ */
     if (isLandscape()) {
-      VideoSurfaceBindings.scaleVideoAndFillView(
-          textureView, cameraDimensions.x, cameraDimensions.y, delegate.getDeviceOrientation());
+      VideoSurfaceBindings.scaleVideoMaintainingAspectRatioWithRot(
+          textureView, cameraDimensions.y, cameraDimensions.x, delegate.getDeviceOrientation());
     } else {
       // Landscape, so dimensions are swapped
       //noinspection SuspiciousNameCombination
-      VideoSurfaceBindings.scaleVideoAndFillView(
-          textureView, cameraDimensions.y, cameraDimensions.x, delegate.getDeviceOrientation());
+      VideoSurfaceBindings.scaleVideoMaintainingAspectRatioWithRot(
+          textureView, cameraDimensions.x, cameraDimensions.y, delegate.getDeviceOrientation());
     }
+    /*@}*/
   }
 
   private boolean isLandscape() {
     return fragment.getResources().getConfiguration().orientation
         == Configuration.ORIENTATION_LANDSCAPE;
   }
+  /* UNISOC: Added for video call conference @{ */
+  @Override
+  public void showPreviewVideoViews(boolean showPreview) {}
+  /* @} */
+
+  public void localSurfaceClickForChange() {}
+
+  public void remoteSurfaceClickForChange() {}
+
+  public void changeSmallSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {}
+
+  public void changeBigSizeAndPosition(VideoSurfaceTextureImpl videoCallSurface) {}
+  /* UNISOC: modify for bug1152075 @{ */
+  @Override
+  public int getAnswerAndDialpadContainerResourceId() {
+    return 0;
+  }
+  /* @} */
+
+  /*add for bug1166982(bug904816)@{ */
+  @Override
+  public void onVideoCallIsFront() {
+    LogUtil.i("AnswerVideoCallScreen.onVideoCallIsFront", null);
+    if (delegate != null) {
+      delegate.onVideoCallIsFront();
+    }
+  }
+  @Override
+  public void onVideoCallIsBack() {
+    LogUtil.i("AnswerVideoCallScreen.onVideoCallIsBack", null);
+    if (delegate != null) {
+      delegate.onVideoCallIsBack();
+    }
+  }
+  /* @} */
 }

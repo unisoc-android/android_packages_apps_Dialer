@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">نوشتار هم‌زمان به تماس گیرندگان ناشنوا، دارای مشکل شنوایی، دارای ناتوانی گفتاری یا افرادی که به چیزی بیش از صدا نیاز دارند کمک می‌کند.</string>
   <string name="rtt_button_decline_request">نه متشکرم</string>
   <string name="rtt_button_accept_request">‏پیوستن به RTT</string>
+  <string name="notification_action_answer_voice">"صوتی"</string>
+  <string name="notification_action_mute_on">"بی صدایی"</string>
+  <string name="notification_action_mute_off">وصل صدا</string>
+  <string name="notification_action_reject_with_message">"ردکردن پیامک"</string>
+  <string name="card_title_in_call">"در تماس"</string>
+  <string name="card_title_conf_call">"تماس کنفرانسی"</string>
+  <string name="fail_change_video_due_to_bgcall">"تماس پس‌زمینه وجود دارد، امکان تغییر تماس فعلی به تماس ویدئویی وجود ندارد".</string>
 </resources>

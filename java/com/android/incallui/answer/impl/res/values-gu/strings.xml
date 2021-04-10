@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ઑડિઓ કૉલનો જવાબ આપવા માટે આઇકનથી સ્વાઇપ કરો</string>
   <string name="call_incoming_default_label_answer_and_release_second">જવાબ આપવા અને ચાલુ કૉલ હૉલ્ડ પર રાખવા માટે ઉપર સ્વાઇપ કરો</string>
   <string name="call_incoming_default_label_answer_and_release_third">જવાબ આપવા અને હૉલ્ડ પરનો કૉલ સમાપ્ત કરવા માટે ઉપર સ્વાઇપ કરો</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"ઉત્તર આપવા અને ચાલુ કૉલને બંધ કરવા માટે ઉપરની તરફ સ્વાઇપ કરો"</string>
   <string name="call_incoming_swipe_to_answer_and_release">જવાબ આપવા અને ચાલુ કૉલ સમાપ્ત કરવા માટે આઇકનમાંથી સ્વાઇપ કરો</string>
   <string name="call_incoming_message_custom">તમારો પોતાનો સંદેશ લખો…</string>
   <string name="call_incoming_respond_via_sms_custom_message">તમારો પોતાનો સંદેશ લખો…</string>

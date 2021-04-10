@@ -16,6 +16,7 @@
 
 package com.android.incallui;
 
+import android.app.Activity;
 import android.content.Context;
 import android.os.SystemClock;
 import android.support.annotation.FloatRange;
@@ -28,6 +29,7 @@ import com.android.dialer.common.concurrent.DialerExecutorComponent;
 import com.android.dialer.common.concurrent.ThreadUtil;
 import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.Logger;
+import com.android.dialer.util.CallUtil;
 import com.android.incallui.answer.protocol.AnswerScreen;
 import com.android.incallui.answer.protocol.AnswerScreenDelegate;
 import com.android.incallui.answerproximitysensor.AnswerProximitySensor;
@@ -141,13 +143,25 @@ public class AnswerScreenPresenter
                 DialerImpression.Type.VIDEO_CALL_REQUEST_ACCEPTED,
                 call.getUniqueCallId(),
                 call.getTimeAddedMs());
-        call.getVideoTech().acceptVideoRequest(context);
+        //call.getVideoTech().acceptVideoRequest(context);
+        /* UNISOC FL0108020020: Add feature of low battery for Reliance 693137@{ */
+        if(CallUtil.isBatteryLow(context)){
+          LowBatteryAnswerDialogFragment.getInstance(context, call,true).show(((Activity) context).getFragmentManager(), "LowBatteryDialog");
+        }else{
+          call.getVideoTech().acceptVideoRequest(context);
+        }/*@}*/
       }
     } else {
       if (answerVideoAsAudio) {
         call.answer(VideoProfile.STATE_AUDIO_ONLY);
       } else {
-        call.answer();
+        /* UNISOC FL0108020020: Add feature of low battery for Reliance 693137@{ */
+        if (CallUtil.isBatteryLow(context) && call.isVideoCall()) {
+          LowBatteryAnswerDialogFragment.getInstance(context, call,false).show(((Activity) context).getFragmentManager(), "LowBatteryDialog");
+        } else {
+          call.answer();
+        }
+        /*@}*/
       }
     }
   }

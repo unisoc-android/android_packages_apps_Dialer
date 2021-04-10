@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">ఆడియో కాల్ రూపంలో సమాధానం ఇవ్వడానికి చిహ్నం నుండి స్వైప్ చేయండి</string>
   <string name="call_incoming_default_label_answer_and_release_second">సమాధానం ఇవ్వడానికి మరియు కొనసాగుతున్న కాల్‌ను హోల్డ్‌లో ఉంచడానికి పైకి స్వైప్ చేయండి</string>
   <string name="call_incoming_default_label_answer_and_release_third">సమాధానం ఇవ్వడానికి మరియు హోల్డ్‌లో ఉన్న కాల్‌ను ముగించడానికి పైకి స్వైప్ చేయండి</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"సమాధానం ఇవ్వడానికి స్వైప్ చేయండి మరియు కొనసాగుతున్న కాల్‌ను ముగించండి"</string>
   <string name="call_incoming_swipe_to_answer_and_release">సమాధానం ఇవ్వడానికి మరియు కొనసాగుతున్న కాల్‌ను ముగించడానికి చిహ్నం నుండి స్వైప్ చేయండి</string>
   <string name="call_incoming_message_custom">మీ స్వంతంగా వ్రాయండి…</string>
   <string name="call_incoming_respond_via_sms_custom_message">మీ స్వంతంగా వ్రాయండి…</string>

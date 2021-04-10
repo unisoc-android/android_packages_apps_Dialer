@@ -47,6 +47,7 @@ public class VideoScale {
       scaleWidth = desiredScaledWidth / viewWidth;
     }
 
+    /* UNISOC: bug900297 @{
     if (rotationDegrees == 90.0f || rotationDegrees == 270.0f) {
       // We're in landscape mode but the camera feed is still drawing in portrait mode. Normally,
       // scale of 1.0 means that the video feed stretches to fit the view. In this case the X axis
@@ -61,7 +62,7 @@ public class VideoScale {
       // This flips the view horizontally. Without this the camera feed would be mirrored (left
       // side would appear on right).
       scaleHeight = scaleHeight * -1.0f;
-    }
+    }*@}*/
 
     LogUtil.i(
         "VideoScale.scaleVideoAndFillView",
@@ -82,9 +83,10 @@ public class VideoScale {
         viewWidth / 2.0f,
         // This perform the scaling from vertical middle of the view.
         viewHeight / 2.0f);
+    /* UNISOC: bug900297 @{
     if (rotationDegrees != 0) {
       transform.postRotate(rotationDegrees, viewWidth / 2.0f, viewHeight / 2.0f);
-    }
+    }*@}*/
     textureView.setTransform(transform);
   }
 
@@ -142,6 +144,53 @@ public class VideoScale {
         viewHeight / 2.0f);
     textureView.setTransform(transform);
   }
+  /* UNISOC: bug1146954
+     * Scales the video in the given view such that all of the video is visible. This will result in
+     * black bars on the top and bottom or the sides of the video.
+     @{ */
+  public static void scaleVideoMaintainingAspectRatioWithRot(
+          TextureView textureView, float videoWidth, float videoHeight, float rotationDegrees) {
+    float viewWidth = textureView.getWidth();
+    float viewHeight = textureView.getHeight();
+    float viewAspectRatio = viewWidth / viewHeight;
+    float videoAspectRatio = videoWidth / videoHeight;
+    float scaleWidth = 1.0f;
+    float scaleHeight = 1.0f;
 
+    if (viewAspectRatio > videoAspectRatio) {
+      // Current display width is too much. Correct it.
+      float scaleFactor = viewHeight / videoHeight;
+      float desiredScaledWidth = videoWidth * scaleFactor;
+      scaleWidth = desiredScaledWidth / viewWidth;
+    } else {
+      // Current display width is too much. Correct it.
+      float scaleFactor = viewWidth / videoWidth;
+      float desiredScaledHeight = videoHeight * scaleFactor;
+      scaleHeight = desiredScaledHeight / viewHeight;
+    }
+
+    LogUtil.i(
+            "VideoScale.scaleVideoMaintainingAspectRatioWithRot",
+            "view: %f x %f, video: %f x %f scale: %f x %f, rotation: %f",
+            viewWidth,
+            viewHeight,
+            videoWidth,
+            videoHeight,
+            scaleWidth,
+            scaleHeight,
+            rotationDegrees);
+
+    Matrix transform = new Matrix();
+    transform.setScale(
+            scaleWidth,
+            scaleHeight,
+            // This performs the scaling from the horizontal middle of the view.
+            viewWidth / 2.0f,
+            // This perform the scaling from vertical middle of the view.
+            viewHeight / 2.0f);
+
+    textureView.setTransform(transform);
+  }
+  /*@}*/
   private VideoScale() {}
 }

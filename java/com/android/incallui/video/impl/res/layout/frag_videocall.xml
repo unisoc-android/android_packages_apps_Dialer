@@ -108,8 +108,8 @@
 
   <ImageView
     android:id="@+id/videocall_video_preview_mute_overlay"
-    android:layout_width="32dp"
-    android:layout_height="32dp"
+    android:layout_width="@dimen/videocall__mute_image_size"
+    android:layout_height="@dimen/videocall__mute_image_size"
     android:layout_alignBottom="@+id/videocall_video_preview"
     android:layout_alignRight="@+id/videocall_video_preview"
     android:background="@drawable/videocall_background_circle_white"

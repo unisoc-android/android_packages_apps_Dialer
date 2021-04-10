@@ -24,6 +24,7 @@ import android.util.AttributeSet;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnKeyListener;
@@ -158,6 +159,11 @@ public class DialpadFragment extends BaseFragment<DialpadPresenter, DialpadUi>
     backButton.setVisibility(View.VISIBLE);
     backButton.setOnClickListener(this);
     endCallSpace = dialpadView.findViewById(R.id.end_call_space);
+    /* UNISOC: modify for bug1152075 @{ */
+    if (isLandscape()){
+      endCallSpace.setVisibility(View.GONE);
+    }
+    /* @} */
 
     return parent;
   }
@@ -309,4 +315,14 @@ public class DialpadFragment extends BaseFragment<DialpadPresenter, DialpadUi>
       setTranslationY(yFraction * getHeight());
     }
   }
+  /* UNISOC: modify for bug1152075 @{ */
+  private boolean isLandscape() {
+    // Choose orientation based on display orientation, not window orientation
+    int rotation = Surface.ROTATION_0;
+    if(getActivity() != null){
+      rotation = getActivity().getWindowManager().getDefaultDisplay().getRotation();
+    }
+    return rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270;
+  }
+  /* @} */
 }

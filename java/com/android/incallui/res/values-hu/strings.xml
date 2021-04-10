@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">Az RTT funkció a siket, hallássérült, beszédzavaros vagy a hangalapú kommunikáción kívül más kommunikációt is igénylő hívóknak lehet segítségére.</string>
   <string name="rtt_button_decline_request">Nem, köszönöm</string>
   <string name="rtt_button_accept_request">Csatlakozás</string>
+  <string name="notification_action_answer_voice">"Hang"</string>
+  <string name="notification_action_mute_on">"Lezárás"</string>
+  <string name="notification_action_mute_off">"Némítás feloldása"</string>
+  <string name="notification_action_reject_with_message">SMS visszautasítása</string>
+  <string name="card_title_in_call">"Hívásban"</string>
+  <string name="card_title_conf_call">"Konferenciahívás"</string>
+  <string name="fail_change_video_due_to_bgcall">Van egy háttérhívás, a jelenlegi hívás nem állítható át videóhívásra.</string>
 </resources>

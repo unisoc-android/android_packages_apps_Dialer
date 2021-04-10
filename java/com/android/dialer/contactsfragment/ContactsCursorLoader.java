@@ -18,6 +18,7 @@ package com.android.dialer.contactsfragment;
 
 import android.content.Context;
 import android.content.CursorLoader;
+import android.provider.ContactsContract;
 import android.net.Uri;
 import android.provider.ContactsContract.Contacts;
 import android.text.TextUtils;
@@ -31,6 +32,17 @@ final class ContactsCursorLoader extends CursorLoader {
   public static final int CONTACT_PHOTO_ID = 2;
   public static final int CONTACT_PHOTO_URI = 3;
   public static final int CONTACT_LOOKUP_KEY = 4;
+  /**
+   * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+   * @{
+   */
+  public static final int CONTACT_SYNC1_KEY = 5;
+  public static final int CONTACT_SYNC2_KEY = 6;
+  public static final int  CONTACT_ACCOUNT_TYPE = 7;
+  public static final int CONTACT_ACCOUNT_NAME = 8;
+  /**
+   * @}
+   */
 
   public static final String[] CONTACTS_PROJECTION_DISPLAY_NAME_PRIMARY =
       new String[] {
@@ -39,6 +51,17 @@ final class ContactsCursorLoader extends CursorLoader {
         Contacts.PHOTO_ID, // 2
         Contacts.PHOTO_THUMBNAIL_URI, // 3
         Contacts.LOOKUP_KEY, // 4
+        /**
+        * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+        * @{
+        */
+        ContactsContract.RawContacts.SYNC1,
+        ContactsContract.RawContacts.SYNC2,
+        Contacts.DISPLAY_ACCOUNT_TYPE,
+        Contacts.DISPLAY_ACCOUNT_NAME
+        /**
+        * @}
+        */
       };
 
   public static final String[] CONTACTS_PROJECTION_DISPLAY_NAME_ALTERNATIVE =
@@ -48,6 +71,17 @@ final class ContactsCursorLoader extends CursorLoader {
         Contacts.PHOTO_ID, // 2
         Contacts.PHOTO_THUMBNAIL_URI, // 3
         Contacts.LOOKUP_KEY, // 4
+        /**
+         * UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770.
+         * @{
+         */
+        ContactsContract.RawContacts.SYNC1,
+        ContactsContract.RawContacts.SYNC2,
+        Contacts.DISPLAY_ACCOUNT_TYPE,
+        Contacts.DISPLAY_ACCOUNT_NAME
+        /**
+        * @}
+        */
       };
 
   ContactsCursorLoader(Context context, boolean hasPhoneNumbers) {

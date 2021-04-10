@@ -507,9 +507,12 @@ class ContactPhotoManagerImpl extends ContactPhotoManager implements Callback {
     }
     bitmapHolderCacheAllUnfresh = true;
     for (BitmapHolder holder : bitmapHolderCache.snapshot().values()) {
-      if (holder != BITMAP_UNAVAILABLE) {
-        holder.fresh = false;
-      }
+      /** UNISOC: Bug1098401 DUT Does not update call log entry with contact name and image
+       * once contact is saved from call logs and moved back to call log screen. @{ */
+      //if (holder != BITMAP_UNAVAILABLE) {
+      holder.fresh = false;
+      //}
+      /** @} */
     }
   }
 

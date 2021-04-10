@@ -302,9 +302,11 @@ public class FilteredNumbersUtil {
   @Nullable
   public static String getBlockableNumber(
       Context context, @Nullable String e164Number, String number) {
-    if (!FilteredNumberCompat.useNewFiltering(context)) {
+    /**UNISOC:modify the bug for 937534 @{*/
+    /*if (!FilteredNumberCompat.useNewFiltering(context)) {
       return e164Number;
-    }
+    }*/
+    /**@}*/
     return TextUtils.isEmpty(e164Number) ? number : e164Number;
   }
 

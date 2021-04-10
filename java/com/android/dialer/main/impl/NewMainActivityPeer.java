@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.view.KeyEvent;
 import com.android.dialer.calllog.CallLogComponent;
 import com.android.dialer.calllog.ui.NewCallLogFragment;
 import com.android.dialer.common.concurrent.DefaultFutureCallback;
@@ -81,6 +82,13 @@ public class NewMainActivityPeer implements MainActivityPeer {
   public boolean onBackPressed() {
     return false;
   }
+
+  /* UNISOC: Bug1090190 touch assist search and menu useless. @{ */
+  @Override
+  public boolean dispatchKeyEvent(KeyEvent event) {
+    return false;
+  }
+  /* @} */
 
   /**
    * Implementation of {@link OnBottomNavTabSelectedListener} that handles logic for showing each of

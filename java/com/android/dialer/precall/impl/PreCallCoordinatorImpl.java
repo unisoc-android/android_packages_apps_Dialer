@@ -39,6 +39,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.android.dialer.main.impl.MainActivity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.telecom.PhoneAccount;
+import android.text.TextUtils;
 
 /**
  * Implements {@link PreCallCoordinator}. Listens to the life cycle of {@link PreCallActivity} to
@@ -103,6 +108,33 @@ public class PreCallCoordinatorImpl implements PreCallCoordinator {
     LogUtil.enterBlock("PreCallCoordinatorImpl.runNextAction");
     Assert.checkArgument(currentAction == null);
     if (currentActionIndex >= actions.size()) {
+      /** UNISOC: Bug1108587 There's no reponse info and unknown calllog generated when voicemail number is not set @{*/
+      if (PhoneAccount.SCHEME_VOICEMAIL.equals(builder.getUri().getScheme()) &&
+                TextUtils.isEmpty(TelecomUtil.getVoicemailNumber(activity,builder.getPhoneAccountHandle()))) {
+          AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+          builder.setMessage(R.string.dialog_voicemail_not_ready_message)
+                  .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                      Intent intent = new Intent(activity, MainActivity.class);
+                      activity.startActivity(intent);
+                    }
+                  });
+          /** UNISOC: Add for Bug1198042 @{*/
+          AlertDialog SetVoiceMail = builder.create();
+          SetVoiceMail.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialogInterface) {
+              Intent intent = new Intent(activity, MainActivity.class);
+              activity.startActivity(intent);
+            }
+          });
+          SetVoiceMail.show();
+          /** @} */
+          //builder.create().show();
+          return;
+      }
+      /** @} */
       placeCall();
       activity.finish();
       return;

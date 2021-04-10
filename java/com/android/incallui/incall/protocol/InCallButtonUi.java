@@ -48,4 +48,7 @@ public interface InCallButtonUi {
   Fragment getInCallButtonUiFragment();
 
   void showAudioRouteSelector();
+
+  // UNISOC Feature Porting: Add for call recorder feature.
+  void setRecord(boolean value);
 }

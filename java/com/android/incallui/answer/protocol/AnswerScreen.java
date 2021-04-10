@@ -43,4 +43,10 @@ public interface AnswerScreen {
   void dismissPendingDialogs();
 
   Fragment getAnswerScreenFragment();
+
+  /* add for bug1166982(bug904816) @{ */
+  void onVideoCallIsFront();
+
+  void onVideoCallIsBack();
+  /* @} */
 }

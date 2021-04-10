@@ -48,6 +48,7 @@ final class OldCallDetailsAdapter extends CallDetailsAdapterCommon {
       DeleteCallDetailsListener deleteCallDetailsListener) {
     super(
         context,
+        contact,
         callDetailsEntries,
         callDetailsEntryListener,
         callDetailsHeaderListener,

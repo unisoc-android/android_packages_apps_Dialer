@@ -7,7 +7,7 @@
   <string name="description_voicemail_button">撥打語音信箱</string>
   <string name="description_dial_button">撥號</string>
   <string name="dialog_voicemail_airplane_mode_message">如要撥打語音信箱聽取留言，請先關閉飛航模式。</string>
-  <string name="dialog_voicemail_not_ready_message">如要設定語音信箱，請依序前往 [選單] &gt; [設定]。</string>
+  <string name="dialog_voicemail_not_ready_message">如要設定語音信箱，請依序前往 「選單」 &gt; 「設定」。</string>
   <string name="add_2sec_pause">新增 2 秒暫停功能</string>
   <string name="add_wait">新增插播功能</string>
   <string name="dialer_useDtmfDialpad">使用觸控音鍵盤</string>

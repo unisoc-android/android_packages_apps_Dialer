@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">RTT huwasaidia wapigaji simu ambao ni viziwi, wasioweza kuskia vyema, wenye matatizo ya kuzungumza au wanaohitaji kufanya zaidi ya kuzungumza tu.</string>
   <string name="rtt_button_decline_request">Hapana, asante</string>
   <string name="rtt_button_accept_request">Tumia RTT</string>
+  <string name="notification_action_answer_voice">"Sauti"</string>
+  <string name="notification_action_mute_on">"Nyamazisha"</string>
+  <string name="notification_action_mute_off">Rejesha sauti</string>
+  <string name="notification_action_reject_with_message">"Kataa SMS"</string>
+  <string name="card_title_in_call">"Katika simu"</string>
+  <string name="card_title_conf_call">"Simu ya mkutano"</string>
+  <string name="fail_change_video_due_to_bgcall">"Kuna simu inayoendelea chinichini, haijafaulu kubadilisha simu ya sasa kuwa simu ya video."</string>
 </resources>

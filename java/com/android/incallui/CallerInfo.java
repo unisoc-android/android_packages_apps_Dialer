@@ -35,7 +35,7 @@ import com.android.contacts.common.util.TelephonyManagerUtils;
 import com.android.dialer.logging.ContactLookupResult;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
-
+import com.android.incallui.sprd.plugin.ShowEmergencyNumber.ShowEmergencyNumberHelper;
 /**
  * Looks up caller information for the given phone number. This is intermediate data and should NOT
  * be used by any UI.
@@ -447,6 +447,11 @@ public class CallerInfo {
     return isVoiceMail;
   }
 
+  public void setEmergency(Context context) {//UNISOC: add for bug1166662 1180536
+    name = context.getString(R.string.emergency_number);
+    isEmergency = true;
+  }
+
   /**
    * Mark this CallerInfo as an emergency call.
    *
@@ -455,8 +460,11 @@ public class CallerInfo {
    */
   /* package */ CallerInfo markAsEmergency(Context context) {
     name = context.getString(R.string.emergency_number);
-    phoneNumber = null;
-
+    /* UNISOC Feature Porting: Show emergency number when dial emergency call feature. @{
+     * @orig
+    phoneNumber = null; */
+    phoneNumber = ShowEmergencyNumberHelper.getInstance(context).getEmergencyNumber();
+    /* @} */
     isEmergency = true;
     return this;
   }

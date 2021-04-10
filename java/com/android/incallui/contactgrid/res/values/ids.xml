@@ -21,6 +21,7 @@
   <item name="contactgrid_contact_name" type="id"/>
   <item name="contactgrid_workIcon" type="id"/>
   <item name="contactgrid_hdIcon" type="id"/>
+  <item name="contactgrid_vowifiIcon" type="id"/>
   <item name="contactgrid_forwardIcon" type="id"/>
   <item name="contactgrid_spamIcon" type="id"/>
   <item name="contactgrid_bottom_text" type="id"/>

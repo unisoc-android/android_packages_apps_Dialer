@@ -22,7 +22,7 @@
 
   <include layout="@layout/header"/>
 
-  <LinearLayout
+  <RelativeLayout
       android:id="@+id/click_target"
       android:orientation="horizontal"
       android:layout_width="match_parent"
@@ -41,7 +41,9 @@
         android:layout_height="@dimen/photo_size"
         android:clickable="false"/>
 
+    <!-- UNISOC:modify for bug 951597 & 960886 & 1049840 @{-->
     <com.android.dialer.widget.BidiTextView
+        android:layout_toStartOf="@id/contact_third_part_icon"
         android:id="@+id/contact_name"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
@@ -50,8 +52,20 @@
         android:maxLines="1"
         android:ellipsize="end"
         android:gravity="center_vertical"
+        android:textAlignment="viewStart"
         android:textSize="@dimen/text_size"
         android:textColor="?android:attr/textColorPrimary"
+        android:layout_toEndOf="@id/photo"
         android:fontFamily="sans-serif"/>
-  </LinearLayout>
+    <!--UNISOC:add for show fdn,sim,sdn icon in dialer contactslist tab feature bug1083770 @{-->
+    <!--UNISOC:Bug911484 & 914668-->
+    <ImageView android:id="@+id/contact_third_part_icon"
+      android:layout_width="30dp"
+      android:layout_height="match_parent"
+      android:adjustViewBounds="true"
+      android:paddingEnd="10dp"
+      android:gravity="right|center_vertical"
+      android:layout_alignParentEnd="true"/>
+  </RelativeLayout>
+  <!-- UNSOC:@}-->
 </FrameLayout>

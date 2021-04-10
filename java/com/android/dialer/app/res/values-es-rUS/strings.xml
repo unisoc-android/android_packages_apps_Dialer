@@ -22,8 +22,8 @@
   <string name="notification_voicemail_text_format">Marcar %s</string>
   <string name="notification_voicemail_no_vm_number">Número de correo de voz desconocido</string>
   <plurals name="notification_voicemail_title">
-    <item quantity="one">correo de voz</item>
-    <item quantity="other"> %1$d correos de voz </item>
+    <item quantity="one">Buzón de voz</item>
+    <item quantity="other"> %1$d Buzón de voz </item>
   </plurals>
   <string name="notification_voicemail_callers_list">%1$s, %2$s</string>
   <string name="notification_new_voicemail_ticker">Nuevo correo de voz de %1$s</string>
@@ -48,7 +48,7 @@
   <string name="description_num_calls">%1$s llamadas</string>
   <string name="description_video_call">Videollamada</string>
   <string name="description_start_voice_search">Iniciar búsqueda por voz</string>
-  <string name="voicemail">Correo de voz</string>
+  <string name="voicemail">Buzón de voz</string>
   <string name="description_cancel_multi_select">Cancelar el modo de acción masiva</string>
   <string name="voicemailMultiSelectDeleteConfirm">Borrar</string>
   <string name="voicemailMultiSelectDeleteCancel">Cancelar</string>
@@ -74,7 +74,7 @@
   <string name="tab_speed_dial">Marcado rápido</string>
   <string name="tab_history">Historial de llamadas</string>
   <string name="tab_all_contacts">Contactos</string>
-  <string name="tab_voicemail">Correo de voz</string>
+  <string name="tab_voicemail">Buzón de voz</string>
   <string name="search_shortcut_call_number">Llamar al %s</string>
   <string name="search_shortcut_create_new_contact">Crear contacto nuevo</string>
   <string name="search_shortcut_add_to_contact">Agregar a un contacto</string>
@@ -125,7 +125,7 @@
   <string name="respond_via_sms_setting_title">Respuestas rápidas</string>
   <string name="call_settings_label">Llamadas</string>
   <string name="manage_blocked_numbers_label">Números bloqueados</string>
-  <string name="voicemail_settings_label">Correo de voz</string>
+  <string name="voicemail_settings_label">Buzón de voz</string>
   <string name="blocked_numbers_disabled_emergency_header_label">Bloqueo de llamadas desactivado temporalmente</string>
   <string name="blocked_numbers_disabled_emergency_desc">Se inhabilitó el bloqueo de llamadas porque te comunicaste con servicios de emergencia en las últimas 48 horas desde este teléfono. Se volverá a habilitar de forma automática una vez que venza el período de 48 horas.</string>
   <string name="import_send_to_voicemail_numbers_label">Importar números</string>

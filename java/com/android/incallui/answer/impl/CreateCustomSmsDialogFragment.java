@@ -24,7 +24,10 @@ import android.content.DialogInterface.OnShowListener;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatDialogFragment;
+import android.telephony.SmsMessage;
 import android.text.Editable;
+import android.text.InputFilter;
+import android.text.Spanned;
 import android.text.TextWatcher;
 import android.view.View;
 import android.view.WindowManager.LayoutParams;
@@ -54,6 +57,8 @@ public class CreateCustomSmsDialogFragment extends AppCompatDialogFragment {
     AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
     View view = View.inflate(builder.getContext(), R.layout.fragment_custom_sms_dialog, null);
     editText = (EditText) view.findViewById(R.id.custom_sms_input);
+      // UNISOC: fix aob for bug1142865
+      editText.setFilters(new InputFilter[] { new SmsLengthFilter() });
     if (savedInstanceState != null) {
       editText.setText(savedInstanceState.getCharSequence(ARG_ENTERED_TEXT));
     }
@@ -106,7 +111,9 @@ public class CreateCustomSmsDialogFragment extends AppCompatDialogFragment {
     editText.addTextChangedListener(
         new TextWatcher() {
           @Override
-          public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+          public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+              String s = editText.getText().toString();
+          }
 
           @Override
           public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
@@ -144,4 +151,49 @@ public class CreateCustomSmsDialogFragment extends AppCompatDialogFragment {
 
     void customSmsDismissed();
   }
+  //add for bug1142865
+  private static class SmsLengthFilter implements InputFilter{
+        @Override
+        public CharSequence filter(CharSequence source, int start, int end, Spanned dest,
+                                   int dstart, int dend) {
+            String sourceSubStr = source.subSequence(start, end).toString();
+            String orignalStart = dest.subSequence(0, dstart).toString() + dest.subSequence(dend, dest.length()).toString();
+            String s = orignalStart + sourceSubStr;
+            int[] params = SmsMessage.calculateLength(s, false);
+            int endIndex = start + 1;
+            if (params[0] == 1) {
+                return null;
+            } else if (!containsEmoji(source.subSequence(start, end).toString())){
+                for (; endIndex <= end; ++endIndex) {
+                    int[] ps = SmsMessage.calculateLength(orignalStart + source.subSequence(start, endIndex).toString(), false);
+                    if (ps[0] > 1) {
+                        endIndex--;
+                        break;
+                    }
+                }
+                if (endIndex == start) {
+                    return "";
+                } else {
+                    return source.subSequence(start, endIndex);
+                }
+            } else {
+                return "";
+            }
+        }
+        private boolean containsEmoji(String source) {
+            int len = source.length();
+            for (int i = 0; i < len; i++) {
+                char codePoint = source.charAt(i);
+                if (!isEmojiCharacter(codePoint)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private  boolean isEmojiCharacter(char codePoint) {
+            return (codePoint == 0x0) || (codePoint == 0x9) || (codePoint == 0xA) ||
+                    (codePoint == 0xD) || ((codePoint >= 0x20) && (codePoint <= 0xD7FF)) ||
+                    ((codePoint >= 0xE000) && (codePoint <= 0xFFFD));//add for Bug 1196252 ,cid:236879
+        }
+    }
 }

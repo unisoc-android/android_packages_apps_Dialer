@@ -15,4 +15,6 @@
  ~ limitations under the License
  -->
 <resources>
+    <!-- UNISOC:bug1072698 new feature-display vowifi and volte icons -->
+    <color name="telcel_call_type_icon_color">#a09f9d</color>
 </resources>

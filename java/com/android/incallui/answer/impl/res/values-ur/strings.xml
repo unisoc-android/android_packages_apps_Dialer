@@ -4,6 +4,7 @@
   <string name="call_incoming_swipe_to_answer_video_as_audio">آڈیو کال کے بطور جواب دینے کیلئے آئیکن سے سوائپ کریں</string>
   <string name="call_incoming_default_label_answer_and_release_second">جواب دینے اور جاری کال کو ہولڈ کرنے کیلئے اوپر سوائپ کریں</string>
   <string name="call_incoming_default_label_answer_and_release_third">جواب دینے اور ہولڈ کردہ کال کو ختم کرنے کیلئے اوپر سوائپ کریں</string>
+  <string name="call_incoming_default_label_answer_and_end_second">"موجودہ کال کو ختم کرنے اور جواب دینے کے لیے اوپر کی طرف سوائپ کریں"</string>
   <string name="call_incoming_swipe_to_answer_and_release">جواب دینے اور جاری کال ختم کرنے کیلے آئیکن سے سوائپ کریں</string>
   <string name="call_incoming_message_custom">خود اپنا تحریر کریں…</string>
   <string name="call_incoming_respond_via_sms_custom_message">خود اپنا تحریر کریں…</string>

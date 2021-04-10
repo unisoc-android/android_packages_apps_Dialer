@@ -32,6 +32,8 @@ import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.database.FilteredNumberContract.FilteredNumberColumns;
 import com.android.dialer.database.FilteredNumberContract.FilteredNumberTypes;
+import com.google.common.collect.Lists;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -47,6 +49,8 @@ public class FilteredNumberAsyncQueryHandler extends AsyncQueryHandler {
   static final Map<String, Integer> blockedNumberCache = new ConcurrentHashMap<>();
 
   private static final int NO_TOKEN = 0;
+  private static final String BLOCK_TYPE = "block_type";
+  private static final String CALL_BLOCK_TYPES = "(2, 3, 6, 7)";
   private final Context context;
 
   public FilteredNumberAsyncQueryHandler(Context context) {
@@ -147,12 +151,28 @@ public class FilteredNumberAsyncQueryHandler extends AsyncQueryHandler {
 
     String e164Number = PhoneNumberUtils.formatNumberToE164(number, countryIso);
     String formattedNumber = FilteredNumbersUtil.getBlockableNumber(context, e164Number, number);
+    /* UNISOC: Modify for Bug1072695. @{*/
+    StringBuilder where = new StringBuilder();
+    List<String> selectionArgs = Lists.newArrayList();
     if (TextUtils.isEmpty(formattedNumber)) {
       listener.onCheckComplete(INVALID_ID);
       blockedNumberCache.put(number, INVALID_ID);
       return;
+    } else if (TextUtils.isEmpty(e164Number)) {
+      where.append(String.format("(%s = ?)", FilteredNumberCompat.getE164NumberColumnName(context)));
+      selectionArgs.add(e164Number);
+    } else {
+      where.append(String.format("(%s = ?)", FilteredNumberCompat.getOriginalNumberColumnName(context)));
+      selectionArgs.add(number);
     }
 
+    if (FilteredNumberCompat.useNewFiltering(context)) {
+      where.append(" AND ");
+      where.append(BLOCK_TYPE);
+      where.append(" IN ");
+      where.append(CALL_BLOCK_TYPES);
+    }
+    /* @} */
     startQuery(
         NO_TOKEN,
         new Listener() {

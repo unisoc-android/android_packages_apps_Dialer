@@ -21,6 +21,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.ColorInt;
@@ -30,8 +31,10 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.telecom.CallAudioState;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.transition.TransitionManager;
+import android.util.ArraySet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnAttachStateChangeListener;
@@ -41,6 +44,7 @@ import android.view.Window;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.FragmentUtils;
@@ -69,9 +73,15 @@ import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryCallState.ButtonState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.incallui.incall.protocol.SecondaryInfo;
+import com.android.incallui.sprd.plugin.displayfdn.DisplayFdnHelper;
+import com.android.incallui.sprd.plugin.SpeakerToHeadset.SpeakerToHeadsetHelper;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Set;
+import com.android.incallui.sprd.InCallUiUtils;
+import com.android.incallui.sprd.plugin.CallerAddress.CallerAddressHelper;
+import android.widget.TextView;
+import com.android.incallui.incall.protocol.PrimaryInfo;
 /** Fragment that shows UI for an ongoing voice call. */
 public class InCallFragment extends Fragment
     implements InCallScreen,
@@ -88,13 +98,20 @@ public class InCallFragment extends Fragment
   private ContactGridManager contactGridManager;
   private InCallScreenDelegate inCallScreenDelegate;
   private InCallButtonUiDelegate inCallButtonUiDelegate;
-  private InCallButtonGridFragment inCallButtonGridFragment;
+  // UNISOC : InCallUI Layout Refactor
+  private InCallButtonGridFragment inCallButtonGridFragmentPageOne;
+  private InCallButtonGridFragment inCallButtonGridFragmentPageTwo;
   @Nullable private ButtonChooser buttonChooser;
   private SecondaryInfo savedSecondaryInfo;
   private int voiceNetworkType;
   private int phoneType;
   private boolean stateRestored;
-
+  // UNISOC : InCallUI Layout Refactor
+  private int buttonsToPlaceSize;
+  // UNISOC Feature Porting: FL0108020044 Support Telcel Operator requirement.
+  private TextView telcelIndicatorTextView;
+  // UNISOC Feature Porting: Display caller address for phone number feature.
+  private TextView mGeocodeView;
   // Add animation to educate users. If a call has enriched calling attachments then we'll
   // initially show the attachment page. After a delay seconds we'll animate to the button grid.
   private final Handler handler = new Handler();
@@ -106,6 +123,7 @@ public class InCallFragment extends Fragment
         }
       };
 
+  // UNISOC Feature Porting: Add for call recorder feature.
   private static boolean isSupportedButton(@InCallButtonIds int id) {
     return id == InCallButtonIds.BUTTON_AUDIO
         || id == InCallButtonIds.BUTTON_MUTE
@@ -117,7 +135,13 @@ public class InCallFragment extends Fragment
         || id == InCallButtonIds.BUTTON_MERGE
         || id == InCallButtonIds.BUTTON_MANAGE_VOICE_CONFERENCE
         || id == InCallButtonIds.BUTTON_SWAP_SIM
-        || id == InCallButtonIds.BUTTON_UPGRADE_TO_RTT;
+        || id == InCallButtonIds.BUTTON_UPGRADE_TO_RTT
+        || id == InCallButtonIds.BUTTON_RECORD
+        || id == InCallButtonIds.BUTTON_SEND_MESSAGE
+        || id == InCallButtonIds.BUTTON_HANGUP_ALL
+        || id == InCallButtonIds.BUTTON_ECT
+        || id == InCallButtonIds.BUTTON_INVITE
+        || id == InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY;  //UNISOC: add for bug1201283
   }
 
   @Override
@@ -138,6 +162,8 @@ public class InCallFragment extends Fragment
       inCallButtonUiDelegate.onRestoreInstanceState(savedInstanceState);
       stateRestored = true;
     }
+    // UNISOC Feature Porting : Add for Hands-free switch to headset.
+    SpeakerToHeadsetHelper.getInstance(getContext()).init(getContext(), inCallButtonUiDelegate);
   }
 
   @Nullable
@@ -182,6 +208,13 @@ public class InCallFragment extends Fragment
     // TODO(a bug): Change to use corresponding phone type used for current call.
     phoneType = getContext().getSystemService(TelephonyManager.class).getPhoneType();
 
+    /* UNISOC Feature Porting: FL0108020044 Support Telcel Operator requirement. @{ */
+    telcelIndicatorTextView = (TextView) view.findViewById(R.id.telcel_indicator);
+    if (telcelIndicatorTextView != null && getContext().getResources().getBoolean(R.bool.config_if_support_display_telcel_feature)) {
+      telcelIndicatorTextView.setVisibility(View.VISIBLE);
+    }
+    /* @} */
+
     // Workaround to adjust padding for status bar and navigation bar since fitsSystemWindows
     // doesn't work well when switching with other fragments.
     view.addOnAttachStateChangeListener(
@@ -200,6 +233,16 @@ public class InCallFragment extends Fragment
           @Override
           public void onViewDetachedFromWindow(View v) {}
         });
+    /* UNISOC Feature Porting: Display caller address for phone number feature. @{ */
+    mGeocodeView = (TextView) view.findViewById(R.id.geocode);
+    if (mGeocodeView != null) {
+      android.util.Log.d("dhy","CallerAddressHelper.getsInstance(getActivity()).isSupportCallerAddress() + "
+              + CallerAddressHelper.getsInstance(
+              getActivity()).isSupportCallerAddress() );
+      mGeocodeView.setVisibility(CallerAddressHelper.getsInstance(
+              getActivity()).isSupportCallerAddress() ? View.VISIBLE : View.GONE);
+    }
+    /* @} */
     return view;
   }
 
@@ -233,6 +276,16 @@ public class InCallFragment extends Fragment
         new ButtonController.ManageConferenceButtonController(inCallScreenDelegate));
     buttonControllers.add(
         new ButtonController.SwitchToSecondaryButtonController(inCallScreenDelegate));
+    // UNISOC Feature Porting: Add for call recorder feature.
+    buttonControllers.add(new ButtonController.RecrodButtonController(inCallButtonUiDelegate));
+    // UNISOC Feature Porting: Enable send sms in incallui feature.
+    buttonControllers.add(new ButtonController.SendMessageButtonController(inCallButtonUiDelegate));
+    // UNISOC Feature Porting: FL0108160005 Hangup all calls for orange case.
+    buttonControllers.add(new ButtonController.HangupAllButtonController(inCallButtonUiDelegate));
+    // UNISOC Feature Porting: Explicit Call Transfer.
+    buttonControllers.add(new ButtonController.ECTButtonController(inCallButtonUiDelegate));
+    // UNISOC Feature Porting: Add for call invite feature.
+    buttonControllers.add(new ButtonController.InviteButtonController(inCallButtonUiDelegate));
 
     inCallScreenDelegate.onInCallScreenDelegateInit(this);
     inCallScreenDelegate.onInCallScreenReady();
@@ -242,6 +295,14 @@ public class InCallFragment extends Fragment
   public void onPause() {
     super.onPause();
     inCallScreenDelegate.onInCallScreenPaused();
+  }
+
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+
+    // UNISOC Feature Porting: Add for Hands-free switch to headset.
+    SpeakerToHeadsetHelper.getInstance(getContext()).unRegisterSpeakerTriggerListener();
   }
 
   @Override
@@ -272,8 +333,31 @@ public class InCallFragment extends Fragment
   @Override
   public void setPrimary(@NonNull PrimaryInfo primaryInfo) {
     LogUtil.i("InCallFragment.setPrimary", primaryInfo.toString());
+    updateVoiceNetworkType();
     setAdapterMedia(primaryInfo.multimediaData(), primaryInfo.showInCallButtonGrid());
-    contactGridManager.setPrimary(primaryInfo);
+    /* UNISOC Feature Porting: Show fdn list name in incallui feature. @{
+     * @orig
+    contactGridManager.setPrimary(primaryInfo); */
+   // UNISOC Feature Porting: Display caller address for phone number feature.
+    InCallUiUtils.setCallerAddress(getActivity(), primaryInfo, mGeocodeView);
+
+    boolean isSupportFdnListName = false;
+    boolean isEmergencyCall = false;
+    if (primaryInfo.nameIsNumber()) {
+      isEmergencyCall = PhoneNumberUtils.isEmergencyNumber(primaryInfo.name());
+    } else {
+      isEmergencyCall = PhoneNumberUtils.isEmergencyNumber(primaryInfo.number());
+    }
+    if (getActivity() != null) {
+      isSupportFdnListName = DisplayFdnHelper.getInstance(
+              getActivity()).isSupportFdnListName(primaryInfo.subId());
+    }
+    if (isSupportFdnListName && !isEmergencyCall) {
+      DisplayFdnHelper.getInstance(getActivity()).setFDNListName(primaryInfo, this);
+    } else {
+      contactGridManager.setPrimary(primaryInfo);
+    }
+    /* @} */
 
     if (primaryInfo.shouldShowLocation()) {
       // Hide the avatar to make room for location
@@ -291,14 +375,16 @@ public class InCallFragment extends Fragment
 
   private void setAdapterMedia(MultimediaData multimediaData, boolean showInCallButtonGrid) {
     if (adapter == null) {
+      // UNISOC : InCallUI Layout Refactor
       adapter =
-          new InCallPagerAdapter(getChildFragmentManager(), multimediaData, showInCallButtonGrid);
+          new InCallPagerAdapter(getChildFragmentManager(), multimediaData, showInCallButtonGrid,
+                  getButtonsToPlaceSize());
       pager.setAdapter(adapter);
     } else {
       adapter.setAttachments(multimediaData);
     }
-
-    if (adapter.getCount() > 1 && getResources().getInteger(R.integer.incall_num_rows) > 1) {
+    //for bug 1141864
+    if (adapter.getCount() > 1 && getActivity() != null && getResources().getInteger(R.integer.incall_num_rows) > 1) {
       paginator.setVisibility(View.VISIBLE);
       paginator.setupWithViewPager(pager);
       pager.setSwipingLocked(false);
@@ -339,13 +425,14 @@ public class InCallFragment extends Fragment
   public void setCallState(@NonNull PrimaryCallState primaryCallState) {
     LogUtil.i("InCallFragment.setCallState", primaryCallState.toString());
     contactGridManager.setCallState(primaryCallState);
+    //UNISOC:add for bug1155555
     getButtonController(InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY)
-        .setAllowed(primaryCallState.swapToSecondaryButtonState() != ButtonState.NOT_SUPPORT);
+        .setAllowed(primaryCallState.swapToSecondaryButtonState() == ButtonState.ENABLED);
     getButtonController(InCallButtonIds.BUTTON_SWITCH_TO_SECONDARY)
         .setEnabled(primaryCallState.swapToSecondaryButtonState() == ButtonState.ENABLED);
     buttonChooser =
         ButtonChooserFactory.newButtonChooser(
-            voiceNetworkType, primaryCallState.isWifi(), phoneType);
+            voiceNetworkType, primaryCallState.isWifi(), phoneType, getContext());
     updateButtonStates();
   }
 
@@ -391,10 +478,16 @@ public class InCallFragment extends Fragment
     // This check is needed because there is a race condition where we attempt to update
     // ButtonGridFragment before it is ready, so we check whether it is ready first and once it is
     // ready, #onButtonGridCreated will mark the dialpad button as isShowing.
-    if (inCallButtonGridFragment != null) {
+    /* UNISOC: InCallUI Layout Refactor @{ */
+    if (inCallButtonGridFragmentPageOne != null) {
       // Update the Android Button's state to isShowing.
-      inCallButtonGridFragment.onInCallScreenDialpadVisibilityChange(isShowing);
+      inCallButtonGridFragmentPageOne.onInCallScreenDialpadVisibilityChange(isShowing);
     }
+    if (inCallButtonGridFragmentPageTwo != null) {
+      // Update the Android Button's state to isShowing.
+      inCallButtonGridFragmentPageTwo.onInCallScreenDialpadVisibilityChange(isShowing);
+    }
+    /* @} */
     Activity activity = getActivity();
     Window window = activity.getWindow();
     window.setNavigationBarColor(
@@ -472,32 +565,60 @@ public class InCallFragment extends Fragment
     // When the incall screen is ready, this method is called from #setSecondary, even though the
     // incall button ui is not ready yet. This method is called again once the incall button ui is
     // ready though, so this operation is safe and will be executed asap.
-    if (inCallButtonGridFragment == null) {
+    if (inCallButtonGridFragmentPageOne == null && inCallButtonGridFragmentPageTwo == null) {
       return;
     }
-    int numVisibleButtons =
-        inCallButtonGridFragment.updateButtonStates(
-            buttonControllers, buttonChooser, voiceNetworkType, phoneType);
-
-    int visibility = numVisibleButtons == 0 ? View.GONE : View.VISIBLE;
-    pager.setVisibility(visibility);
-    if (adapter != null
-        && adapter.getCount() > 1
-        && getResources().getInteger(R.integer.incall_num_rows) > 1) {
-      paginator.setVisibility(View.VISIBLE);
-      pager.setSwipingLocked(false);
-    } else {
-      paginator.setVisibility(View.GONE);
-      if (adapter != null) {
-        pager.setSwipingLocked(true);
-        pager.setCurrentItem(adapter.getButtonGridPosition());
+    /* UNISOC: InCallUI Layout Refactor @{ */
+    int numVisibleButtonsPageOne = 0;
+    if (inCallButtonGridFragmentPageOne != null) {
+      numVisibleButtonsPageOne = inCallButtonGridFragmentPageOne.updateButtonStates(
+              buttonControllers, buttonChooser, voiceNetworkType, phoneType, getActivity());
+      /* UNISOC: add for button1138057 @{ */
+      if (numVisibleButtonsPageOne < 0) {
+        LogUtil.i("InCallFragment.updateButtonStates", "update again for invalid fragment");
+        numVisibleButtonsPageOne = inCallButtonGridFragmentPageOne.updateButtonStates(
+                buttonControllers, buttonChooser, voiceNetworkType, phoneType, getActivity());
       }
+      /* @} */
+    }
+    if (inCallButtonGridFragmentPageTwo != null) {
+      inCallButtonGridFragmentPageTwo.updateButtonStates(
+              buttonControllers, buttonChooser, voiceNetworkType, phoneType, getActivity());
+    }
+
+
+    int visibility = numVisibleButtonsPageOne == 0 ? View.GONE : View.VISIBLE;
+    /* @} */
+    pager.setVisibility(visibility);
+    // UNISOC: add for bug1155992
+    try {
+      if (adapter != null
+              && adapter.getCount() > 1
+              && getResources().getInteger(R.integer.incall_num_rows) > 1) {
+        paginator.setVisibility(View.VISIBLE);
+        pager.setSwipingLocked(false);
+      } else {
+        paginator.setVisibility(View.GONE);
+        if (adapter != null) {
+          pager.setSwipingLocked(true);
+          pager.setCurrentItem(adapter.getButtonGridPosition());
+        }
+      }
+    } catch (IllegalStateException e){
+      LogUtil.e("InCallFragment.updateButtonStates", "IllegalStateException : " + e);
     }
   }
 
   @Override
   public void updateInCallButtonUiColors(@ColorInt int color) {
-    inCallButtonGridFragment.updateButtonColor(color);
+    /* UNISOC InCallUI Layout Refactor @{ */
+    if (inCallButtonGridFragmentPageOne != null) {
+      inCallButtonGridFragmentPageOne.updateButtonColor(color);
+    }
+    if (inCallButtonGridFragmentPageTwo != null) {
+      inCallButtonGridFragmentPageTwo.updateButtonColor(color);
+    }
+    /* @} */
   }
 
   @Override
@@ -532,18 +653,31 @@ public class InCallFragment extends Fragment
   }
 
   @Override
-  public void onButtonGridCreated(InCallButtonGridFragment inCallButtonGridFragment) {
-    LogUtil.i("InCallFragment.onButtonGridCreated", "InCallUiReady");
-    this.inCallButtonGridFragment = inCallButtonGridFragment;
+  public void onButtonGridCreated(InCallButtonGridFragment inCallButtonGridFragment, int page) {
+    /* UNISOC: InCallUI Layout Refactor @{ */
+    LogUtil.i("InCallFragment.onButtonGridCreated", "InCallUiReady page : " + page);
+    if (page == InCallPagerAdapter.PAGE_ONE) {
+      this.inCallButtonGridFragmentPageOne = inCallButtonGridFragment;
+    } else if (page == InCallPagerAdapter.PAGE_TWO) {
+      this.inCallButtonGridFragmentPageTwo = inCallButtonGridFragment;
+    }
+    /* @} */
     inCallButtonUiDelegate.onInCallButtonUiReady(this);
     updateButtonStates();
   }
 
   @Override
-  public void onButtonGridDestroyed() {
-    LogUtil.i("InCallFragment.onButtonGridCreated", "InCallUiUnready");
+  public void onButtonGridDestroyed(int page) {
+    /* UNISOC: InCallUI Layout Refactor @{ */
+    LogUtil.i("InCallFragment.onButtonGridDestroyed", "InCallUiUnready page : " + page);
     inCallButtonUiDelegate.onInCallButtonUiUnready();
-    this.inCallButtonGridFragment = null;
+    if (page == InCallPagerAdapter.PAGE_ONE) {
+      this.inCallButtonGridFragmentPageOne = null;
+    } else if (page == InCallPagerAdapter.PAGE_TWO) {
+      this.inCallButtonGridFragmentPageTwo = null;
+    }
+
+    /* @} */
   }
 
   @Override
@@ -583,5 +717,103 @@ public class InCallFragment extends Fragment
 
   private Fragment getLocationFragment() {
     return getChildFragmentManager().findFragmentById(R.id.incall_location_holder);
+  }
+
+  /* UNISOC : InCallUI Layout Refactor @{ */
+  public int getButtonsToPlaceSize() {
+    Set<Integer> allowedButtons = new ArraySet<>();
+    Set<Integer> disabledButtons = new ArraySet<>();
+
+    for (ButtonController controller : buttonControllers) {
+      if (controller.isAllowed()) {
+        allowedButtons.add(controller.getInCallButtonId());
+        if (!controller.isEnabled()) {
+          disabledButtons.add(controller.getInCallButtonId());
+        }
+      }
+    }
+
+    if (buttonChooser == null) {
+      buttonChooser =
+              ButtonChooserFactory.newButtonChooser(voiceNetworkType, false /* isWiFi */, phoneType, getActivity());
+    }
+
+    int numVisibleButtons = getResources().getInteger(R.integer.incall_num_rows) *
+            InCallButtonGridFragment.BUTTONS_PER_ROW * 2;
+    List<Integer> buttonsToPlace =
+            buttonChooser.getButtonPlacement(numVisibleButtons, allowedButtons, disabledButtons);
+    if (buttonsToPlace == null) {
+      return 0;
+    }
+    return buttonsToPlace.size();
+  }
+
+  public void onPageChanged(int buttonsToPlaceSize) {
+    LogUtil.i("InCallFragment.onPageChanged", "buttonsToPlaceSize : " + buttonsToPlaceSize);
+    if (this.buttonsToPlaceSize != buttonsToPlaceSize && adapter != null
+            && ((buttonsToPlaceSize > InCallPagerAdapter.BUTTON_COUNT && adapter.getCount() == 1)
+            || (buttonsToPlaceSize <= InCallPagerAdapter.BUTTON_COUNT
+            && adapter.getCount() == 2))) {
+      adapter.setButtonsToPlaceSize(buttonsToPlaceSize);
+      try {
+        adapter.notifyDataSetChanged();
+        if (adapter.getCount() > 1 && getResources().getInteger(R.integer.incall_num_rows) > 1) {
+          paginator.setVisibility(View.VISIBLE);
+          paginator.setupWithViewPager(pager);
+          pager.setSwipingLocked(false);
+          if (!stateRestored) {
+            handler.postDelayed(pagerRunnable, 4_000);
+          } else {
+            pager.setCurrentItem(adapter.getButtonGridPosition(), false /* animateScroll */);
+          }
+        } else {
+          paginator.setVisibility(View.GONE);
+        }
+      } catch (IllegalStateException e) {
+        LogUtil.e("InCallFragment.onPageChanged", "IllegalStateException : " + e);
+        /* UNISOC: modify for bug727101*/
+        this.buttonsToPlaceSize = 0;
+        adapter.setButtonsToPlaceSize(this.buttonsToPlaceSize);
+        return;
+        /* @} */
+      }
+    }
+    this.buttonsToPlaceSize = buttonsToPlaceSize;
+  }
+
+  /* UNISOC Feature Porting: Add for call recorder feature. @{  */
+  @Override
+  public void setRecord(boolean value) {
+    getButtonController(InCallButtonIds.BUTTON_RECORD).setChecked(value);
+  }
+
+  @Override
+  public void setRecordTime(String recordTime) {
+    getButtonController(InCallButtonIds.BUTTON_RECORD).setLabelText(recordTime);
+  }
+  /* @} */
+  /* UNISOC Feature Porting: Show fdn list name in incallui feature. */
+  public void setFdnName(PrimaryInfo primaryInfo) {
+    contactGridManager.setPrimary(primaryInfo);
+  }
+  /* @} */
+
+  //UNISOC: add for bug1136709, update voiceNetworkType
+  private void updateVoiceNetworkType() {
+    if (ContextCompat.checkSelfPermission(getContext(), permission.READ_PHONE_STATE)
+            != PackageManager.PERMISSION_GRANTED) {
+      voiceNetworkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+    } else {
+      voiceNetworkType =
+              getContext().getSystemService(TelephonyManager.class).getVoiceNetworkType(InCallUiUtils.getCurrentSubId(getContext()));
+    }
+  }
+  public void onConfigurationChanged(Configuration newConfig) {
+    super.onConfigurationChanged(newConfig);
+    try {
+      adapter.notifyDataSetChanged();
+    }  catch (IllegalStateException e) {
+      LogUtil.e("InCallFragment.onConfigurationChanged", "IllegalStateException : " + e);
+    }
   }
 }

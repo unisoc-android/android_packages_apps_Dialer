@@ -34,7 +34,7 @@
   <!-- Text in the action bar at the top of the screen -->
   <style name="DialtactsActionBarTitleText"
     parent="@android:style/TextAppearance.Material.Widget.ActionBar.Title">
-    <item name="android:textColor">?colorTextOnUnthemedDarkBackground</item>
+    <item name="android:textColor">@android:color/white</item>
   </style>
 
   <!-- Text style for tabs. -->
@@ -167,4 +167,45 @@
     <item name="android:textColor">?android:attr/colorPrimary</item>
     <item name="android:fontFamily">"sans-serif-medium"</item>
   </style>
+
+  <!-- UNISOC AndroidQ Feature Porting: bug1072688 add for search call log in google search box and clear call log feature @{ -->
+  <!-- Action bar overflow menu icon.  White with no shadow. -->
+  <style name="DialtactsActionBarOverflowWhite"
+      parent="@android:style/Widget.Material.Light.ActionButton.Overflow">
+    <item name="android:src">@drawable/quantum_ic_more_vert_white_24</item>
+  </style>
+
+  <style name="DialtactsActionBarStyle" parent="DialerActionBarBaseStyle">
+    <!-- Styles that require AppCompat compatibility, remember to update both sets -->
+    <item name="android:background">@color/dialer_actionbar_background_color</item>
+    <item name="background">@color/dialer_actionbar_background_color</item>
+    <item name="android:titleTextStyle">@style/DialtactsActionBarTitleText</item>
+    <item name="titleTextStyle">@style/DialtactsActionBarTitleText</item>
+    <item name="android:elevation">@dimen/action_bar_elevation</item>
+    <item name="elevation">@dimen/action_bar_elevation</item>
+    <!-- Empty icon -->
+    <item name="android:icon">@android:color/transparent</item>
+    <item name="icon">@android:color/transparent</item>
+    <!-- Shift the title text to the right -->
+    <item name="android:contentInsetStart">@dimen/actionbar_contentInsetStart</item>
+    <item name="contentInsetStart">@dimen/actionbar_contentInsetStart</item>
+  </style>
+
+  <style name="CallLogClearActivityTheme" parent="android:Theme.Material.Light">
+    <item name="android:windowBackground">@android:color/white</item>
+    <item name="android:windowContentOverlay">@null</item>
+    <item name="android:actionBarStyle">@style/DialtactsActionBarStyle</item>
+    <item name="android:actionOverflowButtonStyle">@style/DialtactsActionBarOverflowWhite</item>
+    <item name="android:windowActionBarOverlay">false</item>
+    <item name="android:colorPrimaryDark">@color/dialer_theme_color_dark</item>
+    <item name="android:textColorPrimary">@color/settings_text_color_primary</item>
+    <item name="android:forceDarkAllowed">true</item>
+    <item name="android:colorAccent">@color/dialer_theme_color</item>
+  </style>
+  <!-- @} -->
+  <!-- UNISOC: FEATURE_IP_DIAL bug1072676 @{ -->
+  <style name="IpDialActivityTheme" parent="CallLogClearActivityTheme">
+      <item name="android:actionMenuTextColor">@color/setting_background_color</item>
+  </style>
+  <!-- @} -->
 </resources>

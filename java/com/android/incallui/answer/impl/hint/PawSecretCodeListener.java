@@ -57,6 +57,10 @@ public class PawSecretCodeListener extends BroadcastReceiver {
 
   @Override
   public void onReceive(Context context, Intent intent) {
+    //add for bug1145625
+    if (intent == null || intent.getData() == null) {
+      return;
+    }
     String host = intent.getData().getHost();
     if (TextUtils.isEmpty(host)) {
       return;

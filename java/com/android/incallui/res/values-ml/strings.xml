@@ -65,4 +65,11 @@
   <string name="rtt_request_dialog_more_information">ബധിരർ, കേൾവി ശക്തി കുറഞ്ഞവർ, സംഭാഷണ വൈകല്യമുള്ളവർ അല്ലെങ്കിൽ ശബ്‌ദത്തിന് പുറമേ മറ്റ് സഹായവും ആവശ്യമുള്ള, വിളിക്കുന്ന ആളുകളെ RTT സഹായിക്കുന്നു.</string>
   <string name="rtt_button_decline_request">വേണ്ട</string>
   <string name="rtt_button_accept_request">RTT-യിൽ ചേരുക</string>
+  <string name="notification_action_answer_voice">"ശബ്ദം"</string>
+  <string name="notification_action_mute_on">"മൗനം"</string>
+  <string name="notification_action_mute_off">"നിശബ്ദമൊഴിവാക്കുക"</string>
+  <string name="notification_action_reject_with_message">"SMS നിരസിച്ചിരിക്കുന്നു"</string>
+  <string name="card_title_in_call">"കോളില്‍"</string>
+  <string name="card_title_conf_call">"കോണ്‍ഫറന്‍സ് കോള്‍"</string>
+  <string name="fail_change_video_due_to_bgcall">"പശ്ചാത്തല കോൾ ഉണ്ട്, വീഡിയോ കോളിലേക്ക് നിലവിലെ കോൾ മാറ്റുന്നത് പരാജയപ്പെടുന്നു."</string>
 </resources>
